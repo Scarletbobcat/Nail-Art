@@ -16,7 +16,6 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   const today = new Date(startDate.toString());
   return (
     <Box display="flex" justifyContent="center" alignItems="center">
-      <Typography>{"Date: " + today.toDateString()}</Typography>
       <Box display="flex">
         <Button
           variant="contained"
@@ -24,7 +23,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
           onClick={() => onDateChange(-1)}
           startIcon={<ArrowBackIcon />}
         ></Button>
-        <Typography variant="h6">Day</Typography>
+        <Typography>{today.toDateString()}</Typography>
         <Button
           variant="contained"
           size="small"
