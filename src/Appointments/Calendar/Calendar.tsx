@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { DayPilotCalendar, DayPilot } from "@daypilot/daypilot-lite-react";
 import CalendarHeader from "./components/CalendarHeader";
-import { Grid2, CircularProgress, Box } from "@mui/material";
+import { CircularProgress, Box, Stack } from "@mui/material";
 import EditModal from "./components/EditModal";
 import { getAppointmentsByDate } from "../../api/appointments";
 import { getAllServices } from "../../api/services";
@@ -90,7 +90,7 @@ const CalendarClient = () => {
 
   return (
     <div>
-      <Grid2>
+      <Stack padding={3} spacing={2}>
         <CalendarHeader startDate={startDate} onDateChange={handleDateChange} />
         {appLoading || servicesLoading || employeesLoading ? (
           <Box
@@ -103,7 +103,9 @@ const CalendarClient = () => {
             <CircularProgress color="primary" />
           </Box>
         ) : (
-          <Box
+          <Stack
+            direction="row"
+            spacing={2}
             sx={{
               display: "flex",
             }}
@@ -126,9 +128,9 @@ const CalendarClient = () => {
                 setSelectedAppId(args.e.id().toString());
               }}
             />
-          </Box>
+          </Stack>
         )}
-      </Grid2>
+      </Stack>
       {isEditOpen && (
         <EditModal
           appointment={appointments.find(
