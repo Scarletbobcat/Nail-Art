@@ -19,6 +19,8 @@ export const login = async (username: string, password: string) => {
 
 export const refreshToken = async () => {
   try {
+    localStorage.removeItem("token");
+
     const response = await api.post("/auth/refresh");
 
     localStorage.setItem("token", response.data.token);
