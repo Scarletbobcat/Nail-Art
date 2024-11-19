@@ -24,3 +24,11 @@ export const createAppointment = async (appointment: Appointment) => {
 
   return response.data;
 };
+
+export const deleteAppointment = async (appointment: Appointment) => {
+  const response = await api.delete(`/appointments/delete`, {
+    data: appointment,
+  });
+
+  return response.data;
+};

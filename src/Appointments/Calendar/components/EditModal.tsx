@@ -17,7 +17,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
 import { Appointment, Employee, Service } from "../../../types";
-import { editAppointment } from "../../../api/appointments";
+import { editAppointment, deleteAppointment } from "../../../api/appointments";
 
 interface AppointmentEditModalProps {
   appointment: Appointment;
@@ -42,6 +42,14 @@ export default function AppointmentEditModal({
     e.preventDefault();
     // save the appointment
     await editAppointment(form);
+    // closing modal and re-rendering events
+    onClose();
+    renderEvents();
+  };
+
+  const handleDelete = async () => {
+    // delete appointment
+    await deleteAppointment(form);
     // closing modal and re-rendering events
     onClose();
     renderEvents();
@@ -188,7 +196,7 @@ export default function AppointmentEditModal({
             </Stack>
           </Stack>
           <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
-            <Button onClick={onClose} color="error" variant="contained">
+            <Button onClick={handleDelete} color="error" variant="contained">
               Delete
             </Button>
             <Box>
