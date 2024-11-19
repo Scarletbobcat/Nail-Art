@@ -10,11 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 import CalendarNavigator from "./components/CalendarNavigator";
 import { Appointment, Employee } from "../../types";
 import CreateModal from "./components/CreateModal";
+import DeleteModal from "./components/DeleteModal";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState("");
   const [createApp, setCreateApp] = useState<Appointment>({
     id: "",
@@ -138,7 +140,8 @@ const CalendarClient = () => {
               businessEndsHour={19}
               eventResizeHandling="Disabled"
               onEventClick={(args) => {
-                setIsEditOpen(true);
+                // setIsEditOpen(true);
+                setIsDeleteOpen(true);
                 setSelectedAppId(args.e.id().toString());
               }}
               onTimeRangeSelected={(args) => {
@@ -174,6 +177,17 @@ const CalendarClient = () => {
           onClose={() => setIsCreateOpen(false)}
           renderEvents={appRefetch}
           allServices={services}
+          allEmployees={employees}
+        />
+      )}
+      {isDeleteOpen && (
+        <DeleteModal
+          appointment={appointments.find(
+            (app: Appointment) => app.id == selectedAppId
+          )}
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          renderEvents={appRefetch}
           allEmployees={employees}
         />
       )}
