@@ -116,7 +116,9 @@ const CalendarClient = () => {
             />
             <DayPilotCalendar
               viewType="Resources"
-              columns={employees}
+              columns={employees.sort((a: Employee, b: Employee) =>
+                a.id.toString().localeCompare(b.id.toString())
+              )}
               startDate={startDate}
               eventMoveHandling="Disabled"
               events={mappedEvents}
