@@ -11,6 +11,7 @@ import CalendarNavigator from "./components/CalendarNavigator";
 import { Appointment, Employee } from "../../types";
 import CreateModal from "./components/CreateModal";
 import DeleteModal from "./components/DeleteModal";
+import ContextMenu from "./components/ContextMenu";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
@@ -28,6 +29,29 @@ const CalendarClient = () => {
     employeeId: "",
     services: [],
   });
+  const [contextMenu, setContextMenu] = useState<{
+    mouseX: number;
+    mouseY: number;
+  } | null>(null);
+
+  const handleContextMenu = (event: MouseEvent) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+          }
+        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+          // Other native context menus might behave different.
+          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+          null
+    );
+  };
+
+  const handleClose = () => {
+    setContextMenu(null);
+  };
 
   const {
     data: appointments,
@@ -104,6 +128,17 @@ const CalendarClient = () => {
 
   return (
     <div>
+      <ContextMenu
+        anchorPosition={
+          contextMenu !== null
+            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+            : undefined
+        }
+        open={contextMenu !== null}
+        setEdit={setIsEditOpen}
+        setDelete={setIsDeleteOpen}
+        onClose={handleClose}
+      />
       <Stack padding={3} spacing={2}>
         <CalendarHeader startDate={startDate} onDateChange={handleDateChange} />
         {appLoading || servicesLoading || employeesLoading ? (
@@ -141,8 +176,9 @@ const CalendarClient = () => {
               eventResizeHandling="Disabled"
               onEventClick={(args) => {
                 // setIsEditOpen(true);
-                setIsDeleteOpen(true);
+                // setIsDeleteOpen(true);
                 setSelectedAppId(args.e.id().toString());
+                handleContextMenu(args.originalEvent);
               }}
               onTimeRangeSelected={(args) => {
                 setCreateApp({
