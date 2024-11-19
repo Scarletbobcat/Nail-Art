@@ -16,19 +16,8 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment } from "../../../types/AppointmentI";
+import { Appointment, Employee, Service } from "../../../types";
 import { editAppointment } from "../../../api/appointments";
-
-interface Service {
-  id: string;
-  name: string;
-}
-
-interface Employee {
-  id: string;
-  name: string;
-  color?: string;
-}
 
 interface AppointmentEditModalProps {
   appointment: Appointment;

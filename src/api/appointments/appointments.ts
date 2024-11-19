@@ -1,5 +1,5 @@
 import api from "../api";
-import { Appointment } from "../../types/AppointmentI";
+import { Appointment } from "../../types/Appointment";
 
 export const getAppointmentsByDate = async (date: string) => {
   const response = await api.get(`/appointments/date/${date}`);

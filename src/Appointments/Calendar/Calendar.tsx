@@ -8,13 +8,7 @@ import { getAllServices } from "../../api/services";
 import { getAllEmployees } from "../../api/employees";
 import { useQuery } from "@tanstack/react-query";
 import CalendarNavigator from "./components/CalendarNavigator";
-import { Appointment } from "../../types/AppointmentI";
-
-interface Employee {
-  id: string;
-  name: string;
-  color: string;
-}
+import { Appointment, Employee } from "../../types";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
