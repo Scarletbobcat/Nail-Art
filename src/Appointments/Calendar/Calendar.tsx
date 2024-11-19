@@ -7,6 +7,7 @@ import { getAppointmentsByDate } from "../../api/appointments";
 import { getAllServices } from "../../api/services";
 import { getAllEmployees } from "../../api/employees";
 import { useQuery } from "@tanstack/react-query";
+import CalendarNavigator from "./components/CalendarNavigator";
 
 interface Appointment {
   id: string;
@@ -118,20 +119,30 @@ const CalendarClient = () => {
             <CircularProgress color="primary" />
           </Box>
         ) : (
-          <DayPilotCalendar
-            viewType="Resources"
-            columns={employees}
-            startDate={startDate}
-            eventMoveHandling="Disabled"
-            events={mappedEvents}
-            businessBeginsHour={10}
-            businessEndsHour={19}
-            eventResizeHandling="Disabled"
-            onEventClick={(args) => {
-              setIsEditOpen(true);
-              setSelectedAppId(args.e.id().toString());
+          <Box
+            sx={{
+              display: "flex",
             }}
-          />
+          >
+            <CalendarNavigator
+              startDate={startDate}
+              setStartDate={setStartDate}
+            />
+            <DayPilotCalendar
+              viewType="Resources"
+              columns={employees}
+              startDate={startDate}
+              eventMoveHandling="Disabled"
+              events={mappedEvents}
+              businessBeginsHour={10}
+              businessEndsHour={19}
+              eventResizeHandling="Disabled"
+              onEventClick={(args) => {
+                setIsEditOpen(true);
+                setSelectedAppId(args.e.id().toString());
+              }}
+            />
+          </Box>
         )}
       </Grid2>
       {isEditOpen && (
