@@ -49,7 +49,7 @@ const CalendarClient = () => {
     );
   };
 
-  const handleClose = () => {
+  const handleMenuClose = () => {
     setContextMenu(null);
   };
 
@@ -137,7 +137,7 @@ const CalendarClient = () => {
         open={contextMenu !== null}
         setEdit={setIsEditOpen}
         setDelete={setIsDeleteOpen}
-        onClose={handleClose}
+        onClose={handleMenuClose}
       />
       <Stack padding={3} spacing={2}>
         <CalendarHeader startDate={startDate} onDateChange={handleDateChange} />
