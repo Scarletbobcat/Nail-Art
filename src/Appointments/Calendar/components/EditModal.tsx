@@ -6,21 +6,18 @@ import {
   TextField,
   Grid2,
   Paper,
+  MenuItem,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Chip from "@mui/material/Chip";
 import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-
-interface Appointment {
-  id: string;
-  employeeId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  name: string;
-  services: string[];
-  phoneNumber: string;
-}
+import { useState, FormEvent } from "react";
+import { Appointment } from "../../../types/AppointmentI";
+import { editAppointment } from "../../../api/appointments";
 
 interface Service {
   id: string;
@@ -34,7 +31,7 @@ interface Employee {
 }
 
 interface AppointmentEditModalProps {
-  appointment: Appointment | undefined;
+  appointment: Appointment;
   onClose: () => void;
   isOpen: boolean;
   renderEvents: () => void;
@@ -50,6 +47,17 @@ export default function AppointmentEditModal({
   allServices,
   allEmployees,
 }: AppointmentEditModalProps) {
+  const [form, setForm] = useState(appointment);
+
+  const handleSave = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // save the appointment
+    await editAppointment(form);
+    // closing modal and re-rendering events
+    onClose();
+    renderEvents();
+  };
+
   return (
     <div>
       <Modal
@@ -60,7 +68,7 @@ export default function AppointmentEditModal({
       >
         <Paper
           component="form"
-          // onSubmit={handleSave}
+          onSubmit={handleSave}
           sx={{
             position: "absolute",
             top: "50%",
@@ -86,16 +94,22 @@ export default function AppointmentEditModal({
                 <TextField
                   fullWidth
                   label="Name"
-                  value={appointment ? appointment.name : ""}
+                  value={form.name}
                   variant="outlined"
+                  onChange={(e) => {
+                    setForm({ ...form, name: e.target.value });
+                  }}
                 />
               </Grid2>
               <Grid2 size={6}>
                 <TextField
                   fullWidth
                   label="Phone Number"
-                  value={appointment ? appointment.phoneNumber : ""}
+                  value={form.phoneNumber}
                   variant="outlined"
+                  onChange={(e) => {
+                    setForm({ ...form, phoneNumber: e.target.value });
+                  }}
                 />
               </Grid2>
             </Grid2>
@@ -104,25 +118,91 @@ export default function AppointmentEditModal({
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
                     label="Start"
-                    value={
-                      appointment
-                        ? dayjs(appointment.date + appointment.startTime)
-                        : dayjs()
-                    }
+                    value={form ? dayjs(form.date + form.startTime) : dayjs()}
+                    onChange={(date) => {
+                      setForm({
+                        ...form,
+                        date: date ? date.format("YYYY-MM-DD") : form.date,
+                        startTime: date
+                          ? "T" + date.format("HH:mm:ss")
+                          : form.startTime,
+                      });
+                    }}
                   />
                 </LocalizationProvider>
               </Grid2>
               <Grid2 size={6}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
-                    value={
-                      appointment
-                        ? dayjs(appointment.date + appointment.endTime)
-                        : dayjs()
-                    }
+                    value={form ? dayjs(form.date + form.endTime) : dayjs()}
                     label="End"
+                    onChange={(date) => {
+                      setForm({
+                        ...form,
+                        date: date ? date.format("YYYY-MM-DD") : form.date,
+                        endTime: date
+                          ? "T" + date.format("HH:mm:ss")
+                          : form.endTime,
+                      });
+                    }}
                   />
                 </LocalizationProvider>
+              </Grid2>
+              <Grid2 size={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="employee-label">Employee</InputLabel>
+                  <Select
+                    labelId="employee-label"
+                    fullWidth
+                    label="Employee"
+                    value={form.employeeId}
+                    onChange={(e: SelectChangeEvent) => {
+                      setForm({ ...form, employeeId: e.target.value });
+                    }}
+                    variant="outlined"
+                  >
+                    {allEmployees.map((employee) => (
+                      <MenuItem key={employee.id} value={employee.id}>
+                        {employee.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid2>
+              <Grid2 size={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="service-label">Services</InputLabel>
+                  <Select
+                    labelId="service-label"
+                    multiple
+                    fullWidth
+                    label="Service"
+                    value={form.services}
+                    onChange={(e: SelectChangeEvent<string[]>) => {
+                      setForm({
+                        ...form,
+                        services:
+                          typeof e.target.value === "string"
+                            ? e.target.value.split(",")
+                            : e.target.value,
+                      });
+                    }}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                        {selected.map((value) => (
+                          <Chip key={value} label={value} />
+                        ))}
+                      </Box>
+                    )}
+                    variant="outlined"
+                  >
+                    {allServices.map((service) => (
+                      <MenuItem key={service.id} value={service.name}>
+                        {service.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid2>
             </Grid2>
           </Box>

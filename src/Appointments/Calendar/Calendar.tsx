@@ -8,17 +8,7 @@ import { getAllServices } from "../../api/services";
 import { getAllEmployees } from "../../api/employees";
 import { useQuery } from "@tanstack/react-query";
 import CalendarNavigator from "./components/CalendarNavigator";
-
-interface Appointment {
-  id: string;
-  employeeId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  name: string;
-  services: string[];
-  phoneNumber: string;
-}
+import { Appointment } from "../../types/AppointmentI";
 
 interface Employee {
   id: string;
