@@ -4,7 +4,7 @@ import {
   Box,
   Typography,
   TextField,
-  Grid2,
+  Stack,
   Paper,
   MenuItem,
   InputLabel,
@@ -69,7 +69,7 @@ export default function AppointmentEditModal({
             p: 4,
           }}
         >
-          <Box>
+          <Stack spacing={2}>
             <Typography
               id="modal-title"
               variant="h5"
@@ -78,32 +78,28 @@ export default function AppointmentEditModal({
             >
               Edit/Delete Appointment
             </Typography>
-            <Grid2 container alignItems="center" spacing={2} sx={{ mb: 2 }}>
-              <Grid2 size={6}>
-                <TextField
-                  fullWidth
-                  label="Name"
-                  value={form.name}
-                  variant="outlined"
-                  onChange={(e) => {
-                    setForm({ ...form, name: e.target.value });
-                  }}
-                />
-              </Grid2>
-              <Grid2 size={6}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  value={form.phoneNumber}
-                  variant="outlined"
-                  onChange={(e) => {
-                    setForm({ ...form, phoneNumber: e.target.value });
-                  }}
-                />
-              </Grid2>
-            </Grid2>
-            <Grid2 container alignItems="center" spacing={2} sx={{ mb: 2 }}>
-              <Grid2 size={6}>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                fullWidth
+                label="Name"
+                value={form.name}
+                variant="outlined"
+                onChange={(e) => {
+                  setForm({ ...form, name: e.target.value });
+                }}
+              />
+              <TextField
+                fullWidth
+                label="Phone Number"
+                value={form.phoneNumber}
+                variant="outlined"
+                onChange={(e) => {
+                  setForm({ ...form, phoneNumber: e.target.value });
+                }}
+              />
+            </Stack>
+            <Stack spacing={2}>
+              <Stack direction="row" spacing={2}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
                     label="Start"
@@ -119,8 +115,6 @@ export default function AppointmentEditModal({
                     }}
                   />
                 </LocalizationProvider>
-              </Grid2>
-              <Grid2 size={6}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
                     value={form ? dayjs(form.date + form.endTime) : dayjs()}
@@ -136,8 +130,8 @@ export default function AppointmentEditModal({
                     }}
                   />
                 </LocalizationProvider>
-              </Grid2>
-              <Grid2 size={6}>
+              </Stack>
+              <Stack direction="row" spacing={2}>
                 <FormControl fullWidth>
                   <InputLabel id="employee-label">Employee</InputLabel>
                   <Select
@@ -157,8 +151,6 @@ export default function AppointmentEditModal({
                     ))}
                   </Select>
                 </FormControl>
-              </Grid2>
-              <Grid2 size={6}>
                 <FormControl fullWidth>
                   <InputLabel id="service-label">Services</InputLabel>
                   <Select
@@ -192,9 +184,9 @@ export default function AppointmentEditModal({
                     ))}
                   </Select>
                 </FormControl>
-              </Grid2>
-            </Grid2>
-          </Box>
+              </Stack>
+            </Stack>
+          </Stack>
           <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
             <Button onClick={onClose} color="error" variant="contained">
               Delete
