@@ -9,11 +9,23 @@ import { getAllEmployees } from "../../api/employees";
 import { useQuery } from "@tanstack/react-query";
 import CalendarNavigator from "./components/CalendarNavigator";
 import { Appointment, Employee } from "../../types";
+import CreateModal from "./components/CreateModal";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState("");
+  const [createApp, setCreateApp] = useState<Appointment>({
+    id: "",
+    name: "",
+    phoneNumber: "",
+    date: "",
+    startTime: "",
+    endTime: "",
+    employeeId: "",
+    services: [],
+  });
 
   const {
     data: appointments,
@@ -129,6 +141,16 @@ const CalendarClient = () => {
                 setIsEditOpen(true);
                 setSelectedAppId(args.e.id().toString());
               }}
+              onTimeRangeSelected={(args) => {
+                setCreateApp({
+                  ...createApp,
+                  date: args.start.toString("yyyy-MM-dd"),
+                  startTime: "T" + args.start.toString("HH:mm:ss"),
+                  endTime: "T" + args.end.toString("HH:mm:ss"),
+                  employeeId: args.resource.toString(),
+                });
+                setIsCreateOpen(true);
+              }}
             />
           </Stack>
         )}
@@ -140,6 +162,16 @@ const CalendarClient = () => {
           )}
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
+          renderEvents={appRefetch}
+          allServices={services}
+          allEmployees={employees}
+        />
+      )}
+      {isCreateOpen && (
+        <CreateModal
+          appointment={createApp}
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
           renderEvents={appRefetch}
           allServices={services}
           allEmployees={employees}

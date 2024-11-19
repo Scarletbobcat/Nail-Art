@@ -18,3 +18,9 @@ export const editAppointment = async (appointment: Appointment) => {
 
   return response.data;
 };
+
+export const createAppointment = async (appointment: Appointment) => {
+  const response = await api.post(`/appointments/create`, appointment);
+
+  return response.data;
+};
