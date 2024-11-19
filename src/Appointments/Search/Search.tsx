@@ -1,7 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
-import { Box, TextField, InputAdornment, IconButton } from "@mui/material";
+import { useState, useMemo } from "react";
+import {
+  Box,
+  TextField,
+  InputAdornment,
+  IconButton,
+  CircularProgress,
+} from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
+import { useQuery } from "@tanstack/react-query";
+import { getAllEmployees } from "../../api/employees";
+import { getAppointmentsByPhoneNumber } from "../../api/appointments";
 
 interface TempData {
   id: number;
@@ -23,40 +32,16 @@ interface Employee {
 export default function Search() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [tempData, setTempData] = useState<TempData[]>();
-  const [employees, setEmployees] = useState<Employee[]>();
+  const [loading, setLoading] = useState(false);
 
-  // gets all employees
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/Employees");
-      if (!response.ok) {
-        throw new Error("Could not get employees");
-      }
-      const data = await response.json();
-      setEmployees(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const getAppointments = async (phoneNumber: string) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/Appointments/Search/${phoneNumber}`
-      );
-      if (!response.ok) {
-        throw new Error("Could not get appointments");
-      }
-      const data = await response.json();
-      setTempData(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
+  const {
+    data: employees,
+    isLoading: employeesLoading,
+    error: employeesError,
+  } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => getAllEmployees(),
+  });
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -97,9 +82,11 @@ export default function Search() {
   ];
 
   // searches if enter key is pressed
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+  const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
-      getAppointments(phoneNumber);
+      setLoading(true);
+      setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
+      setLoading(false);
     }
   };
 
@@ -108,7 +95,7 @@ export default function Search() {
     if (!tempData || !employees) return [];
     return tempData.map((row) => {
       const employee = employees.find(
-        (employee) => employee.id == row.employeeId
+        (employee: Employee) => employee.id == row.employeeId
       );
       return {
         id: row.id,
@@ -127,6 +114,24 @@ export default function Search() {
     });
   }, [tempData, employees]);
 
+  if (employeesLoading || loading) {
+    return (
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (employeesError) {
+    return <div>Error fetching employees</div>;
+  }
+
   return (
     <>
       {/* header */}
@@ -140,7 +145,15 @@ export default function Search() {
           input: {
             endAdornment: (
               <InputAdornment position="end">
-                <IconButton onClick={() => getAppointments(phoneNumber)}>
+                <IconButton
+                  onClick={async () => {
+                    setLoading(true);
+                    setTempData(
+                      await getAppointmentsByPhoneNumber(phoneNumber)
+                    );
+                    setLoading(false);
+                  }}
+                >
                   <SearchIcon />
                 </IconButton>
               </InputAdornment>

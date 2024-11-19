@@ -5,3 +5,9 @@ export const getAppointmentsByDate = async (date: string) => {
 
   return response.data;
 };
+
+export const getAppointmentsByPhoneNumber = async (phoneNumber: string) => {
+  const response = await api.get(`/appointments/search/${phoneNumber}`);
+
+  return response.data;
+};
