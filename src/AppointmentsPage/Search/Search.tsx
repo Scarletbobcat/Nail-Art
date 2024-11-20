@@ -1,11 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Box,
-  TextField,
-  InputAdornment,
-  IconButton,
-  CircularProgress,
-} from "@mui/material";
+import { Box, TextField, InputAdornment, IconButton } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
@@ -14,10 +8,11 @@ import { getAppointmentsByPhoneNumber } from "../../api/appointments";
 import { Appointment, Employee } from "../../types";
 import EditButton from "./components/EditButton";
 import DeleteButton from "./components/DeleteButton";
-import { Stack } from "@mui/material";
+import { Stack, Paper } from "@mui/material";
 import EditModal from "../Calendar/components/EditModal";
 import DeleteModal from "../Calendar/components/DeleteModal";
 import { getAllServices } from "../../api/services";
+import CircularLoading from "../../components/CircularLoading";
 
 interface TempData {
   id: number;
@@ -87,8 +82,8 @@ export default function Search() {
     { field: "id", headerName: "Id", width: 150 },
     { field: "name", headerName: "Name", width: 150 },
     { field: "phoneNumber", headerName: "Phone Number", width: 150 },
-    { field: "startTime", headerName: "Start", width: 150 },
-    { field: "endTime", headerName: "End", width: 150 },
+    { field: "startTime", headerName: "Start Time", width: 150 },
+    { field: "endTime", headerName: "End Time", width: 150 },
     { field: "date", headerName: "Date", width: 150 },
     { field: "employee", headerName: "Employee", width: 150 },
     {
@@ -157,17 +152,7 @@ export default function Search() {
   }, [tempData, employees]);
 
   if (employeesLoading || loading || servicesLoading) {
-    return (
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
+    return <CircularLoading />;
   }
 
   if (employeesError) {
@@ -179,72 +164,74 @@ export default function Search() {
 
   return (
     <>
-      {/* header */}
-      <TextField
-        label="Phone Number"
-        sx={{ m: 1, width: "25ch" }}
-        onChange={(e) => changePhoneNumber(e.target.value)}
-        onKeyDown={handleKeyDown}
-        value={phoneNumber}
-        slotProps={{
-          input: {
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  onClick={async () => {
-                    setLoading(true);
-                    setTempData(
-                      await getAppointmentsByPhoneNumber(phoneNumber)
-                    );
-                    setLoading(false);
-                  }}
-                >
-                  <SearchIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          },
-        }}
-      />
-      {/* content */}
-      <Box sx={{ height: 400, width: "100%", m: 1 }}>
-        <DataGrid
-          rows={data}
-          columns={columns}
-          initialState={{
-            pagination: {
-              paginationModel: {
-                pageSize: 10,
-              },
+      <Paper variant="outlined">
+        {/* header */}
+        <TextField
+          label="Phone Number"
+          sx={{ m: 1, width: "25ch" }}
+          onChange={(e) => changePhoneNumber(e.target.value)}
+          onKeyDown={handleKeyDown}
+          value={phoneNumber}
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={async () => {
+                      setLoading(true);
+                      setTempData(
+                        await getAppointmentsByPhoneNumber(phoneNumber)
+                      );
+                      setLoading(false);
+                    }}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
             },
           }}
-          pageSizeOptions={[10]}
-          disableRowSelectionOnClick
         />
-      </Box>
-      {isEditOpen && (
-        <EditModal
-          isOpen={isEditOpen}
-          onClose={() => setIsEditOpen(false)}
-          appointment={selectedApp}
-          renderEvents={async () =>
-            setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-          }
-          allEmployees={employees}
-          allServices={services}
-        />
-      )}
-      {isDeleteOpen && (
-        <DeleteModal
-          isOpen={isDeleteOpen}
-          onClose={() => setIsDeleteOpen(false)}
-          appointment={selectedApp}
-          renderEvents={async () =>
-            setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-          }
-          allEmployees={employees}
-        />
-      )}
+        {/* content */}
+        <Box sx={{ height: 400, width: "100%", m: 1 }}>
+          <DataGrid
+            rows={data}
+            columns={columns}
+            initialState={{
+              pagination: {
+                paginationModel: {
+                  pageSize: 10,
+                },
+              },
+            }}
+            pageSizeOptions={[10]}
+            disableRowSelectionOnClick
+          />
+        </Box>
+        {isEditOpen && (
+          <EditModal
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            appointment={selectedApp}
+            renderEvents={async () =>
+              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+            }
+            allEmployees={employees}
+            allServices={services}
+          />
+        )}
+        {isDeleteOpen && (
+          <DeleteModal
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            appointment={selectedApp}
+            renderEvents={async () =>
+              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+            }
+            allEmployees={employees}
+          />
+        )}
+      </Paper>
     </>
   );
 }

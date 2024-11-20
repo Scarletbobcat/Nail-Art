@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { DayPilotCalendar, DayPilot } from "@daypilot/daypilot-lite-react";
 import CalendarHeader from "./components/CalendarHeader";
-import { CircularProgress, Box, Stack } from "@mui/material";
+import { Stack } from "@mui/material";
 import EditModal from "./components/EditModal";
 import { getAppointmentsByDate } from "../../api/appointments";
 import { getAllServices } from "../../api/services";
@@ -12,6 +12,7 @@ import { Appointment, Employee } from "../../types";
 import CreateModal from "./components/CreateModal";
 import DeleteModal from "./components/DeleteModal";
 import ContextMenu from "./components/ContextMenu";
+import CircularLoading from "../../components/CircularLoading";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
@@ -142,15 +143,7 @@ const CalendarClient = () => {
       <Stack padding={3} spacing={2}>
         <CalendarHeader startDate={startDate} onDateChange={handleDateChange} />
         {appLoading || servicesLoading || employeesLoading ? (
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-            }}
-          >
-            <CircularProgress color="primary" />
-          </Box>
+          <CircularLoading />
         ) : (
           <Stack
             direction="row"
