@@ -11,6 +11,13 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
 import { getAppointmentsByPhoneNumber } from "../../api/appointments";
+import { Appointment, Employee } from "../../types";
+import EditButton from "./components/EditButton";
+import DeleteButton from "./components/DeleteButton";
+import { Stack } from "@mui/material";
+import EditModal from "../Calendar/components/EditModal";
+import DeleteModal from "../Calendar/components/DeleteModal";
+import { getAllServices } from "../../api/services";
 
 interface TempData {
   id: number;
@@ -19,20 +26,26 @@ interface TempData {
   startTime: string;
   endTime: string;
   date: string;
-  employeeId: number;
+  employeeId: string;
   services: string[];
-}
-
-interface Employee {
-  id: number;
-  name: string;
-  color: string;
 }
 
 export default function Search() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [tempData, setTempData] = useState<TempData[]>();
   const [loading, setLoading] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<Appointment>({
+    id: "",
+    name: "",
+    phoneNumber: "",
+    startTime: "",
+    endTime: "",
+    date: "",
+    employeeId: "",
+    services: [],
+  });
 
   const {
     data: employees,
@@ -41,6 +54,15 @@ export default function Search() {
   } = useQuery({
     queryKey: ["employees"],
     queryFn: () => getAllEmployees(),
+  });
+
+  const {
+    data: services,
+    isLoading: servicesLoading,
+    error: servicesError,
+  } = useQuery({
+    queryKey: ["services"],
+    queryFn: () => getAllServices(),
   });
 
   function changePhoneNumber(inputPhoneNumber: string) {
@@ -72,12 +94,31 @@ export default function Search() {
     {
       field: "services",
       headerName: "Services",
-      flex: 1,
+      width: 250,
       // this is what is rendered in the cell if wanted to change in the future
       // (maybe change so multiple services is easier to read)
       // renderCell: (s) => {
       //   return s.value;
       // },
+    },
+    {
+      field: "Actions",
+      headerName: "Actions",
+      flex: 1,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={1}>
+          <EditButton
+            app={params.row.actions}
+            setSelectedApp={setSelectedApp}
+            openEdit={() => setIsEditOpen(true)}
+          />
+          <DeleteButton
+            app={params.row.actions}
+            setSelectedApp={setSelectedApp}
+            openDelete={() => setIsDeleteOpen(true)}
+          />
+        </Stack>
+      ),
     },
   ];
 
@@ -110,11 +151,12 @@ export default function Search() {
         services: row.services.map((s) => {
           return s;
         }),
+        actions: row,
       };
     });
   }, [tempData, employees]);
 
-  if (employeesLoading || loading) {
+  if (employeesLoading || loading || servicesLoading) {
     return (
       <Box
         sx={{
@@ -130,6 +172,9 @@ export default function Search() {
 
   if (employeesError) {
     return <div>Error fetching employees</div>;
+  }
+  if (servicesError) {
+    return <div>Error fetching services</div>;
   }
 
   return (
@@ -177,6 +222,29 @@ export default function Search() {
           disableRowSelectionOnClick
         />
       </Box>
+      {isEditOpen && (
+        <EditModal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          appointment={selectedApp}
+          renderEvents={async () =>
+            setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+          }
+          allEmployees={employees}
+          allServices={services}
+        />
+      )}
+      {isDeleteOpen && (
+        <DeleteModal
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          appointment={selectedApp}
+          renderEvents={async () =>
+            setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+          }
+          allEmployees={employees}
+        />
+      )}
     </>
   );
 }
