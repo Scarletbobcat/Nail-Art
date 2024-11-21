@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../api/employees";
 import { Stack } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
 import EditButton from "./components/EditButton";
@@ -56,7 +56,7 @@ export default function Employees() {
       field: "color",
       headerName: "Color",
       flex: 1,
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams) => (
         <Box
           sx={{
             display: "flex",
@@ -85,7 +85,7 @@ export default function Employees() {
       field: "Actions",
       headerName: "Actions",
       flex: 1,
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams) => (
         <Box
           sx={{
             display: "flex",

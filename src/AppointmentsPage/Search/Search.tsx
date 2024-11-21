@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Box, TextField, InputAdornment, IconButton } from "@mui/material";
-import { DataGrid } from "@mui/x-data-grid";
+import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
@@ -100,7 +100,7 @@ export default function Search() {
       field: "Actions",
       headerName: "Actions",
       flex: 1,
-      renderCell: (params) => (
+      renderCell: (params: GridRenderCellParams) => (
         <Stack direction="row" spacing={1}>
           <EditButton
             app={params.row.actions}
