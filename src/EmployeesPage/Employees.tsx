@@ -9,6 +9,7 @@ import { Employee } from "../types";
 import DeleteButton from "./components/DeleteButton";
 import EditEmployeeModal from "./components/EditModal";
 import { Typography, Box } from "@mui/material";
+import DeleteEmployeeModal from "./components/DeleteModal";
 
 export default function Employees() {
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -125,7 +126,14 @@ export default function Employees() {
           renderEmps={refreshEmps}
         />
       )}
-      {isDeleteOpen && <div>Delete</div>}
+      {isDeleteOpen && (
+        <DeleteEmployeeModal
+          emp={selectedEmp}
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          renderEmps={refreshEmps}
+        />
+      )}
     </div>
   );
 }

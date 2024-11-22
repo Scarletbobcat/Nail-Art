@@ -6,9 +6,11 @@ import useClickOutside from "./useClickOutside";
 export const PopoverPicker = ({
   color,
   onChange,
+  disabled,
 }: {
   color: string;
   onChange: (e: string) => void;
+  disabled?: boolean;
 }) => {
   const popover = useRef<HTMLDivElement>(null);
   const [isOpen, toggle] = useState(false);
@@ -29,7 +31,7 @@ export const PopoverPicker = ({
         onClick={() => toggle(true)}
       />
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div
           className="popover"
           ref={popover}

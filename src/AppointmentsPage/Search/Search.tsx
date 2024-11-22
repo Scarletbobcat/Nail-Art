@@ -79,17 +79,17 @@ export default function Search() {
 
   // header of table
   const columns = [
-    { field: "id", headerName: "Id", width: 150 },
-    { field: "name", headerName: "Name", width: 150 },
-    { field: "phoneNumber", headerName: "Phone Number", width: 150 },
-    { field: "startTime", headerName: "Start Time", width: 150 },
-    { field: "endTime", headerName: "End Time", width: 150 },
-    { field: "date", headerName: "Date", width: 150 },
-    { field: "employee", headerName: "Employee", width: 150 },
+    { field: "id", headerName: "Id", flex: 1 },
+    { field: "name", headerName: "Name", flex: 1 },
+    { field: "phoneNumber", headerName: "Phone Number", flex: 1 },
+    { field: "startTime", headerName: "Start Time", flex: 1 },
+    { field: "endTime", headerName: "End Time", flex: 1 },
+    { field: "date", headerName: "Date", flex: 1 },
+    { field: "employee", headerName: "Employee", flex: 1 },
     {
       field: "services",
       headerName: "Services",
-      width: 250,
+      flex: 1,
       // this is what is rendered in the cell if wanted to change in the future
       // (maybe change so multiple services is easier to read)
       // renderCell: (s) => {

@@ -12,3 +12,9 @@ export const editEmployee = async (employee: Employee) => {
 
   return response.data;
 };
+
+export const deleteEmployee = async (employee: Employee) => {
+  const response = await api.delete("/employees/delete", { data: employee });
+
+  return response.data;
+};
