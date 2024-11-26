@@ -12,7 +12,7 @@ import { useState, FormEvent } from "react";
 import { Employee } from "../../types";
 import { createEmployee } from "../../api/employees";
 
-export default function DeleteEmployeeModal({
+export default function CreateEmployeeModal({
   isOpen,
   onClose,
   renderEmps,
