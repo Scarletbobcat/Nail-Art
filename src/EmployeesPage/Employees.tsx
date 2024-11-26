@@ -108,7 +108,7 @@ export default function Employees() {
 
   const data = useMemo(() => {
     if (!employees) return [];
-    return employees.map((row: Employee) => {
+    return employees.sort().map((row: Employee) => {
       return {
         id: row.id,
         name: row.name,
@@ -163,9 +163,7 @@ export default function Employees() {
                       <InputAdornment position="end">
                         <IconButton
                           onClick={async () => {
-                            // setLoading(true);
                             refreshEmps();
-                            // setLoading(false);
                           }}
                         >
                           <SearchIcon />

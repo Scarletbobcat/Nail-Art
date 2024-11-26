@@ -78,7 +78,7 @@ export default function Services() {
 
   const data = useMemo(() => {
     if (!services) return [];
-    return services.map((row: Service) => {
+    return services.sort().map((row: Service) => {
       return {
         id: row.id,
         name: row.name,

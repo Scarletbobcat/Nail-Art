@@ -137,7 +137,8 @@ export default function Search() {
   // this makes the appointment data being fetched match the table format
   const data = useMemo(() => {
     if (!tempData || !employees) return [];
-    return tempData.map((row) => {
+    const sortedTempData = [...tempData].sort((a, b) => a.id - b.id);
+    return sortedTempData.map((row) => {
       const employee = employees.find(
         (employee: Employee) => employee.id == row.employeeId
       );
