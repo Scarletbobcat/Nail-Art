@@ -30,7 +30,7 @@ const navItems = [
 
 const authItems = [
   { title: "Login", url: "/Login" },
-  { title: "Register", url: "/Register" },
+  // { title: "Register", url: "/Register" },
 ];
 
 function Navbar() {
@@ -151,22 +151,24 @@ function Navbar() {
             }}
           >
             {authItems.map((item, index) => {
-              return (
-                <Button key={index} color="inherit">
-                  <Link
-                    to={item.url}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      textDecoration: "none",
-                      color: "inherit",
-                    }}
-                  >
-                    {item.title}
-                  </Link>
-                </Button>
-              );
+              if (!localStorage.getItem("token")) {
+                return (
+                  <Button key={index} color="inherit">
+                    <Link
+                      to={item.url}
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        height: "100%",
+                        textDecoration: "none",
+                        color: "inherit",
+                      }}
+                    >
+                      {item.title}
+                    </Link>
+                  </Button>
+                );
+              }
             })}
           </Box>
         </Box>

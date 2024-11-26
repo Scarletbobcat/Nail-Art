@@ -4,7 +4,8 @@ export default function Home() {
       <div>
         <p>To Do:</p>
         <ul>
-          <li>Create CRUD pages for Employees and Services</li>
+          <li>Implement search by name in Employees</li>
+          <li>Create CRUD page Services</li>
           <li>Appointment reminder texts (automatic if possible)</li>
         </ul>
       </div>

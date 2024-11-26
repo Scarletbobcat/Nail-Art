@@ -1,5 +1,11 @@
 import { useState, useMemo } from "react";
-import { Box, TextField, InputAdornment, IconButton } from "@mui/material";
+import {
+  Box,
+  TextField,
+  InputAdornment,
+  IconButton,
+  Typography,
+} from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
@@ -13,6 +19,7 @@ import EditModal from "../Calendar/components/EditModal";
 import DeleteModal from "../Calendar/components/DeleteModal";
 import { getAllServices } from "../../api/services";
 import CircularLoading from "../../components/CircularLoading";
+import { useTheme } from "@mui/material/styles";
 
 interface TempData {
   id: number;
@@ -26,6 +33,7 @@ interface TempData {
 }
 
 export default function Search() {
+  const theme = useTheme();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [tempData, setTempData] = useState<TempData[]>();
   const [loading, setLoading] = useState(false);
@@ -79,7 +87,7 @@ export default function Search() {
 
   // header of table
   const columns = [
-    { field: "id", headerName: "Id", flex: 1 },
+    { field: "id", headerName: "Id", width: 50 },
     { field: "name", headerName: "Name", flex: 1 },
     { field: "phoneNumber", headerName: "Phone Number", flex: 1 },
     { field: "startTime", headerName: "Start Time", flex: 1 },
@@ -164,74 +172,101 @@ export default function Search() {
 
   return (
     <>
-      <Paper variant="outlined">
-        {/* header */}
-        <TextField
-          label="Phone Number"
-          sx={{ m: 1, width: "25ch" }}
-          onChange={(e) => changePhoneNumber(e.target.value)}
-          onKeyDown={handleKeyDown}
-          value={phoneNumber}
-          slotProps={{
-            input: {
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton
-                    onClick={async () => {
-                      setLoading(true);
-                      setTempData(
-                        await getAppointmentsByPhoneNumber(phoneNumber)
-                      );
-                      setLoading(false);
-                    }}
-                  >
-                    <SearchIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-            },
+      <Box
+        sx={{
+          padding: 4,
+        }}
+      >
+        <Paper
+          variant="outlined"
+          sx={{
+            padding: 3,
           }}
-        />
-        {/* content */}
-        <Box sx={{ height: 400, width: "100%", m: 1 }}>
-          <DataGrid
-            rows={data}
-            columns={columns}
-            initialState={{
-              pagination: {
-                paginationModel: {
-                  pageSize: 10,
-                },
-              },
-            }}
-            pageSizeOptions={[10]}
-            disableRowSelectionOnClick
-          />
-        </Box>
-        {isEditOpen && (
-          <EditModal
-            isOpen={isEditOpen}
-            onClose={() => setIsEditOpen(false)}
-            appointment={selectedApp}
-            renderEvents={async () =>
-              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-            }
-            allEmployees={employees}
-            allServices={services}
-          />
-        )}
-        {isDeleteOpen && (
-          <DeleteModal
-            isOpen={isDeleteOpen}
-            onClose={() => setIsDeleteOpen(false)}
-            appointment={selectedApp}
-            renderEvents={async () =>
-              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-            }
-            allEmployees={employees}
-          />
-        )}
-      </Paper>
+        >
+          <Stack spacing={2}>
+            {/* header */}
+            <Stack
+              direction="row"
+              sx={{
+                justifyContent: "space-between",
+                backgroundColor: theme.palette.primary.main,
+                padding: 2,
+                borderRadius: 2,
+              }}
+            >
+              <Typography variant="h4" sx={{ color: "white" }}>
+                Appointments
+              </Typography>
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Phone Number"
+                onChange={(e) => changePhoneNumber(e.target.value)}
+                onKeyDown={handleKeyDown}
+                value={phoneNumber}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={async () => {
+                            setLoading(true);
+                            setTempData(
+                              await getAppointmentsByPhoneNumber(phoneNumber)
+                            );
+                            setLoading(false);
+                          }}
+                        >
+                          <SearchIcon />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            </Stack>
+            {/* content */}
+            <Box sx={{ height: 400, width: "100%", m: 1 }}>
+              <DataGrid
+                rows={data}
+                columns={columns}
+                initialState={{
+                  pagination: {
+                    paginationModel: {
+                      pageSize: 10,
+                    },
+                  },
+                }}
+                pageSizeOptions={[10]}
+                disableRowSelectionOnClick
+              />
+            </Box>
+            {isEditOpen && (
+              <EditModal
+                isOpen={isEditOpen}
+                onClose={() => setIsEditOpen(false)}
+                appointment={selectedApp}
+                renderEvents={async () =>
+                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+                }
+                allEmployees={employees}
+                allServices={services}
+              />
+            )}
+            {isDeleteOpen && (
+              <DeleteModal
+                isOpen={isDeleteOpen}
+                onClose={() => setIsDeleteOpen(false)}
+                appointment={selectedApp}
+                renderEvents={async () =>
+                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+                }
+                allEmployees={employees}
+              />
+            )}
+          </Stack>
+        </Paper>
+      </Box>
     </>
   );
 }
