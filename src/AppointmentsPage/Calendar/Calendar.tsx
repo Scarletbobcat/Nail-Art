@@ -13,6 +13,7 @@ import CreateModal from "./components/CreateModal";
 import DeleteModal from "./components/DeleteModal";
 import ContextMenu from "./components/ContextMenu";
 import CircularLoading from "../../components/CircularLoading";
+import ReminderButton from "./components/ReminderButton";
 
 const CalendarClient = () => {
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
@@ -152,10 +153,13 @@ const CalendarClient = () => {
               display: "flex",
             }}
           >
-            <CalendarNavigator
-              startDate={startDate}
-              setStartDate={setStartDate}
-            />
+            <Stack spacing={2}>
+              <CalendarNavigator
+                startDate={startDate}
+                setStartDate={setStartDate}
+              />
+              <ReminderButton />
+            </Stack>
             <DayPilotCalendar
               viewType="Resources"
               columns={employees.sort((a: Employee, b: Employee) =>

@@ -32,3 +32,9 @@ export const deleteAppointment = async (appointment: Appointment) => {
 
   return response.data;
 };
+
+export const remindAppointments = async () => {
+  const response = await api.post(`/reminders`);
+
+  return response.data;
+};
