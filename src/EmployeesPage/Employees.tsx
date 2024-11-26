@@ -17,6 +17,7 @@ import CreateModal from "./components/CreateModal";
 
 export default function Employees() {
   const theme = useTheme();
+  const [name, setName] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -33,28 +34,8 @@ export default function Employees() {
     refetch: refreshEmps,
   } = useQuery({
     queryKey: ["employees"],
-    queryFn: getAllEmployees,
+    queryFn: () => getAllEmployees(name),
   });
-
-  const data = useMemo(() => {
-    if (!employees) return [];
-    return employees.map((row: Employee) => {
-      return {
-        id: row.id,
-        name: row.name,
-        color: row.color,
-        actions: row,
-      };
-    });
-  }, [employees]);
-
-  if (employeesLoading) {
-    return <CircularLoading />;
-  }
-
-  if (employeesError) {
-    return <div>Error: {employeesError.message}</div>;
-  }
 
   const columns = [
     { field: "id", headerName: "ID", flex: 1 },
@@ -119,6 +100,32 @@ export default function Employees() {
     },
   ];
 
+  const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter") {
+      refreshEmps();
+    }
+  };
+
+  const data = useMemo(() => {
+    if (!employees) return [];
+    return employees.map((row: Employee) => {
+      return {
+        id: row.id,
+        name: row.name,
+        color: row.color,
+        actions: row,
+      };
+    });
+  }, [employees]);
+
+  if (employeesLoading) {
+    return <CircularLoading />;
+  }
+
+  if (employeesError) {
+    return <div>Error: {employeesError.message}</div>;
+  }
+
   return (
     <Box
       sx={{
@@ -148,6 +155,8 @@ export default function Employees() {
             <Stack direction="row" spacing={2}>
               <TextField
                 label="Name"
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={handleKeyDown}
                 slotProps={{
                   input: {
                     endAdornment: (
@@ -155,9 +164,7 @@ export default function Employees() {
                         <IconButton
                           onClick={async () => {
                             // setLoading(true);
-                            // setTempData(
-                            //   await getAppointmentsByPhoneNumber(phoneNumber)
-                            // );
+                            refreshEmps();
                             // setLoading(false);
                           }}
                         >
