@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { DayPilotCalendar, DayPilot } from "@daypilot/daypilot-lite-react";
 import CalendarHeader from "./components/CalendarHeader";
-import { Stack } from "@mui/material";
+import { Stack, Box, Paper, Typography } from "@mui/material";
 import EditModal from "./components/EditModal";
 import { getAppointmentsByDate } from "../../api/appointments";
 import { getAllServices } from "../../api/services";
@@ -14,8 +14,10 @@ import DeleteModal from "./components/DeleteModal";
 import ContextMenu from "./components/ContextMenu";
 import CircularLoading from "../../components/CircularLoading";
 import ReminderButton from "./components/ReminderButton";
+import { useTheme } from "@mui/material/styles";
 
 const CalendarClient = () => {
+  const theme = useTheme();
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -129,102 +131,120 @@ const CalendarClient = () => {
   }
 
   return (
-    <div>
-      <ContextMenu
-        anchorPosition={
-          contextMenu !== null
-            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-            : undefined
-        }
-        open={contextMenu !== null}
-        setEdit={setIsEditOpen}
-        setDelete={setIsDeleteOpen}
-        onClose={handleMenuClose}
-      />
-      <Stack padding={3} spacing={2}>
-        <CalendarHeader startDate={startDate} onDateChange={handleDateChange} />
-        {appLoading || servicesLoading || employeesLoading ? (
-          <CircularLoading />
-        ) : (
-          <Stack
-            direction="row"
-            spacing={2}
-            sx={{
-              display: "flex",
-            }}
-          >
+    <Box
+      sx={{
+        padding: 4,
+      }}
+    >
+      <Paper variant="outlined">
+        <ContextMenu
+          anchorPosition={
+            contextMenu !== null
+              ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+              : undefined
+          }
+          open={contextMenu !== null}
+          setEdit={setIsEditOpen}
+          setDelete={setIsDeleteOpen}
+          onClose={handleMenuClose}
+        />
+        <Stack padding={3} spacing={2}>
+          {appLoading || servicesLoading || employeesLoading ? (
+            <CircularLoading />
+          ) : (
             <Stack spacing={2}>
-              <CalendarNavigator
-                startDate={startDate}
-                setStartDate={setStartDate}
-              />
-              <ReminderButton />
+              <Stack
+                sx={{
+                  backgroundColor: theme.palette.primary.main,
+                  padding: 2,
+                  borderRadius: 2,
+                }}
+              >
+                <Typography sx={{ color: "white" }} variant="h4">
+                  Appointments
+                </Typography>
+              </Stack>
+              <Stack direction="row" spacing={2}>
+                <Stack spacing={2}>
+                  <CalendarNavigator
+                    startDate={startDate}
+                    setStartDate={setStartDate}
+                  />
+                  <ReminderButton />
+                </Stack>
+                <Stack spacing={2}>
+                  <CalendarHeader
+                    startDate={startDate}
+                    onDateChange={handleDateChange}
+                  />
+                  <DayPilotCalendar
+                    viewType="Resources"
+                    columns={employees.sort((a: Employee, b: Employee) =>
+                      a.id.toString().localeCompare(b.id.toString())
+                    )}
+                    startDate={startDate}
+                    eventMoveHandling="Disabled"
+                    events={mappedEvents}
+                    businessBeginsHour={10}
+                    businessEndsHour={19}
+                    eventResizeHandling="Disabled"
+                    onEventClick={(args) => {
+                      // setIsEditOpen(true);
+                      // setIsDeleteOpen(true);
+                      setSelectedAppId(args.e.id().toString());
+                      handleContextMenu(args.originalEvent);
+                    }}
+                    onTimeRangeSelected={(args) => {
+                      setCreateApp({
+                        ...createApp,
+                        date: args.start.toString("yyyy-MM-dd"),
+                        startTime: "T" + args.start.toString("HH:mm:ss"),
+                        endTime: "T" + args.end.toString("HH:mm:ss"),
+                        employeeId: args.resource.toString(),
+                      });
+                      setIsCreateOpen(true);
+                    }}
+                  />
+                </Stack>
+              </Stack>
             </Stack>
-            <DayPilotCalendar
-              viewType="Resources"
-              columns={employees.sort((a: Employee, b: Employee) =>
-                a.id.toString().localeCompare(b.id.toString())
-              )}
-              startDate={startDate}
-              eventMoveHandling="Disabled"
-              events={mappedEvents}
-              businessBeginsHour={10}
-              businessEndsHour={19}
-              eventResizeHandling="Disabled"
-              onEventClick={(args) => {
-                // setIsEditOpen(true);
-                // setIsDeleteOpen(true);
-                setSelectedAppId(args.e.id().toString());
-                handleContextMenu(args.originalEvent);
-              }}
-              onTimeRangeSelected={(args) => {
-                setCreateApp({
-                  ...createApp,
-                  date: args.start.toString("yyyy-MM-dd"),
-                  startTime: "T" + args.start.toString("HH:mm:ss"),
-                  endTime: "T" + args.end.toString("HH:mm:ss"),
-                  employeeId: args.resource.toString(),
-                });
-                setIsCreateOpen(true);
-              }}
-            />
-          </Stack>
+          )}
+        </Stack>
+        {isEditOpen && (
+          <EditModal
+            appointment={appointments.find(
+              (app: Appointment) => app.id == selectedAppId
+            )}
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            renderEvents={appRefetch}
+            allServices={services}
+            allEmployees={employees}
+          />
         )}
-      </Stack>
-      {isEditOpen && (
-        <EditModal
-          appointment={appointments.find(
-            (app: Appointment) => app.id == selectedAppId
-          )}
-          isOpen={isEditOpen}
-          onClose={() => setIsEditOpen(false)}
-          renderEvents={appRefetch}
-          allServices={services}
-          allEmployees={employees}
-        />
-      )}
-      {isCreateOpen && (
-        <CreateModal
-          appointment={createApp}
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-          renderEvents={appRefetch}
-          allServices={services}
-          allEmployees={employees}
-        />
-      )}
-      {isDeleteOpen && (
-        <DeleteModal
-          appointment={appointments.find(
-            (app: Appointment) => app.id == selectedAppId
-          )}
-          isOpen={isDeleteOpen}
-          onClose={() => setIsDeleteOpen(false)}
-          renderEvents={appRefetch}
-          allEmployees={employees}
-        />
-      )}
-    </div>
+        {isCreateOpen && (
+          <CreateModal
+            appointment={createApp}
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            renderEvents={appRefetch}
+            allServices={services}
+            allEmployees={employees}
+          />
+        )}
+        {isDeleteOpen && (
+          <DeleteModal
+            appointment={appointments.find(
+              (app: Appointment) => app.id == selectedAppId
+            )}
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            renderEvents={appRefetch}
+            allEmployees={employees}
+          />
+        )}
+      </Paper>
+    </Box>
   );
 };
 

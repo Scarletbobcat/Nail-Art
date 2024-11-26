@@ -1,6 +1,6 @@
 import React from "react";
 import { DayPilot } from "@daypilot/daypilot-lite-react";
-import { Button, Typography, Box } from "@mui/material";
+import { Button, Typography, Box, Stack } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 
@@ -16,21 +16,28 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
   const today = new Date(startDate.toString());
   return (
     <Box display="flex" justifyContent="center" alignItems="center">
-      <Box display="flex">
+      <Stack direction="row" spacing={2}>
         <Button
           variant="contained"
           size="small"
           onClick={() => onDateChange(-1)}
           startIcon={<ArrowBackIcon />}
         ></Button>
-        <Typography>{today.toDateString()}</Typography>
         <Button
           variant="contained"
           size="small"
           onClick={() => onDateChange(1)}
           startIcon={<ArrowForwardIcon />}
         ></Button>
-      </Box>
+        <Typography>
+          {today.toLocaleDateString("en-us", {
+            weekday: "short",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </Typography>
+      </Stack>
     </Box>
   );
 };

@@ -4,7 +4,8 @@ export default function Home() {
       <div>
         <p>To Do:</p>
         <ul>
-          <li>Appointment reminder texts (automatic if possible)</li>
+          <li>Add formatting to phone number inputs on appointment modals</li>
+          <li>Style calendar header to look better</li>
         </ul>
       </div>
     </>
