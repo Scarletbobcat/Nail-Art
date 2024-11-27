@@ -38,6 +38,23 @@ export default function AppointmentEditModal({
 }: AppointmentEditModalProps) {
   const [form, setForm] = useState(appointment);
 
+  function changePhoneNumber(inputPhoneNumber: string) {
+    const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
+    if (regex.test(inputPhoneNumber)) {
+      let newPN = inputPhoneNumber;
+      // conditionally adds hyphen only when adding to phone number, not deleting
+      if (
+        (newPN.length === 3 && form.phoneNumber.length === 2) ||
+        (newPN.length === 7 && form.phoneNumber.length === 6)
+      ) {
+        newPN += "-";
+      }
+      setForm({ ...form, phoneNumber: newPN });
+    } else {
+      console.error("Phone number does not match regex");
+    }
+  }
+
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // save the appointment
@@ -94,7 +111,7 @@ export default function AppointmentEditModal({
                 value={form.phoneNumber}
                 variant="outlined"
                 onChange={(e) => {
-                  setForm({ ...form, phoneNumber: e.target.value });
+                  changePhoneNumber(e.target.value);
                 }}
               />
             </Stack>
