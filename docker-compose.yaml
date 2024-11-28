@@ -1,0 +1,18 @@
+services:
+  api:
+    build:
+      context: ./nail-art-api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+
+  client:
+    build:
+      context: ./nail-art-client-ts
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
