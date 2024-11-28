@@ -1,8 +1,7 @@
-<<<<<<< HEAD
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+**/node_modules
 
 # testing
 /coverage
@@ -14,7 +13,7 @@
 .DS_Store
 .env
 npm-debug.log
-=======
+
 HELP.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
@@ -55,4 +54,3 @@ build/
 
 ### VS Code ###
 .vscode/
->>>>>>> api/main
