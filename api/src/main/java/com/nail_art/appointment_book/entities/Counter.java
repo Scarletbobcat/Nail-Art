@@ -1,6 +1,16 @@
 package com.nail_art.appointment_book.entities;
 
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Setter
+@Getter
+@Data
+@Document(collection = "Counters")
 public class Counter {
+    // Manually added getters and setters
     private long sequence;
     private String collectionName;
 
@@ -9,20 +19,4 @@ public class Counter {
         this.collectionName = collectionName;
     }
 
-    // Manually added getters and setters
-    public long getSequence() {
-        return sequence;
-    }
-
-    public void setSequence(long sequence) {
-        this.sequence = sequence;
-    }
-
-    public String getCollectionName() {
-        return collectionName;
-    }
-
-    public void setCollectionName(String collectionName) {
-        this.collectionName = collectionName;
-    }
 }
