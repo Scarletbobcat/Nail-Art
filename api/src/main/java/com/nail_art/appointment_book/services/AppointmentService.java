@@ -64,16 +64,18 @@ public class AppointmentService {
 
     public List<Appointment> getAppointmentsNextWorkDay() {
         Calendar calendar = Calendar.getInstance();
-        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-        if (dayOfWeek == Calendar.SUNDAY || dayOfWeek == Calendar.MONDAY) {
-            return null;
-        }
-        if (dayOfWeek == Calendar.SATURDAY) {
-            calendar.add(Calendar.DATE, 3);
-        } else {
+        String date = "";
+        List<Appointment> appointments = null;
+        int daysChecked = 0;
+        do {
             calendar.add(Calendar.DATE, 1);
-        }
-        String date = calendar.get(Calendar.YEAR) + "-" + (calendar.get(Calendar.MONTH) + 1) + "-" + calendar.get(Calendar.DATE);
+            date = String.format("%d-%02d-%02d",
+                    calendar.get(Calendar.YEAR)
+                    ,(calendar.get(Calendar.MONTH) + 1)
+                    ,calendar.get(Calendar.DATE));
+            appointments = appointmentRepository.findByDate(date);
+            daysChecked++;
+        } while (appointments.isEmpty() && daysChecked < 30);
         return appointmentRepository.findByDate(date);
     }
 }

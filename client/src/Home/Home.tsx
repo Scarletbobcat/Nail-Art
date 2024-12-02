@@ -4,7 +4,7 @@ export default function Home() {
       <div>
         <p>To Do:</p>
         <ul>
-          <li>Add formatting to phone number inputs on appointment modals</li>
+          <li>Add things to home page - looks pretty empty</li>
         </ul>
       </div>
     </>

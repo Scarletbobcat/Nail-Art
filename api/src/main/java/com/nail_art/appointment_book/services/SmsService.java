@@ -42,7 +42,8 @@ public class SmsService {
                     + " at "
                     + date.format(DateTimeFormatter.ofPattern("h:mm a"))
                     + ". We look forward to seeing you!";
-            sendSms(appointment.getPhoneNumber(), message);
+//            sendSms(appointment.getPhoneNumber(), message);
+            System.out.println(message);
         }
     }
 }
