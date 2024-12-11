@@ -15,10 +15,14 @@ import ContextMenu from "./components/ContextMenu";
 import CircularLoading from "../../components/CircularLoading";
 import ReminderButton from "./components/ReminderButton";
 import { useTheme } from "@mui/material/styles";
+import dayjs from "dayjs";
 
 const CalendarClient = () => {
   const theme = useTheme();
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
+  const [tempStartDate, setTempStartDate] = useState(
+    dayjs().format("YYYY-MM-DD")
+  );
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -33,6 +37,7 @@ const CalendarClient = () => {
     employeeId: "",
     services: [],
   });
+  console.log("Temp Start Date: ", tempStartDate);
   const [contextMenu, setContextMenu] = useState<{
     mouseX: number;
     mouseY: number;
@@ -167,8 +172,8 @@ const CalendarClient = () => {
               <Stack direction="row" spacing={2}>
                 <Stack spacing={2}>
                   <CalendarNavigator
-                    startDate={startDate}
-                    setStartDate={setStartDate}
+                    startDate={tempStartDate}
+                    setStartDate={setTempStartDate}
                   />
                   <ReminderButton />
                 </Stack>
@@ -189,8 +194,6 @@ const CalendarClient = () => {
                     businessEndsHour={19}
                     eventResizeHandling="Disabled"
                     onEventClick={(args) => {
-                      // setIsEditOpen(true);
-                      // setIsDeleteOpen(true);
                       setSelectedAppId(args.e.id().toString());
                       handleContextMenu(args.originalEvent);
                     }}
