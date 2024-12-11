@@ -1,17 +1,15 @@
 services:
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image:
+      scarletbobcat/nail-art:api
     ports:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
 
   client:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
+    image:
+      scarletbobcat/nail-art:client
     ports:
       - "5173:5173"
     environment:
