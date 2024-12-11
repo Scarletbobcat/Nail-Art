@@ -1,11 +1,11 @@
 import React from "react";
-import { DayPilot } from "@daypilot/daypilot-lite-react";
 import { Button, Typography, Box, Stack } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import dayjs from "dayjs";
 
 interface CalendarHeaderProps {
-  startDate: DayPilot.Date;
+  startDate: dayjs.Dayjs;
   onDateChange: (days: number) => void;
 }
 

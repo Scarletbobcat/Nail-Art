@@ -7,8 +7,8 @@ export default function CalendarNavigator({
   startDate,
   setStartDate,
 }: {
-  startDate: string;
-  setStartDate: (date: string) => void;
+  startDate: dayjs.Dayjs;
+  setStartDate: (date: dayjs.Dayjs) => void;
 }) {
   return (
     <div>
@@ -24,7 +24,7 @@ export default function CalendarNavigator({
       <LocalizationProvider dateAdapter={AdapterDayjs} dateLibInstance={dayjs}>
         <DateCalendar
           value={dayjs(startDate)}
-          onChange={(date) => setStartDate(date.format("YYYY-MM-DD"))}
+          onChange={(date) => setStartDate(date)}
         />
       </LocalizationProvider>
     </div>

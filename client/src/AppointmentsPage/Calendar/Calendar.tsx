@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { DayPilotCalendar, DayPilot } from "@daypilot/daypilot-lite-react";
+import AppointmentCalendar from "./components/CustomCalendar";
 import CalendarHeader from "./components/CalendarHeader";
 import { Stack, Box, Paper, Typography } from "@mui/material";
 import EditModal from "./components/EditModal";
@@ -20,9 +21,7 @@ import dayjs from "dayjs";
 const CalendarClient = () => {
   const theme = useTheme();
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
-  const [tempStartDate, setTempStartDate] = useState(
-    dayjs().format("YYYY-MM-DD")
-  );
+  const [tempStartDate, setTempStartDate] = useState(dayjs());
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -37,7 +36,6 @@ const CalendarClient = () => {
     employeeId: "",
     services: [],
   });
-  console.log("Temp Start Date: ", tempStartDate);
   const [contextMenu, setContextMenu] = useState<{
     mouseX: number;
     mouseY: number;
@@ -121,7 +119,7 @@ const CalendarClient = () => {
   }, [appointments, employees]);
 
   const handleDateChange = (days: number) => {
-    setStartDate((prevDate) => prevDate.addDays(days));
+    setTempStartDate(dayjs(tempStartDate).add(days, "day"));
   };
 
   // if there are any errors, show them
@@ -179,10 +177,10 @@ const CalendarClient = () => {
                 </Stack>
                 <Stack spacing={2}>
                   <CalendarHeader
-                    startDate={startDate}
+                    startDate={tempStartDate}
                     onDateChange={handleDateChange}
                   />
-                  <DayPilotCalendar
+                  {/* <DayPilotCalendar
                     viewType="Resources"
                     columns={employees.sort((a: Employee, b: Employee) =>
                       a.id.toString().localeCompare(b.id.toString())
@@ -207,7 +205,8 @@ const CalendarClient = () => {
                       });
                       setIsCreateOpen(true);
                     }}
-                  />
+                  /> */}
+                  <AppointmentCalendar />
                 </Stack>
               </Stack>
             </Stack>
