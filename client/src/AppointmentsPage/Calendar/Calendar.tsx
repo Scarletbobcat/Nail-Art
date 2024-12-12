@@ -206,7 +206,7 @@ const CalendarClient = () => {
                       setIsCreateOpen(true);
                     }}
                   /> */}
-                  <AppointmentCalendar />
+                  <AppointmentCalendar startDate={tempStartDate} />
                 </Stack>
               </Stack>
             </Stack>
