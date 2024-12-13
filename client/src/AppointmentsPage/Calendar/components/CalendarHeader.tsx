@@ -1,5 +1,4 @@
-import React from "react";
-import { Button, Typography, Box, Stack } from "@mui/material";
+import { Button, Typography, Stack } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import dayjs from "dayjs";
@@ -15,30 +14,34 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 }) => {
   const today = new Date(startDate.toString());
   return (
-    <Box display="flex" justifyContent="center" alignItems="center">
-      <Stack direction="row" spacing={2}>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => onDateChange(-1)}
-          startIcon={<ArrowBackIcon />}
-        ></Button>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => onDateChange(1)}
-          startIcon={<ArrowForwardIcon />}
-        ></Button>
-        <Typography>
-          {today.toLocaleDateString("en-us", {
-            weekday: "short",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </Typography>
-      </Stack>
-    </Box>
+    <Stack
+      direction="row"
+      spacing={2}
+      sx={{
+        width: "100%",
+      }}
+    >
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => onDateChange(-1)}
+        startIcon={<ArrowBackIcon />}
+      ></Button>
+      <Button
+        variant="contained"
+        size="small"
+        onClick={() => onDateChange(1)}
+        startIcon={<ArrowForwardIcon />}
+      ></Button>
+      <Typography>
+        {today.toLocaleDateString("en-us", {
+          weekday: "short",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+      </Typography>
+    </Stack>
   );
 };
 
