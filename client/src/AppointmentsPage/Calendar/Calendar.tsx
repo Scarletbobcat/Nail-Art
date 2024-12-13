@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { DayPilotCalendar, DayPilot } from "@daypilot/daypilot-lite-react";
-import AppointmentCalendar from "./components/CustomCalendar";
+import AppointmentCalendar from "./components/CustomCalendar/CustomCalendar";
 import CalendarHeader from "./components/CalendarHeader";
 import { Stack, Box, Paper, Typography } from "@mui/material";
 import EditModal from "./components/EditModal";
