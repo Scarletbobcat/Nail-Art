@@ -1,17 +1,20 @@
 import { Box } from "@mui/material";
 import { Employee, Appointment } from "../../../../types";
 import { useCallback, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { getAppointmentsByDate } from "../../../../api/appointments";
 import dayjs from "dayjs";
 import CustomAppointment from "./Appointment";
 
 interface TimeSlotGridProps {
   employee: Employee;
+  appointments: Appointment[];
   onTimeRangeSelected?: (e: TimeRangeEvent) => void;
   startDate: dayjs.Dayjs;
   businessStart?: number;
   businessEnd?: number;
+  onEventClick?: (e: {
+    originalEvent: React.MouseEvent;
+    e: Appointment;
+  }) => void;
 }
 
 interface TimeRangeEvent {
@@ -22,7 +25,8 @@ interface TimeRangeEvent {
 
 const TimeSlotGrid = ({
   employee,
-  startDate,
+  appointments,
+  onEventClick,
   onTimeRangeSelected,
   businessStart = 10,
   businessEnd = 19,
@@ -31,14 +35,6 @@ const TimeSlotGrid = ({
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
 
-  const {
-    data: appointments,
-    isLoading: appointmentsLoading,
-    error: appointmentsError,
-  } = useQuery({
-    queryKey: ["appointments", startDate],
-    queryFn: () => getAppointmentsByDate(startDate.format("YYYY-MM-DD")),
-  });
   const timeSlots = Array.from(
     { length: (businessEnd - businessStart) * 4 },
     (_, i) => {
@@ -51,6 +47,26 @@ const TimeSlotGrid = ({
         index: i,
       };
     }
+  );
+
+  const isSlotOverlapped = useCallback(
+    (slotTime: string) => {
+      if (!appointments) return false;
+      return appointments.some((app) => {
+        if (app.employeeId !== employee.id) return false;
+
+        const arbitraryDate = "2024-12-13";
+
+        const slotDateTime = dayjs(`${arbitraryDate} ${slotTime}`);
+        const appStart = dayjs(
+          `${arbitraryDate} ${app.startTime.split("T")[1]}`
+        );
+        const appEnd = dayjs(`${arbitraryDate} ${app.endTime.split("T")[1]}`);
+
+        return slotDateTime.isAfter(appStart) && slotDateTime.isBefore(appEnd);
+      });
+    },
+    [appointments, employee.id]
   );
 
   const handleMouseDown = useCallback((index: number) => {
@@ -78,7 +94,6 @@ const TimeSlotGrid = ({
     time = time.split("T")[1];
     const [hour, minutes] = time.split(":").map(Number);
     const totalMinutes = (hour - businessStart) * 60 + minutes;
-    console.log(totalMinutes);
     return (totalMinutes / 30) * 40; // 40px is height of each slot
   };
 
@@ -110,12 +125,6 @@ const TimeSlotGrid = ({
         height: "600px",
         position: "relative",
       }}
-      onMouseUp={() => {
-        const timeRangeEvent = handleMouseUp();
-        if (onTimeRangeSelected) {
-          onTimeRangeSelected(timeRangeEvent);
-        }
-      }}
     >
       <Box
         sx={{
@@ -124,31 +133,51 @@ const TimeSlotGrid = ({
           right: 0,
         }}
       >
-        {timeSlots.map((slot, index) => (
-          <Box
-            key={`${slot.hour}:${slot.minute}-${slot.index}`}
-            onMouseDown={() => handleMouseDown(index)}
-            onMouseEnter={() => handleMouseEnter(index)}
-            sx={{
-              border: ".5px solid #e0e0e0",
-              borderBottom:
-                (index + 1) % 4 === 0 ? "1.5px solid #e0e0e0" : "none",
-              borderLeft: "none",
-              height: 20,
-              minHeight: 20,
-              backgroundColor: selectedSlots.includes(slot.index)
-                ? "#f1f1f1"
-                : "background.paper",
-              // "&:hover": {
-              //   backgroundColor: isSelecting ? "#f1f1f1" : "action.hover",
-              // },
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "relative",
-            }}
-          />
-        ))}
+        {timeSlots.map((slot, index) => {
+          const time = `${slot.hour}:${slot.minute
+            .toString()
+            .padStart(2, "0")}`;
+          const isDisabled = isSlotOverlapped(time);
+          return (
+            <Box
+              key={`${slot.hour}:${slot.minute}-${slot.employee}`}
+              onMouseDown={
+                isDisabled ? undefined : () => handleMouseDown(index)
+              }
+              onMouseEnter={
+                isDisabled ? undefined : () => handleMouseEnter(index)
+              }
+              onMouseUp={
+                isDisabled
+                  ? undefined
+                  : () => {
+                      const timeRangeEvent = handleMouseUp();
+                      if (onTimeRangeSelected) {
+                        onTimeRangeSelected(timeRangeEvent);
+                      }
+                    }
+              }
+              sx={{
+                border: ".5px solid #e0e0e0",
+                borderBottom:
+                  (index + 1) % 4 === 0 ? "1.5px solid #e0e0e0" : "none",
+                borderLeft: "none",
+                height: 20,
+                minHeight: 20,
+                backgroundColor: selectedSlots.includes(slot.index)
+                  ? "#f1f1f1"
+                  : "background.paper",
+                // "&:hover": {
+                //   backgroundColor: isSelecting ? "#f1f1f1" : "action.hover",
+                // },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
+              }}
+            />
+          );
+        })}
       </Box>
       {/* Render appointments */}
       {appointments &&
@@ -179,7 +208,11 @@ const TimeSlotGrid = ({
                 },
               }}
             >
-              <CustomAppointment appointment={appointment} />
+              <CustomAppointment
+                appointment={appointment}
+                key={appointment.id}
+                onEventClick={onEventClick}
+              />
             </Box>
           ))}
     </Box>
