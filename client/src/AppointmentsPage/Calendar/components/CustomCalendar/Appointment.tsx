@@ -1,13 +1,5 @@
 import { Appointment } from "../../../../types";
-import {
-  Stack,
-  Typography,
-  Box,
-  Tooltip,
-  ListItem,
-  List,
-  ListItemText,
-} from "@mui/material";
+import { Stack, Typography, Box, Tooltip } from "@mui/material";
 import dayjs from "dayjs";
 
 export default function CustomAppointment({
