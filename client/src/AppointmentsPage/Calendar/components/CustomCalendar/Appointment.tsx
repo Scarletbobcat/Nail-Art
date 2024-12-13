@@ -20,6 +20,10 @@ export default function CustomAppointment({
           e: appointment,
         })
       }
+      sx={{
+        height: "100%",
+        width: "100%",
+      }}
     >
       <Stack>
         <Typography sx={{ fontSize: "0.8rem" }}>{appointment.name}</Typography>
