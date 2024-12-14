@@ -9,7 +9,7 @@ import { useState } from "react";
 import CreateModal from "../CreateModal";
 import { getAppointmentsByDate } from "../../../../api/appointments";
 import { getAllServices } from "../../../../api/services";
-import ContextMenu from "../ContextMenu";
+import ContextMenu from "./ContextMenu";
 import EditModal from "../EditModal";
 import DeleteModal from "../DeleteModal";
 

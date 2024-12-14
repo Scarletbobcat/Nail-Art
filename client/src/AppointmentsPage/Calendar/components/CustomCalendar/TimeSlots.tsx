@@ -35,6 +35,7 @@ const TimeSlotGrid = ({
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
 
+  // creating time slots for the employee
   const timeSlots = Array.from(
     { length: (businessEnd - businessStart) * 4 },
     (_, i) => {
@@ -49,6 +50,7 @@ const TimeSlotGrid = ({
     }
   );
 
+  // checking whether time slot is overlapped with existing appointments
   const isSlotOverlapped = useCallback(
     (slotTime: string) => {
       if (!appointments) return false;
@@ -75,6 +77,7 @@ const TimeSlotGrid = ({
     setSelectedSlots([index]);
   }, []);
 
+  // tracking the time slots between where mouseDown and current location
   const handleMouseEnter = useCallback(
     (index: number) => {
       if (!isSelecting || selectionStart === null) return;
@@ -90,17 +93,19 @@ const TimeSlotGrid = ({
     [isSelecting, selectionStart]
   );
 
+  // returns the position on time slot
   const getPositionFromTime = (time: string) => {
     time = time.split("T")[1];
     const [hour, minutes] = time.split(":").map(Number);
     const totalMinutes = (hour - businessStart) * 60 + minutes;
-    return (totalMinutes / 30) * 40; // 40px is height of each slot
+    return (totalMinutes / 30) * 40;
   };
 
+  // returns a custom time range event (interface defined above)
   const handleMouseUp = useCallback(() => {
     setIsSelecting(false);
     setSelectionStart(null);
-    // Handle selected slots here
+    // getting time slots that are selected
     const cells = timeSlots
       .map((timeslot) => {
         if (selectedSlots.includes(timeslot.index)) {
@@ -115,6 +120,8 @@ const TimeSlotGrid = ({
         timeSlots[cells[cells.length - 1].index + 1].minute || "00"
       }`,
     };
+
+    // resetting selected slots to remove the hovering effect
     setSelectedSlots([]);
     return event;
   }, [selectedSlots, timeSlots, employee]);
@@ -133,6 +140,7 @@ const TimeSlotGrid = ({
           right: 0,
         }}
       >
+        {/* Render time slots */}
         {timeSlots.map((slot, index) => {
           const time = `${slot.hour}:${slot.minute
             .toString()
@@ -194,7 +202,9 @@ const TimeSlotGrid = ({
                 height:
                   getPositionFromTime(appointment.endTime) -
                   getPositionFromTime(appointment.startTime),
-                backgroundColor: employee.color || "primary.main",
+                backgroundColor: appointment.services.includes("Test-Service")
+                  ? "#000000"
+                  : employee.color,
                 opacity: 0.9,
                 zIndex: 1,
                 border: "1px solid",
