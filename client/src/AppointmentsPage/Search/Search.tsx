@@ -11,7 +11,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
 import { getAppointmentsByPhoneNumber } from "../../api/appointments";
-import { Appointment, Employee } from "../../types";
+import { Appointment, Employee, Service } from "../../types";
 import EditButton from "./components/EditButton";
 import DeleteButton from "./components/DeleteButton";
 import { Stack, Paper } from "@mui/material";
@@ -48,6 +48,7 @@ export default function Search() {
     date: "",
     employeeId: "",
     services: [],
+    reminderSent: false,
   });
 
   const {
@@ -152,13 +153,16 @@ export default function Search() {
         endTime: new Date(row.date + row.endTime).toLocaleTimeString("en-US"),
         date: row.date,
         employee: employee ? employee.name : "unknown",
-        services: row.services.map((s) => {
-          return s;
+        services: row.services.map((service) => {
+          const serviceName = services.find(
+            (s: Service) => service == s.id
+          )?.name;
+          return serviceName;
         }),
         actions: row,
       };
     });
-  }, [tempData, employees]);
+  }, [tempData, employees, services]);
 
   if (employeesLoading || loading || servicesLoading) {
     return <CircularLoading />;

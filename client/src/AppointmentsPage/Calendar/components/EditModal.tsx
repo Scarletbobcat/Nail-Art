@@ -16,8 +16,9 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment, Employee, Service } from "../../../types";
+import { Appointment, Employee, Service, Alert } from "../../../types";
 import { editAppointment } from "../../../api/appointments";
+import CustomAlert from "../../../components/Alert";
 
 interface AppointmentEditModalProps {
   appointment: Appointment;
@@ -37,6 +38,11 @@ export default function AppointmentEditModal({
   allEmployees,
 }: AppointmentEditModalProps) {
   const [form, setForm] = useState(appointment);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alert, setAlert] = useState<Alert>({
+    message: "",
+    severity: "error",
+  });
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -44,8 +50,8 @@ export default function AppointmentEditModal({
       let newPN = inputPhoneNumber;
       // conditionally adds hyphen only when adding to phone number, not deleting
       if (
-        (newPN.length === 3 && form.phoneNumber.length === 2) ||
-        (newPN.length === 7 && form.phoneNumber.length === 6)
+        (newPN.length === 3 && form.phoneNumber?.length === 2) ||
+        (newPN.length === 7 && form.phoneNumber?.length === 6)
       ) {
         newPN += "-";
       }
@@ -57,15 +63,30 @@ export default function AppointmentEditModal({
 
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // save the appointment
-    await editAppointment(form);
-    // closing modal and re-rendering events
-    onClose();
-    renderEvents();
+    try {
+      // save the appointment
+      await editAppointment(form);
+      // closing modal and re-rendering events
+      onClose();
+      renderEvents();
+    } catch {
+      // show alert if failed to create appointment
+      setIsAlertOpen(true);
+      setAlert({
+        message: "Failed to edit appointment",
+        severity: "error",
+      });
+    }
   };
 
   return (
     <div>
+      <CustomAlert
+        isOpen={isAlertOpen}
+        message={alert.message}
+        severity={alert.severity}
+        onClose={() => setIsAlertOpen(false)}
+      />
       <Modal
         open={isOpen}
         onClose={onClose}

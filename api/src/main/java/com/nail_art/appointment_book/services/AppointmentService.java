@@ -31,6 +31,7 @@ public class AppointmentService {
     public Appointment createAppointment(Appointment appointment) {
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
+        appointment.setReminderSent(false);
         return appointmentRepository.save(appointment);
     }
 
