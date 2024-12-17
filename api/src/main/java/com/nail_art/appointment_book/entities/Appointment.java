@@ -23,8 +23,7 @@ public class Appointment {
     @NotNull
     private long employeeId;
 
-    @Pattern(regexp = "^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$", message = "Not a valid phone number")
-    @NotNull
+    @Pattern(regexp = "^((\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4})?$", message = "Not a valid phone number")
     private String phoneNumber;
 
     @NotNull
@@ -37,7 +36,10 @@ public class Appointment {
     private String date;
 
     @NotEmpty
-    private List<String> services;
+    private List<Integer> services;
+
+    @NotNull
+    private Boolean reminderSent;
 
     public long getId() {
         return id;
@@ -95,11 +97,11 @@ public class Appointment {
         this.date = date;
     }
 
-    public List<String> getServices() {
+    public List<Integer> getServices() {
         return services;
     }
 
-    public void setServices(List<String> services) {
+    public void setServices(List<Integer> services) {
         this.services = services;
     }
 }

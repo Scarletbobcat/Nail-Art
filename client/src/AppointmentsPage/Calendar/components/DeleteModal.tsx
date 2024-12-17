@@ -18,6 +18,9 @@ import dayjs from "dayjs";
 import { FormEvent } from "react";
 import { Appointment, Employee } from "../../../types";
 import { deleteAppointment } from "../../../api/appointments";
+import { useState } from "react";
+import CustomAlert from "../../../components/Alert";
+import { Alert } from "../../../types";
 
 interface AppointmentDeleteModalProps {
   appointment: Appointment;
@@ -34,17 +37,38 @@ export default function AppointmentDeleteModal({
   isOpen,
   allEmployees,
 }: AppointmentDeleteModalProps) {
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alert, setAlert] = useState<Alert>({
+    message: "",
+    severity: "error",
+  });
+
   const handleDelete = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // delete appointment
-    await deleteAppointment(appointment);
-    // closing modal and re-rendering events
-    onClose();
-    renderEvents();
+    try {
+      await deleteAppointment(appointment);
+      // closing modal and re-rendering events
+      onClose();
+      renderEvents();
+    } catch {
+      // show alert if failed to create appointment
+      setIsAlertOpen(true);
+      setAlert({
+        message: "Failed to delete appointment",
+        severity: "error",
+      });
+    }
   };
 
   return (
     <div>
+      <CustomAlert
+        isOpen={isAlertOpen}
+        message={alert.message}
+        severity={alert.severity}
+        onClose={() => setIsAlertOpen(false)}
+      />
       <Modal
         open={isOpen}
         onClose={onClose}

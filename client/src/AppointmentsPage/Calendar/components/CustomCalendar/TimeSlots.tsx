@@ -1,5 +1,5 @@
 import { Box } from "@mui/material";
-import { Employee, Appointment } from "../../../../types";
+import { Employee, Appointment, Service } from "../../../../types";
 import { useCallback, useState } from "react";
 import dayjs from "dayjs";
 import CustomAppointment from "./Appointment";
@@ -15,6 +15,7 @@ interface TimeSlotGridProps {
     originalEvent: React.MouseEvent;
     e: Appointment;
   }) => void;
+  services: Service[];
 }
 
 interface TimeRangeEvent {
@@ -30,6 +31,7 @@ const TimeSlotGrid = ({
   onTimeRangeSelected,
   businessStart = 10,
   businessEnd = 19,
+  services,
 }: TimeSlotGridProps) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
@@ -219,6 +221,7 @@ const TimeSlotGrid = ({
               }}
             >
               <CustomAppointment
+                services={services}
                 appointment={appointment}
                 key={appointment.id}
                 onEventClick={onEventClick}

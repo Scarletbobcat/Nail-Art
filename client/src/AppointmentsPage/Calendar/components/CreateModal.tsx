@@ -16,8 +16,9 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment, Employee, Service } from "../../../types";
+import { Appointment, Employee, Service, Alert } from "../../../types";
 import { createAppointment } from "../../../api/appointments";
+import CustomAlert from "../../../components/Alert";
 
 interface AppointmentCreateModalProps {
   appointment: Appointment;
@@ -36,7 +37,16 @@ export default function AppointmentCreateModal({
   allServices,
   allEmployees,
 }: AppointmentCreateModalProps) {
-  const [form, setForm] = useState(appointment);
+  const [form, setForm] = useState({
+    ...appointment,
+    phoneNumber: appointment.phoneNumber || "",
+  });
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alert, setAlert] = useState<Alert>({
+    message: "",
+    severity: "error",
+  });
+  console.log(form);
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -58,14 +68,29 @@ export default function AppointmentCreateModal({
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // save the appointment
-    await createAppointment(form);
-    // closing modal and re-rendering events
-    onClose();
-    renderEvents();
+    try {
+      await createAppointment(form);
+      // closing modal and re-rendering events
+      onClose();
+      renderEvents();
+    } catch {
+      // show alert if failed to create appointment
+      setIsAlertOpen(true);
+      setAlert({
+        message: "Failed to create appointment",
+        severity: "error",
+      });
+    }
   };
 
   return (
     <div>
+      <CustomAlert
+        isOpen={isAlertOpen}
+        message={alert.message}
+        severity={alert.severity}
+        onClose={() => setIsAlertOpen(false)}
+      />
       <Modal
         open={isOpen}
         onClose={onClose}
@@ -84,6 +109,7 @@ export default function AppointmentCreateModal({
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
+            zIndex: 1,
           }}
         >
           <Stack spacing={2}>
@@ -98,6 +124,7 @@ export default function AppointmentCreateModal({
             <Stack direction="row" spacing={2}>
               <TextField
                 fullWidth
+                required
                 label="Name"
                 value={form.name}
                 variant="outlined"
@@ -152,6 +179,7 @@ export default function AppointmentCreateModal({
                   <Select
                     labelId="employee-label"
                     fullWidth
+                    required
                     label="Employee"
                     value={form.employeeId}
                     onChange={(e: SelectChangeEvent) => {
@@ -171,23 +199,29 @@ export default function AppointmentCreateModal({
                   <Select
                     labelId="service-label"
                     multiple
+                    required
                     fullWidth
                     label="Service"
                     value={form.services}
                     onChange={(e: SelectChangeEvent<string[]>) => {
                       setForm({
                         ...form,
-                        services:
-                          typeof e.target.value === "string"
-                            ? e.target.value.split(",")
-                            : e.target.value,
+                        services: allServices
+                          .filter((service) =>
+                            e.target.value.includes(service.name)
+                          )
+                          .map((service) => service.id),
                       });
                     }}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} />
-                        ))}
+                        {selected.map((serviceId) => {
+                          const serviceName =
+                            allServices.find(
+                              (service) => service.id === serviceId
+                            )?.name || serviceId;
+                          return <Chip key={serviceId} label={serviceName} />;
+                        })}
                       </Box>
                     )}
                     variant="outlined"

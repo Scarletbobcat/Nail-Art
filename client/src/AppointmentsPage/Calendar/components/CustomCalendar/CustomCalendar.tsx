@@ -44,6 +44,7 @@ export default function AppointmentCalendar({
     endTime: "",
     employeeId: "",
     services: [],
+    reminderSent: false,
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -63,13 +64,18 @@ export default function AppointmentCalendar({
   const {
     data: appointments,
     error: appointmentsError,
+    isLoading: appointmentsLoading,
     refetch: appRefetch,
   } = useQuery({
     queryKey: ["appointments", startDate],
     queryFn: () => getAppointmentsByDate(startDate.format("YYYY-MM-DD")),
   });
 
-  const { data: services, error: servicesError } = useQuery({
+  const {
+    data: services,
+    error: servicesError,
+    isLoading: servicesLoading,
+  } = useQuery({
     queryKey: ["services"],
     queryFn: () => getAllServices(),
   });
@@ -104,7 +110,7 @@ export default function AppointmentCalendar({
     setIsCreateOpen(true);
   };
 
-  if (employeeLoading) {
+  if (employeeLoading || appointmentsLoading || servicesLoading) {
     return <CircularLoading />;
   }
 
@@ -223,6 +229,7 @@ export default function AppointmentCalendar({
                   businessStart={10}
                   onTimeRangeSelected={onTimeRangeSelected}
                   startDate={startDate}
+                  services={services}
                 />
               </Box>
             ))}
