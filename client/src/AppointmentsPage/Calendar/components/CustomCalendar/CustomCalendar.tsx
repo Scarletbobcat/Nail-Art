@@ -13,8 +13,8 @@ import ContextMenu from "./ContextMenu";
 import EditModal from "../EditModal";
 import DeleteModal from "../DeleteModal";
 
-const businessTimes = Array.from({ length: 10 }, (_, i) => {
-  const hour = i + 10;
+const businessTimes = Array.from({ length: 11 }, (_, i) => {
+  const hour = i + 9;
   if (hour >= 12) {
     return `${hour % 12 || 12} PM`;
   }
@@ -226,7 +226,7 @@ export default function AppointmentCalendar({
                   }}
                   appointments={appointments}
                   employee={employee}
-                  businessStart={10}
+                  businessStart={9}
                   onTimeRangeSelected={onTimeRangeSelected}
                   startDate={startDate}
                   services={services}
