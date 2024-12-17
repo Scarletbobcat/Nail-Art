@@ -177,9 +177,6 @@ const TimeSlotGrid = ({
                 backgroundColor: selectedSlots.includes(slot.index)
                   ? "#f1f1f1"
                   : "background.paper",
-                // "&:hover": {
-                //   backgroundColor: isSelecting ? "#f1f1f1" : "action.hover",
-                // },
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

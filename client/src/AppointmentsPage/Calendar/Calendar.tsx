@@ -6,6 +6,7 @@ import CalendarNavigator from "./components/CalendarNavigator";
 import ReminderButton from "./components/ReminderButton";
 import { useTheme } from "@mui/material/styles";
 import dayjs from "dayjs";
+import TodayButton from "./components/TodayButton";
 
 const CalendarClient = () => {
   const theme = useTheme();
@@ -37,6 +38,11 @@ const CalendarClient = () => {
             </Stack>
             <Stack direction="row" spacing={2}>
               <Stack spacing={2}>
+                <TodayButton
+                  onClick={() => {
+                    setStartDate(dayjs());
+                  }}
+                />
                 <CalendarNavigator
                   startDate={startDate}
                   setStartDate={setStartDate}
