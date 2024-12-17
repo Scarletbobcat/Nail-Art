@@ -155,7 +155,7 @@ export default function Search() {
         employee: employee ? employee.name : "unknown",
         services: row.services.map((service) => {
           const serviceName = services.find(
-            (s: Service) => service == s.id
+            (s: Service) => service == s.id.toString()
           )?.name;
           return serviceName;
         }),
@@ -260,6 +260,7 @@ export default function Search() {
             )}
             {isDeleteOpen && (
               <DeleteModal
+                services={services}
                 isOpen={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}
                 appointment={selectedApp}

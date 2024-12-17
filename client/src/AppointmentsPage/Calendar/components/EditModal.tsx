@@ -37,7 +37,7 @@ export default function AppointmentEditModal({
   allServices,
   allEmployees,
 }: AppointmentEditModalProps) {
-  const [form, setForm] = useState(appointment);
+  const [form, setForm] = useState<Appointment>(appointment);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
@@ -197,26 +197,29 @@ export default function AppointmentEditModal({
                     fullWidth
                     label="Service"
                     value={form.services}
-                    onChange={(e: SelectChangeEvent<string[]>) => {
+                    onChange={(e: SelectChangeEvent<number[]>) => {
+                      console.log(e.target.value);
                       setForm({
                         ...form,
-                        services:
-                          typeof e.target.value === "string"
-                            ? e.target.value.split(",")
-                            : e.target.value,
+                        services: Array.isArray(e.target.value)
+                          ? e.target.value.map((serviceId) => Number(serviceId))
+                          : [],
                       });
                     }}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} />
-                        ))}
+                        {selected.map((value) => {
+                          const serviceName = allServices.find(
+                            (s) => s.id === value
+                          )?.name;
+                          return <Chip key={value} label={serviceName} />;
+                        })}
                       </Box>
                     )}
                     variant="outlined"
                   >
                     {allServices.map((service) => (
-                      <MenuItem key={service.id} value={service.name}>
+                      <MenuItem key={service.id} value={service.id}>
                         {service.name}
                       </MenuItem>
                     ))}

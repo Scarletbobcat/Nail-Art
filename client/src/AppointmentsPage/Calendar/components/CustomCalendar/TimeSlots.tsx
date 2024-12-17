@@ -204,7 +204,7 @@ const TimeSlotGrid = ({
                 height:
                   getPositionFromTime(appointment.endTime) -
                   getPositionFromTime(appointment.startTime),
-                backgroundColor: appointment.services.includes("Test-Service")
+                backgroundColor: appointment.services.includes(3)
                   ? "#000000"
                   : employee.color,
                 opacity: 0.9,

@@ -16,7 +16,7 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { FormEvent } from "react";
-import { Appointment, Employee } from "../../../types";
+import { Appointment, Employee, Service } from "../../../types";
 import { deleteAppointment } from "../../../api/appointments";
 import { useState } from "react";
 import CustomAlert from "../../../components/Alert";
@@ -28,6 +28,7 @@ interface AppointmentDeleteModalProps {
   isOpen: boolean;
   renderEvents: () => void;
   allEmployees: Employee[];
+  services: Service[];
 }
 
 export default function AppointmentDeleteModal({
@@ -36,6 +37,7 @@ export default function AppointmentDeleteModal({
   renderEvents,
   isOpen,
   allEmployees,
+  services,
 }: AppointmentDeleteModalProps) {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
@@ -170,9 +172,12 @@ export default function AppointmentDeleteModal({
                     value={appointment.services}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {selected.map((value) => (
-                          <Chip key={value} label={value} />
-                        ))}
+                        {selected.map((serviceId) => {
+                          const serviceName =
+                            services.find((service) => service.id === serviceId)
+                              ?.name || serviceId;
+                          return <Chip key={serviceId} label={serviceName} />;
+                        })}
                       </Box>
                     )}
                     variant="outlined"

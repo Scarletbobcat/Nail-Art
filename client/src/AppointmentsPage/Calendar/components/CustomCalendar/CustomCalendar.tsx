@@ -271,6 +271,7 @@ export default function AppointmentCalendar({
       )}
       {isDeleteOpen && (
         <DeleteModal
+          services={services}
           appointment={appointments.find(
             (app: Appointment) => app.id == selectedAppId
           )}

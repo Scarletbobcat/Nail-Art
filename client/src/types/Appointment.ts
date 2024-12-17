@@ -5,7 +5,7 @@ export interface Appointment {
   startTime: string;
   endTime: string;
   name: string;
-  services: string[];
+  services: number[];
   phoneNumber?: string;
   reminderSent: boolean;
 }

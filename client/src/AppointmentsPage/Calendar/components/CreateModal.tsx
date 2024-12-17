@@ -37,7 +37,7 @@ export default function AppointmentCreateModal({
   allServices,
   allEmployees,
 }: AppointmentCreateModalProps) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Appointment>({
     ...appointment,
     phoneNumber: appointment.phoneNumber || "",
   });
@@ -46,7 +46,6 @@ export default function AppointmentCreateModal({
     message: "",
     severity: "error",
   });
-  console.log(form);
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -54,8 +53,8 @@ export default function AppointmentCreateModal({
       let newPN = inputPhoneNumber;
       // conditionally adds hyphen only when adding to phone number, not deleting
       if (
-        (newPN.length === 3 && form.phoneNumber.length === 2) ||
-        (newPN.length === 7 && form.phoneNumber.length === 6)
+        (newPN.length === 3 && form.phoneNumber?.length === 2) ||
+        (newPN.length === 7 && form.phoneNumber?.length === 6)
       ) {
         newPN += "-";
       }
@@ -203,31 +202,29 @@ export default function AppointmentCreateModal({
                     fullWidth
                     label="Service"
                     value={form.services}
-                    onChange={(e: SelectChangeEvent<string[]>) => {
+                    onChange={(e: SelectChangeEvent<number[]>) => {
+                      console.log(e.target.value);
                       setForm({
                         ...form,
-                        services: allServices
-                          .filter((service) =>
-                            e.target.value.includes(service.name)
-                          )
-                          .map((service) => service.id),
+                        services: Array.isArray(e.target.value)
+                          ? e.target.value.map((serviceId) => Number(serviceId))
+                          : [],
                       });
                     }}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                        {selected.map((serviceId) => {
-                          const serviceName =
-                            allServices.find(
-                              (service) => service.id === serviceId
-                            )?.name || serviceId;
-                          return <Chip key={serviceId} label={serviceName} />;
+                        {selected.map((value) => {
+                          const serviceName = allServices.find(
+                            (s) => s.id === value
+                          )?.name;
+                          return <Chip key={value} label={serviceName} />;
                         })}
                       </Box>
                     )}
                     variant="outlined"
                   >
                     {allServices.map((service) => (
-                      <MenuItem key={service.id} value={service.name}>
+                      <MenuItem key={service.id} value={service.id}>
                         {service.name}
                       </MenuItem>
                     ))}
