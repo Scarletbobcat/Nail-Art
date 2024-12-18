@@ -1,4 +1,14 @@
 services:
+  client:
+    depends_on:
+      - api
+    image: scarletbobcat/nail-art:client
+    platform: linux/arm64
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8080
+
   api:
     image: scarletbobcat/nail-art:api
     platform: linux/arm64
@@ -6,11 +16,3 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=dev
-
-  client:
-    image: scarletbobcat/nail-art:client
-    platform: linux/arm64
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://localhost:8080
