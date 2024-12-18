@@ -6,6 +6,7 @@ import {
   Stack,
   Box,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import { PopoverPicker } from "./PopoverPicker";
 import { useState, FormEvent } from "react";
@@ -22,6 +23,7 @@ export default function CreateEmployeeModal({
   onClose: () => void;
   renderEmps: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
@@ -36,7 +38,9 @@ export default function CreateEmployeeModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       await createEmployee(form);
+      setIsLoading(false);
       onClose();
       renderEmps();
     } catch {
@@ -45,6 +49,7 @@ export default function CreateEmployeeModal({
         message: "Failed to create employee",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -95,7 +100,13 @@ export default function CreateEmployeeModal({
                 <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                   Cancel
                 </Button>
-                <Button type="submit" color="primary" variant="contained">
+                <Button
+                  type="submit"
+                  color="primary"
+                  variant="contained"
+                  endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                  disabled={isLoading}
+                >
                   Create
                 </Button>
               </Box>

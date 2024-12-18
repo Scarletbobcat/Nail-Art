@@ -49,7 +49,7 @@ public class SmsService {
             LocalDateTime date = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
             String day = date.getDayOfWeek().toString();
             day = day.charAt(0) + day.substring(1).toLowerCase();
-            String message = "Hello! This is a reminder for your appointment "
+            String message = "Hello! This is a reminder for your appointment on"
                     + day
                     + " at "
                     + date.format(DateTimeFormatter.ofPattern("h:mm a"))

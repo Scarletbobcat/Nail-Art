@@ -9,6 +9,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  CircularProgress,
 } from "@mui/material";
 import Select from "@mui/material/Select";
 import Chip from "@mui/material/Chip";
@@ -39,6 +40,7 @@ export default function AppointmentDeleteModal({
   allEmployees,
   services,
 }: AppointmentDeleteModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
@@ -49,7 +51,9 @@ export default function AppointmentDeleteModal({
     e.preventDefault();
     // delete appointment
     try {
+      setIsLoading(true);
       await deleteAppointment(appointment);
+      setIsLoading(false);
       // closing modal and re-rendering events
       onClose();
       renderEvents();
@@ -60,6 +64,7 @@ export default function AppointmentDeleteModal({
         message: "Failed to delete appointment",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -191,7 +196,13 @@ export default function AppointmentDeleteModal({
               <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                 Cancel
               </Button>
-              <Button type="submit" color="error" variant="contained">
+              <Button
+                type="submit"
+                color="error"
+                variant="contained"
+                endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                disabled={isLoading}
+              >
                 Delete
               </Button>
             </Box>

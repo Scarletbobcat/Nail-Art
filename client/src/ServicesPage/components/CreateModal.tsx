@@ -6,6 +6,7 @@ import {
   Stack,
   Box,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import { useState, FormEvent } from "react";
 import { Service, Alert } from "../../types";
@@ -21,8 +22,9 @@ export default function CreateServiceModal({
   onClose: () => void;
   renderServices: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Service>({
-    id: "0",
+    id: 0,
     name: "",
   });
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -34,7 +36,9 @@ export default function CreateServiceModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       console.log(await createService(form));
+      setIsLoading(false);
       onClose();
       renderServices();
     } catch {
@@ -90,7 +94,13 @@ export default function CreateServiceModal({
                 <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                   Cancel
                 </Button>
-                <Button type="submit" color="primary" variant="contained">
+                <Button
+                  type="submit"
+                  color="primary"
+                  variant="contained"
+                  endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                  disabled={isLoading}
+                >
                   Create
                 </Button>
               </Box>

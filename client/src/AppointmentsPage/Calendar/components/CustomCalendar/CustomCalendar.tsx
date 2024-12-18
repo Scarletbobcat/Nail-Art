@@ -37,7 +37,7 @@ export default function AppointmentCalendar({
   const [selectedAppId, setSelectedAppId] = useState("");
   const [createApp, setCreateApp] = useState<Appointment>({
     id: "",
-    name: "",
+    name: null,
     phoneNumber: "",
     date: "",
     startTime: "",

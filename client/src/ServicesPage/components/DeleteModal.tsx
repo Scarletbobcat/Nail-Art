@@ -6,6 +6,7 @@ import {
   Stack,
   Box,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import { useState, FormEvent } from "react";
 import { Service, Alert } from "../../types";
@@ -23,6 +24,7 @@ export default function DeleteServiceModal({
   onClose: () => void;
   renderServices: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Service>(service);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
@@ -33,7 +35,9 @@ export default function DeleteServiceModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       console.log(await deleteService(form));
+      setIsLoading(false);
       onClose();
       renderServices();
     } catch {
@@ -42,6 +46,7 @@ export default function DeleteServiceModal({
         message: "Failed to delete service",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -90,7 +95,13 @@ export default function DeleteServiceModal({
                 <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                   Cancel
                 </Button>
-                <Button type="submit" color="error" variant="contained">
+                <Button
+                  type="submit"
+                  color="error"
+                  variant="contained"
+                  endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                  disabled={isLoading}
+                >
                   Delete
                 </Button>
               </Box>

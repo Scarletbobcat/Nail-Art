@@ -9,6 +9,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  CircularProgress,
 } from "@mui/material";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Chip from "@mui/material/Chip";
@@ -41,6 +42,7 @@ export default function AppointmentCreateModal({
     ...appointment,
     phoneNumber: appointment.phoneNumber || "",
   });
+  const [isLoading, setIsLoading] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
@@ -68,7 +70,9 @@ export default function AppointmentCreateModal({
     e.preventDefault();
     // save the appointment
     try {
+      setIsLoading(true);
       await createAppointment(form);
+      setIsLoading(false);
       // closing modal and re-rendering events
       onClose();
       renderEvents();
@@ -79,6 +83,7 @@ export default function AppointmentCreateModal({
         message: "Failed to create appointment",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -125,7 +130,7 @@ export default function AppointmentCreateModal({
                 fullWidth
                 required
                 label="Name"
-                value={form.name}
+                value={form.name || ""}
                 variant="outlined"
                 onChange={(e) => {
                   setForm({ ...form, name: e.target.value });
@@ -203,7 +208,6 @@ export default function AppointmentCreateModal({
                     label="Service"
                     value={form.services}
                     onChange={(e: SelectChangeEvent<number[]>) => {
-                      console.log(e.target.value);
                       setForm({
                         ...form,
                         services: Array.isArray(e.target.value)
@@ -234,14 +238,20 @@ export default function AppointmentCreateModal({
             </Stack>
           </Stack>
           <Box sx={{ mt: 3, display: "flex", justifyContent: "right" }}>
-            <Box>
-              <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
+            <Stack direction="row" spacing={1}>
+              <Button onClick={onClose} color="info">
                 Cancel
               </Button>
-              <Button type="submit" color="primary" variant="contained">
+              <Button
+                type="submit"
+                color="primary"
+                variant="contained"
+                disabled={isLoading}
+                endIcon={isLoading ? <CircularProgress size={20} /> : null}
+              >
                 Create
               </Button>
-            </Box>
+            </Stack>
           </Box>
         </Paper>
       </Modal>

@@ -9,6 +9,7 @@ import {
   MenuItem,
   InputLabel,
   FormControl,
+  CircularProgress,
 } from "@mui/material";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Chip from "@mui/material/Chip";
@@ -37,6 +38,7 @@ export default function AppointmentEditModal({
   allServices,
   allEmployees,
 }: AppointmentEditModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Appointment>(appointment);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
@@ -64,8 +66,10 @@ export default function AppointmentEditModal({
   const handleSave = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       // save the appointment
       await editAppointment(form);
+      setIsLoading(false);
       // closing modal and re-rendering events
       onClose();
       renderEvents();
@@ -76,6 +80,7 @@ export default function AppointmentEditModal({
         message: "Failed to edit appointment",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -198,7 +203,6 @@ export default function AppointmentEditModal({
                     label="Service"
                     value={form.services}
                     onChange={(e: SelectChangeEvent<number[]>) => {
-                      console.log(e.target.value);
                       setForm({
                         ...form,
                         services: Array.isArray(e.target.value)
@@ -233,7 +237,13 @@ export default function AppointmentEditModal({
               <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                 Cancel
               </Button>
-              <Button type="submit" color="primary" variant="contained">
+              <Button
+                type="submit"
+                color="primary"
+                variant="contained"
+                endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                disabled={isLoading}
+              >
                 Save
               </Button>
             </Box>

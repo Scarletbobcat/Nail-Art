@@ -6,6 +6,7 @@ import {
   Stack,
   Box,
   Paper,
+  CircularProgress,
 } from "@mui/material";
 import { PopoverPicker } from "./PopoverPicker";
 import { useState, FormEvent } from "react";
@@ -24,6 +25,7 @@ export default function DeleteEmployeeModal({
   onClose: () => void;
   renderEmps: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Employee>(emp);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
@@ -34,7 +36,9 @@ export default function DeleteEmployeeModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
+      setIsLoading(true);
       console.log(await deleteEmployee(form));
+      setIsLoading(false);
       onClose();
       renderEmps();
     } catch {
@@ -43,6 +47,7 @@ export default function DeleteEmployeeModal({
         message: "Failed to delete employee",
         severity: "error",
       });
+      setIsLoading(false);
     }
   };
 
@@ -95,7 +100,13 @@ export default function DeleteEmployeeModal({
                 <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                   Cancel
                 </Button>
-                <Button type="submit" color="error" variant="contained">
+                <Button
+                  type="submit"
+                  color="error"
+                  variant="contained"
+                  endIcon={isLoading ? <CircularProgress size={20} /> : null}
+                  disabled={isLoading}
+                >
                   Delete
                 </Button>
               </Box>
