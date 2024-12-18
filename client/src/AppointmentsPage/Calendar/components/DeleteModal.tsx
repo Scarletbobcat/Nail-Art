@@ -191,7 +191,7 @@ export default function AppointmentDeleteModal({
               <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
                 Cancel
               </Button>
-              <Button type="submit" color="primary" variant="contained">
+              <Button type="submit" color="error" variant="contained">
                 Delete
               </Button>
             </Box>

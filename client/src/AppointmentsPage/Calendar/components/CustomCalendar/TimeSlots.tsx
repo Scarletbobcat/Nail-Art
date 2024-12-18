@@ -115,12 +115,16 @@ const TimeSlotGrid = ({
         }
       })
       .filter((slot) => slot !== undefined);
+    const startTime = `${cells[0].hour}:${cells[0].minute || "00"}`;
+    const lastIndex = cells[cells.length - 1].index;
+    const endTime = timeSlots[lastIndex + 1];
+
     const event: TimeRangeEvent = {
       employee: employee.id,
-      startTime: `${cells[0].hour}:${cells[0].minute || "00"}`,
-      endTime: `${timeSlots[cells[cells.length - 1].index + 1].hour}:${
-        timeSlots[cells[cells.length - 1].index + 1].minute || "00"
-      }`,
+      startTime: startTime,
+      endTime: endTime
+        ? `${endTime.hour}:${endTime.minute || "00"}`
+        : `${cells[cells.length - 1].hour + 1}:00`,
     };
 
     // resetting selected slots to remove the hovering effect
