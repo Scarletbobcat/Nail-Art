@@ -108,7 +108,7 @@ export default function Employees() {
 
   const data = useMemo(() => {
     if (!employees) return [];
-    return employees.sort().map((row: Employee) => {
+    return employees.map((row: Employee) => {
       return {
         id: row.id,
         name: row.name,

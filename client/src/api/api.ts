@@ -54,6 +54,8 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch (error) {
           console.error("Refresh token failed:", error);
+          localStorage.setItem("previousUrl", window.location.pathname);
+          window.location.href = "/login";
         }
       }
     }
@@ -61,6 +63,7 @@ api.interceptors.response.use(
       localStorage.setItem("previousUrl", window.location.pathname);
       window.location.href = "/login";
     }
+    return Promise.reject(error);
   }
 );
 
