@@ -1,4 +1,4 @@
 export interface Service {
-  id: number;
+  id?: number;
   name: string;
 }

@@ -22,7 +22,7 @@ export default function Services() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service>({
-    id: "",
+    id: undefined,
     name: "",
   });
 

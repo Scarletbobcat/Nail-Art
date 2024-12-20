@@ -7,6 +7,7 @@ import {
   FormLabel,
   Button,
   Container,
+  CircularProgress,
 } from "@mui/material";
 import { login } from "../api/auth/auth";
 import { useNavigate } from "react-router-dom";
@@ -15,13 +16,16 @@ export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     try {
       // Redirect to a protected page after successful login
       const previousUrl = localStorage.getItem("previousUrl");
+      setIsLoading(true);
       await login(username, password);
+      setIsLoading(false);
       if (previousUrl) {
         navigate(previousUrl);
         localStorage.removeItem("previousUrl");
@@ -114,7 +118,12 @@ export default function Login() {
               </span>
             </Typography>
             <FormControl>
-              <Button type="submit" variant="contained">
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={isLoading}
+                endIcon={isLoading && <CircularProgress size={20} />}
+              >
                 Login
               </Button>
             </FormControl>

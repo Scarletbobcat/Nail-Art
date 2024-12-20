@@ -1,7 +1,8 @@
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import { HexColorPicker } from "react-colorful";
+import { useClickAway } from "@uidotdev/usehooks";
 
-import useClickOutside from "./useClickOutside";
+// import useClickOutside from "./useClickOutside";
 
 export const PopoverPicker = ({
   color,
@@ -12,11 +13,14 @@ export const PopoverPicker = ({
   onChange: (e: string) => void;
   disabled?: boolean;
 }) => {
-  const popover = useRef<HTMLDivElement>(null);
   const [isOpen, toggle] = useState(false);
 
-  const close = useCallback(() => toggle(false), []);
-  useClickOutside(popover, close);
+  // const close = useCallback(() => toggle(false), []);
+  // useClickOutside(popover, close);
+
+  const ref = useClickAway<HTMLDivElement>(() => {
+    toggle(false);
+  });
 
   return (
     <div className="picker">
@@ -34,7 +38,7 @@ export const PopoverPicker = ({
       {isOpen && !disabled && (
         <div
           className="popover"
-          ref={popover}
+          ref={ref}
           style={{ position: "absolute", zIndex: 99 }}
         >
           <HexColorPicker color={color} onChange={onChange} />

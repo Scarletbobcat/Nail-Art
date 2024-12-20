@@ -11,7 +11,7 @@ COPY . /app
 RUN ./mvnw package
 
 # Use a base image with JRE 21
-FROM bellsoft/liberica-runtime-container:jre-21-musl 
+FROM bellsoft/liberica-runtime-container:jdk-21-slim-musl
 
 # Set the working directory inside the container
 WORKDIR /app
