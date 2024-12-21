@@ -12,39 +12,44 @@ import { PopoverPicker } from "./PopoverPicker";
 import { useState, FormEvent } from "react";
 import { Employee, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
-import { deleteEmployee } from "../../api/employees";
 
-export default function DeleteEmployeeModal({
-  emp,
+export default function EmployeeModal({
+  employee,
   isOpen,
   onClose,
   renderEmps,
+  type,
+  onSubmit,
 }: {
-  emp: Employee;
+  employee: Employee;
   isOpen: boolean;
   onClose: () => void;
   renderEmps: () => void;
+  type: "create" | "edit" | "delete";
+  onSubmit: (e: Employee) => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState<Employee>(emp);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
     severity: "error",
+  });
+  const [form, setForm] = useState<Employee>({
+    ...employee,
   });
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       setIsLoading(true);
-      console.log(await deleteEmployee(form));
+      await onSubmit(form);
       setIsLoading(false);
       onClose();
       renderEmps();
     } catch {
       setIsAlertOpen(true);
       setAlert({
-        message: "Failed to delete employee",
+        message: "Failed to create employee",
         severity: "error",
       });
       setIsLoading(false);
@@ -80,17 +85,17 @@ export default function DeleteEmployeeModal({
               component="h6"
               sx={{ mb: 4, fontWeight: "bold" }}
             >
-              Delete Employee
+              {type.charAt(0).toUpperCase() + type.slice(1)} Employee
             </Typography>
             <Stack direction="row" spacing={2}>
               <TextField
-                disabled
                 label="Name"
+                disabled={type === "delete"}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
               />
               <PopoverPicker
-                disabled
+                disabled={type === "delete"}
                 color={form.color ?? ""}
                 onChange={(e) => setForm({ ...form, color: e })}
               />
@@ -102,12 +107,12 @@ export default function DeleteEmployeeModal({
                 </Button>
                 <Button
                   type="submit"
-                  color="error"
+                  color={type === "delete" ? "error" : "primary"}
                   variant="contained"
                   endIcon={isLoading ? <CircularProgress size={20} /> : null}
                   disabled={isLoading}
                 >
-                  Delete
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
                 </Button>
               </Box>
             </Box>

@@ -17,8 +17,8 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment, Employee, Service, Alert } from "../types";
-import CustomAlert from "./Alert";
+import { Appointment, Employee, Service, Alert } from "../../../types";
+import CustomAlert from "../../../components/Alert";
 
 export default function AppointmentModal({
   appointment,

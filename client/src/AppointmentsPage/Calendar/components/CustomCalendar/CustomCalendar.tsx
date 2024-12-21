@@ -14,7 +14,7 @@ import {
 } from "../../../../api/appointments";
 import { getAllServices } from "../../../../api/services";
 import ContextMenu from "./ContextMenu";
-import AppointmentModal from "../../../../components/AppointmentModal";
+import AppointmentModal from "../AppointmentModal";
 
 const businessTimes = Array.from({ length: 11 }, (_, i) => {
   const hour = i + 9;

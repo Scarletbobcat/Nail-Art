@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAllEmployees } from "../api/employees";
+import {
+  createEmployee,
+  deleteEmployee,
+  editEmployee,
+  getAllEmployees,
+} from "../api/employees";
 import { IconButton, InputAdornment, Stack, TextField } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
@@ -7,13 +12,11 @@ import { useMemo, useState } from "react";
 import EditButton from "./components/EditButton";
 import { Employee } from "../types";
 import DeleteButton from "./components/DeleteButton";
-import EditEmployeeModal from "./components/EditModal";
 import { Typography, Box, Paper } from "@mui/material";
-import DeleteEmployeeModal from "./components/DeleteModal";
 import { useTheme } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 import CreateButton from "./components/CreateButton";
-import CreateModal from "./components/CreateModal";
+import EmployeeModal from "./components/EmployeeModal";
 
 export default function Employees() {
   const theme = useTheme();
@@ -191,23 +194,30 @@ export default function Employees() {
           />
         </Stack>
         {isEditOpen && (
-          <EditEmployeeModal
-            emp={selectedEmp}
+          <EmployeeModal
+            employee={selectedEmp}
+            onSubmit={editEmployee}
+            type={"edit"}
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
             renderEmps={refreshEmps}
           />
         )}
         {isDeleteOpen && (
-          <DeleteEmployeeModal
-            emp={selectedEmp}
+          <EmployeeModal
+            employee={selectedEmp}
+            onSubmit={deleteEmployee}
+            type={"delete"}
             isOpen={isDeleteOpen}
             onClose={() => setIsDeleteOpen(false)}
             renderEmps={refreshEmps}
           />
         )}
         {isCreateOpen && (
-          <CreateModal
+          <EmployeeModal
+            employee={{ id: "", name: "", color: "#000000" }}
+            onSubmit={createEmployee}
+            type={"create"}
             renderEmps={refreshEmps}
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}

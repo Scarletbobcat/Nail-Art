@@ -22,7 +22,7 @@ import { Stack, Paper } from "@mui/material";
 import { getAllServices } from "../../api/services";
 import CircularLoading from "../../components/CircularLoading";
 import { useTheme } from "@mui/material/styles";
-import AppointmentModal from "../../components/AppointmentModal";
+import AppointmentModal from "../Calendar/components/AppointmentModal";
 
 interface TempData {
   id: number;
