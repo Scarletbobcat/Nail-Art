@@ -2,6 +2,7 @@ import { Button, Box } from "@mui/material";
 import { remindAppointments } from "../../../api/appointments";
 import { useState } from "react";
 import CustomAlert from "../../../components/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 
 interface AxiosError extends Error {
   response?: {
@@ -51,6 +52,7 @@ export default function ReminderButton() {
         }}
         disabled={isLoading}
         fullWidth
+        endIcon={isLoading ? <CircularProgress size={20} /> : null}
       >
         Remind Appointments
       </Button>
