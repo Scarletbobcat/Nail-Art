@@ -44,7 +44,7 @@ public class SmsService {
         for (Appointment appointment : appointments) {
             // skips appointment if reminder has already been sent
             if ((appointment.getReminderSent() != null && appointment.getReminderSent())
-                    || appointment.getPhoneNumber() == null) {
+                    || appointment.getPhoneNumber().isEmpty()) {
                 continue;
             }
             // setting up message to send
