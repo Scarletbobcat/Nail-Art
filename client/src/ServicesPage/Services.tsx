@@ -9,14 +9,15 @@ import { IconButton, InputAdornment, Stack, TextField } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
-import EditButton from "./components/EditButton";
 import { Service } from "../types";
-import DeleteButton from "./components/DeleteButton";
 import { Typography, Box, Paper } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
-import CreateButton from "./components/CreateButton";
 import ServiceModal from "./components/ServiceModal";
+import CustomButton from "../components/Button";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import PlusIcon from "@mui/icons-material/Add";
 
 export default function Services() {
   const theme = useTheme();
@@ -57,15 +58,21 @@ export default function Services() {
           }}
         >
           <Stack direction="row" spacing={2}>
-            <EditButton
-              service={params.row.actions}
-              setSelectedService={setSelectedService}
-              openEdit={() => setIsEditOpen(true)}
+            <CustomButton
+              Icon={EditIcon}
+              color="primary"
+              onClick={() => {
+                setSelectedService(params.row.actions);
+                setIsEditOpen(true);
+              }}
             />
-            <DeleteButton
-              service={params.row.actions}
-              setSelectedService={setSelectedService}
-              openDelete={() => setIsDeleteOpen(true)}
+            <CustomButton
+              Icon={DeleteIcon}
+              color="error"
+              onClick={() => {
+                setSelectedService(params.row.actions);
+                setIsDeleteOpen(true);
+              }}
             />
           </Stack>
         </Box>
@@ -140,7 +147,12 @@ export default function Services() {
                 }}
               />
             </Stack>
-            <CreateButton openCreate={() => setIsCreateOpen(true)} />
+            <CustomButton
+              color="primary"
+              text={"Create"}
+              Icon={PlusIcon}
+              onClick={() => setIsCreateOpen(true)}
+            />
           </Stack>
           <DataGrid
             rows={data}

@@ -10,19 +10,20 @@ import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import {
   deleteAppointment,
   editAppointment,
   getAppointmentsByPhoneNumber,
 } from "../../api/appointments";
 import { Appointment, Employee, Service } from "../../types";
-import EditButton from "./components/EditButton";
-import DeleteButton from "./components/DeleteButton";
 import { Stack, Paper } from "@mui/material";
 import { getAllServices } from "../../api/services";
 import CircularLoading from "../../components/CircularLoading";
 import { useTheme } from "@mui/material/styles";
-import AppointmentModal from "../Calendar/components/AppointmentModal";
+import AppointmentModal from "../components/AppointmentModal";
+import CustomButton from "../../components/Button";
 
 interface TempData {
   id: number;
@@ -114,15 +115,21 @@ export default function Search() {
       flex: 1,
       renderCell: (params: GridRenderCellParams) => (
         <Stack direction="row" spacing={1}>
-          <EditButton
-            app={params.row.actions}
-            setSelectedApp={setSelectedApp}
-            openEdit={() => setIsEditOpen(true)}
+          <CustomButton
+            color="primary"
+            Icon={EditIcon}
+            onClick={() => {
+              setSelectedApp(params.row.actions);
+              setIsEditOpen(true);
+            }}
           />
-          <DeleteButton
-            app={params.row.actions}
-            setSelectedApp={setSelectedApp}
-            openDelete={() => setIsDeleteOpen(true)}
+          <CustomButton
+            color="error"
+            Icon={DeleteIcon}
+            onClick={() => {
+              setSelectedApp(params.row.actions);
+              setIsDeleteOpen(true);
+            }}
           />
         </Stack>
       ),
