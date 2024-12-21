@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { getAllServices } from "../api/services";
+import {
+  createService,
+  deleteService,
+  editService,
+  getAllServices,
+} from "../api/services";
 import { IconButton, InputAdornment, Stack, TextField } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
@@ -7,13 +12,11 @@ import { useMemo, useState } from "react";
 import EditButton from "./components/EditButton";
 import { Service } from "../types";
 import DeleteButton from "./components/DeleteButton";
-import EditServiceModal from "./components/EditModal";
 import { Typography, Box, Paper } from "@mui/material";
-import DeleteServiceModal from "./components/DeleteModal";
 import { useTheme } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 import CreateButton from "./components/CreateButton";
-import CreateServiceModal from "./components/CreateModal";
+import ServiceModal from "./components/ServiceModal";
 
 export default function Services() {
   const theme = useTheme();
@@ -154,7 +157,9 @@ export default function Services() {
           />
         </Stack>
         {isEditOpen && (
-          <EditServiceModal
+          <ServiceModal
+            type={"edit"}
+            onSubmit={editService}
             service={selectedService}
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
@@ -162,7 +167,9 @@ export default function Services() {
           />
         )}
         {isDeleteOpen && (
-          <DeleteServiceModal
+          <ServiceModal
+            type={"delete"}
+            onSubmit={deleteService}
             service={selectedService}
             isOpen={isDeleteOpen}
             onClose={() => setIsDeleteOpen(false)}
@@ -170,7 +177,10 @@ export default function Services() {
           />
         )}
         {isCreateOpen && (
-          <CreateServiceModal
+          <ServiceModal
+            service={selectedService}
+            type={"create"}
+            onSubmit={createService}
             renderServices={refreshServices}
             isOpen={isCreateOpen}
             onClose={() => setIsCreateOpen(false)}
