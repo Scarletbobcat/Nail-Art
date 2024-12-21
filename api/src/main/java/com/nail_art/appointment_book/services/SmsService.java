@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class SmsService {
@@ -46,26 +47,30 @@ public class SmsService {
                     || appointment.getPhoneNumber() == null) {
                 continue;
             }
+            // setting up message to send
             LocalDateTime date = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
             String day = date.getDayOfWeek().toString();
             day = day.charAt(0) + day.substring(1).toLowerCase();
-            String message = "Hello! This is a reminder for your appointment on"
-                    + day
-                    + " at "
-                    + date.format(DateTimeFormatter.ofPattern("h:mm a"))
+            String message = "Hello! This is Nail Art & Spa LLC., and this is a reminder for your appointment on "
+                    + day + ", "
+                    + date.format(DateTimeFormatter.ofPattern("MMM d 'at' h:mm a"))
                     + ". Please call the salon at 330-758-6633 if you " +
-                    "need to reschedule or cancel. We look forward to seeing you!";
-//            ResponseEntity<?> response = sendSms(appointment.getPhoneNumber(), message);
-//            // sets reminderSent to true if SMS was sent successfully
-//            if (response.getStatusCode() == HttpStatus.OK) {
-//                appointment.setReminderSent(true);
-//                appointmentService.editAppointment(appointment);
-//            } else {
-//                return response;
-//            }
-            return ResponseEntity.internalServerError()
-                    .body("Failed to send reminder(s)");
+                    "need to reschedule or cancel. We look forward to seeing you!\n\n"
+                    + "Reply STOP to stop receiving messages from this number.";
+            // sending message
+            ResponseEntity<?> response = sendSms(appointment.getPhoneNumber(), message);
+
+            // sets reminderSent to true if SMS was sent successfully
+            if (response.getStatusCode() == HttpStatus.OK) {
+                appointment.setReminderSent(true);
+                appointmentService.editAppointment(appointment);
+            // skips appointment if SMS failed to send because they are unsubscribed
+            } else if (Objects.equals(response.getBody(), "Failed to send SMS: Attempt to send to unsubscribed recipient")) {
+                continue;
+            } else {
+                return response;
+            }
         }
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body("Successfully sent reminders");
     }
 }

@@ -32,7 +32,7 @@ export default function ReminderButton() {
         onClick={async () => {
           try {
             setIsLoading(true);
-            await remindAppointments();
+            console.log(await remindAppointments());
             setIsLoading(false);
           } catch (error) {
             // console.error(error);

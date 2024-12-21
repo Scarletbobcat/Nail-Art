@@ -45,6 +45,7 @@ public class AppointmentService {
             tempAppointment.get().setStartTime(appointment.getStartTime());
             tempAppointment.get().setEndTime(appointment.getEndTime());
             tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
+            tempAppointment.get().setReminderSent(appointment.getReminderSent());
             return Optional.of(appointmentRepository.save(tempAppointment.get()));
         }
         return Optional.empty();
