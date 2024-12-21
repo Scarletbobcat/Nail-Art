@@ -1,8 +1,5 @@
 import React from "react";
 import { Button, Stack } from "@mui/material";
-// import EditIcon from "@mui/icons-material/Edit";
-// import DeleteIcon from "@mui/icons-material/Delete";
-// import PlusIcon from "@mui/icons-material/Add";
 
 export default function CustomButton({
   color,
