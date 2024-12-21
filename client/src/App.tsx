@@ -1,5 +1,5 @@
 import Calendar from "./AppointmentsPage/Calendar/Calendar.tsx";
-import Home from "./Home/Home.tsx";
+// import Home from "./Home/Home.tsx";
 import Employees from "./EmployeesPage/Employees.jsx";
 import Services from "./ServicesPage/Services.tsx";
 import Login from "./Login/Login.tsx";
@@ -13,7 +13,7 @@ function App() {
       <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Navbar />
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/" element={<Calendar />} />
           <Route path="/Appointments" element={<Calendar />} />
           <Route path="/Login" element={<Login />} />
           <Route path="/Employees" element={<Employees />} />
