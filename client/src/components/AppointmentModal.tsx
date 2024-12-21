@@ -17,29 +17,32 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment, Employee, Service, Alert } from "../../../types";
-import { editAppointment } from "../../../api/appointments";
-import CustomAlert from "../../../components/Alert";
+import { Appointment, Employee, Service, Alert } from "../types";
+import CustomAlert from "./Alert";
 
-interface AppointmentEditModalProps {
+export default function AppointmentModal({
+  appointment,
+  onClose,
+  isOpen,
+  renderEvents,
+  allServices,
+  allEmployees,
+  onSubmit,
+  type,
+}: {
   appointment: Appointment;
   onClose: () => void;
   isOpen: boolean;
   renderEvents: () => void;
   allServices: Service[];
   allEmployees: Employee[];
-}
-
-export default function AppointmentEditModal({
-  appointment,
-  onClose,
-  renderEvents,
-  isOpen,
-  allServices,
-  allEmployees,
-}: AppointmentEditModalProps) {
+  onSubmit: (form: Appointment) => void;
+  type: "delete" | "edit" | "create";
+}) {
+  const [form, setForm] = useState<Appointment>({
+    ...appointment,
+  });
   const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState<Appointment>(appointment);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
@@ -68,7 +71,7 @@ export default function AppointmentEditModal({
     try {
       setIsLoading(true);
       // save the appointment
-      await editAppointment(form);
+      await onSubmit(form);
       setIsLoading(false);
       // closing modal and re-rendering events
       onClose();
@@ -110,6 +113,7 @@ export default function AppointmentEditModal({
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
+            zIndex: 1,
           }}
         >
           <Stack spacing={2}>
@@ -119,13 +123,15 @@ export default function AppointmentEditModal({
               component="h6"
               sx={{ mb: 4, fontWeight: "bold" }}
             >
-              Edit Appointment
+              {type.charAt(0).toUpperCase() + type.slice(1)} Appointment
             </Typography>
             <Stack direction="row" spacing={2}>
               <TextField
                 fullWidth
+                required
+                disabled={type === "delete"}
                 label="Name"
-                value={form.name}
+                value={form.name || ""}
                 variant="outlined"
                 onChange={(e) => {
                   setForm({ ...form, name: e.target.value });
@@ -133,12 +139,11 @@ export default function AppointmentEditModal({
               />
               <TextField
                 fullWidth
+                disabled={type === "delete"}
                 label="Phone Number"
                 value={form.phoneNumber}
                 variant="outlined"
-                onChange={(e) => {
-                  changePhoneNumber(e.target.value);
-                }}
+                onChange={(e) => changePhoneNumber(e.target.value)}
               />
             </Stack>
             <Stack spacing={2}>
@@ -146,6 +151,7 @@ export default function AppointmentEditModal({
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
                     label="Start"
+                    disabled={type === "delete"}
                     value={form ? dayjs(form.date + form.startTime) : dayjs()}
                     onChange={(date) => {
                       setForm({
@@ -162,6 +168,7 @@ export default function AppointmentEditModal({
                   <DateTimePicker
                     value={form ? dayjs(form.date + form.endTime) : dayjs()}
                     label="End"
+                    disabled={type === "delete"}
                     onChange={(date) => {
                       setForm({
                         ...form,
@@ -179,7 +186,9 @@ export default function AppointmentEditModal({
                   <InputLabel id="employee-label">Employee</InputLabel>
                   <Select
                     labelId="employee-label"
+                    disabled={type === "delete"}
                     fullWidth
+                    required
                     label="Employee"
                     value={form.employeeId}
                     onChange={(e: SelectChangeEvent) => {
@@ -198,7 +207,9 @@ export default function AppointmentEditModal({
                   <InputLabel id="service-label">Services</InputLabel>
                   <Select
                     labelId="service-label"
+                    disabled={type === "delete"}
                     multiple
+                    required
                     fullWidth
                     label="Service"
                     value={form.services}
@@ -233,20 +244,20 @@ export default function AppointmentEditModal({
             </Stack>
           </Stack>
           <Box sx={{ mt: 3, display: "flex", justifyContent: "right" }}>
-            <Box>
-              <Button onClick={onClose} color="info" sx={{ mr: 2 }}>
+            <Stack direction="row" spacing={1}>
+              <Button onClick={onClose} color="info">
                 Cancel
               </Button>
               <Button
                 type="submit"
-                color="primary"
+                color={type === "delete" ? "error" : "primary"}
                 variant="contained"
-                endIcon={isLoading ? <CircularProgress size={20} /> : null}
                 disabled={isLoading}
+                endIcon={isLoading ? <CircularProgress size={20} /> : null}
               >
-                Save
+                {type.charAt(0).toUpperCase() + type.slice(1)}
               </Button>
-            </Box>
+            </Stack>
           </Box>
         </Paper>
       </Modal>

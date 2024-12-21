@@ -10,16 +10,19 @@ import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
-import { getAppointmentsByPhoneNumber } from "../../api/appointments";
+import {
+  deleteAppointment,
+  editAppointment,
+  getAppointmentsByPhoneNumber,
+} from "../../api/appointments";
 import { Appointment, Employee, Service } from "../../types";
 import EditButton from "./components/EditButton";
 import DeleteButton from "./components/DeleteButton";
 import { Stack, Paper } from "@mui/material";
-import EditModal from "../Calendar/components/EditModal";
-import DeleteModal from "../Calendar/components/DeleteModal";
 import { getAllServices } from "../../api/services";
 import CircularLoading from "../../components/CircularLoading";
 import { useTheme } from "@mui/material/styles";
+import AppointmentModal from "../../components/AppointmentModal";
 
 interface TempData {
   id: number;
@@ -247,8 +250,10 @@ export default function Search() {
               />
             </Box>
             {isEditOpen && (
-              <EditModal
+              <AppointmentModal
                 isOpen={isEditOpen}
+                type={"edit"}
+                onSubmit={editAppointment}
                 onClose={() => setIsEditOpen(false)}
                 appointment={selectedApp}
                 renderEvents={async () =>
@@ -259,8 +264,10 @@ export default function Search() {
               />
             )}
             {isDeleteOpen && (
-              <DeleteModal
-                services={services}
+              <AppointmentModal
+                allServices={services}
+                type={"delete"}
+                onSubmit={deleteAppointment}
                 isOpen={isDeleteOpen}
                 onClose={() => setIsDeleteOpen(false)}
                 appointment={selectedApp}

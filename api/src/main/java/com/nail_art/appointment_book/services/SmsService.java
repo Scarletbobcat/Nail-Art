@@ -55,14 +55,16 @@ public class SmsService {
                     + date.format(DateTimeFormatter.ofPattern("h:mm a"))
                     + ". Please call the salon at 330-758-6633 if you " +
                     "need to reschedule or cancel. We look forward to seeing you!";
-            ResponseEntity<?> response = sendSms(appointment.getPhoneNumber(), message);
-            // sets reminderSent to true if SMS was sent successfully
-            if (response.getStatusCode() == HttpStatus.OK) {
-                appointment.setReminderSent(true);
-                appointmentService.editAppointment(appointment);
-            } else {
-                return response;
-            }
+//            ResponseEntity<?> response = sendSms(appointment.getPhoneNumber(), message);
+//            // sets reminderSent to true if SMS was sent successfully
+//            if (response.getStatusCode() == HttpStatus.OK) {
+//                appointment.setReminderSent(true);
+//                appointmentService.editAppointment(appointment);
+//            } else {
+//                return response;
+//            }
+            return ResponseEntity.internalServerError()
+                    .body("Failed to send reminder(s)");
         }
         return ResponseEntity.ok().build();
     }

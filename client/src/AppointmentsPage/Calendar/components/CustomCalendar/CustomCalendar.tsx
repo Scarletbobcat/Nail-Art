@@ -6,12 +6,15 @@ import { getAllEmployees } from "../../../../api/employees";
 import { Employee, Appointment } from "../../../../types";
 import CircularLoading from "../../../../components/CircularLoading";
 import { useState } from "react";
-import CreateModal from "../CreateModal";
-import { getAppointmentsByDate } from "../../../../api/appointments";
+import {
+  createAppointment,
+  deleteAppointment,
+  editAppointment,
+  getAppointmentsByDate,
+} from "../../../../api/appointments";
 import { getAllServices } from "../../../../api/services";
 import ContextMenu from "./ContextMenu";
-import EditModal from "../EditModal";
-import DeleteModal from "../DeleteModal";
+import AppointmentModal from "../../../../components/AppointmentModal";
 
 const businessTimes = Array.from({ length: 11 }, (_, i) => {
   const hour = i + 9;
@@ -237,10 +240,12 @@ export default function AppointmentCalendar({
         </Box>
       </Box>
       {isCreateOpen && (
-        <CreateModal
+        <AppointmentModal
           appointment={createApp}
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
+          type={"create"}
+          onSubmit={createAppointment}
           renderEvents={appRefetch}
           allServices={services}
           allEmployees={employees}
@@ -258,11 +263,13 @@ export default function AppointmentCalendar({
         onClose={handleMenuClose}
       />
       {isEditOpen && (
-        <EditModal
+        <AppointmentModal
           appointment={appointments.find(
             (app: Appointment) => app.id == selectedAppId
           )}
           isOpen={isEditOpen}
+          type={"edit"}
+          onSubmit={editAppointment}
           onClose={() => setIsEditOpen(false)}
           renderEvents={appRefetch}
           allServices={services}
@@ -270,15 +277,17 @@ export default function AppointmentCalendar({
         />
       )}
       {isDeleteOpen && (
-        <DeleteModal
-          services={services}
+        <AppointmentModal
+          allServices={services}
           appointment={appointments.find(
             (app: Appointment) => app.id == selectedAppId
           )}
+          onSubmit={deleteAppointment}
           isOpen={isDeleteOpen}
           onClose={() => setIsDeleteOpen(false)}
           renderEvents={appRefetch}
           allEmployees={employees}
+          type={"delete"}
         />
       )}
     </div>
