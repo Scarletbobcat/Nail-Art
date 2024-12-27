@@ -8,4 +8,5 @@ export interface Appointment {
   services: number[];
   phoneNumber?: string;
   reminderSent: boolean;
+  showedUp: boolean;
 }

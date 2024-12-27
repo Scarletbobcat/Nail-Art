@@ -48,6 +48,7 @@ export default function AppointmentCalendar({
     employeeId: "",
     services: [],
     reminderSent: false,
+    showedUp: false,
   });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -129,6 +130,7 @@ export default function AppointmentCalendar({
     return <Typography>Error loading services</Typography>;
   }
 
+  console.log(appointments);
   return (
     <div>
       <Box
@@ -257,6 +259,23 @@ export default function AppointmentCalendar({
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
+        appointment={appointments.find(
+          (app: Appointment) => app.id == selectedAppId
+        )}
+        renderEvents={appRefetch}
+        editShowedUp={async () => {
+          const appointment = appointments.find(
+            (app: Appointment) => app.id == selectedAppId
+          );
+          if (appointment) {
+            console.log(
+              await editAppointment({
+                ...appointment,
+                showedUp: !appointment.showedUp,
+              })
+            );
+          }
+        }}
         open={contextMenu !== null}
         setEdit={setIsEditOpen}
         setDelete={setIsDeleteOpen}

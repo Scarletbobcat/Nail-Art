@@ -33,10 +33,14 @@ export default function ReminderButton() {
         onClick={async () => {
           try {
             setIsLoading(true);
-            console.log(await remindAppointments());
+            const message = await remindAppointments();
+            setAlert({
+              message: message,
+              severity: "success",
+            });
+            setIsAlertOpen(true);
             setIsLoading(false);
           } catch (error) {
-            // console.error(error);
             setIsAlertOpen(true);
             const axiosError = error as AxiosError;
             const message =

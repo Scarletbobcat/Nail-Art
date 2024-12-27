@@ -33,7 +33,7 @@ public class AuthenticationController {
         this.userDetailsService = userDetailsService;
     }
 
-    @PostMapping("/signup")
+    @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody RegisterUserDto registerUserDto) {
         User registeredUser = authenticationService.signup(registerUserDto);
 

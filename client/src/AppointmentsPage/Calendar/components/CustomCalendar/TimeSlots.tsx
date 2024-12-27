@@ -194,41 +194,48 @@ const TimeSlotGrid = ({
       {appointments &&
         appointments
           .filter((app: Appointment) => app.employeeId === employee.id)
-          .map((appointment: Appointment) => (
-            <Box
-              key={appointment.id}
-              sx={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: getPositionFromTime(appointment.startTime),
-                height:
-                  getPositionFromTime(appointment.endTime) -
-                  getPositionFromTime(appointment.startTime),
-                backgroundColor: appointment.services.includes(3)
-                  ? "#000000"
-                  : employee.color,
-                opacity: 0.9,
-                zIndex: 1,
-                border: "1px solid",
-                paddingX: 1,
-                color: "white",
-                fontSize: "0.875rem",
-                overflow: "hidden",
-                cursor: "pointer",
-                "&:hover": {
-                  opacity: 1,
-                },
-              }}
-            >
-              <CustomAppointment
-                services={services}
-                appointment={appointment}
+          .map((appointment: Appointment) => {
+            let backgroundColor = employee.color;
+            if (appointment.services.includes(3)) {
+              backgroundColor = "#000000";
+            }
+            if (appointment.showedUp) {
+              backgroundColor = "#666666";
+            }
+            return (
+              <Box
                 key={appointment.id}
-                onEventClick={onEventClick}
-              />
-            </Box>
-          ))}
+                sx={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: getPositionFromTime(appointment.startTime),
+                  height:
+                    getPositionFromTime(appointment.endTime) -
+                    getPositionFromTime(appointment.startTime),
+                  backgroundColor: backgroundColor,
+                  opacity: 0.9,
+                  zIndex: 1,
+                  border: "1px solid",
+                  paddingX: 1,
+                  color: "white",
+                  fontSize: "0.875rem",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  "&:hover": {
+                    opacity: 1,
+                  },
+                }}
+              >
+                <CustomAppointment
+                  services={services}
+                  appointment={appointment}
+                  key={appointment.id}
+                  onEventClick={onEventClick}
+                />
+              </Box>
+            );
+          })}
     </Box>
   );
 };

@@ -41,6 +41,9 @@ public class Appointment {
     @NotNull
     private Boolean reminderSent;
 
+    @NotNull
+    private Boolean showedUp;
+
     public long getId() {
         return id;
     }
