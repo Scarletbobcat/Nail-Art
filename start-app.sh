@@ -1,5 +1,5 @@
 # path to where docker-compose.yaml is located; change if needed
-DOCKER_COMPOSE_PATH="$HOME/Desktop/Projects/Nail-Art"
+DOCKER_COMPOSE_PATH="./"
 
 # urls to where the application is exposed
 FRONTEND_URL="http://localhost:5173"
