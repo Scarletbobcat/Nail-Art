@@ -53,6 +53,7 @@ export default function Search() {
     employeeId: "",
     services: [],
     reminderSent: false,
+    showedUp: false,
   });
 
   const {
@@ -190,15 +191,17 @@ export default function Search() {
       <Box
         sx={{
           padding: 4,
+          height: "100vh",
         }}
       >
         <Paper
           variant="outlined"
           sx={{
             padding: 3,
+            height: "100%",
           }}
         >
-          <Stack spacing={2}>
+          <Stack spacing={2} sx={{ height: "100%" }}>
             {/* header */}
             <Stack
               direction="row"
@@ -219,24 +222,22 @@ export default function Search() {
                 onChange={(e) => changePhoneNumber(e.target.value)}
                 onKeyDown={handleKeyDown}
                 value={phoneNumber}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={async () => {
-                            setLoading(true);
-                            setTempData(
-                              await getAppointmentsByPhoneNumber(phoneNumber)
-                            );
-                            setLoading(false);
-                          }}
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={async () => {
+                          setLoading(true);
+                          setTempData(
+                            await getAppointmentsByPhoneNumber(phoneNumber)
+                          );
+                          setLoading(false);
+                        }}
+                      >
+                        <SearchIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Stack>
@@ -247,13 +248,10 @@ export default function Search() {
                 columns={columns}
                 initialState={{
                   pagination: {
-                    paginationModel: {
-                      pageSize: 10,
-                    },
+                    pageSize: 10,
                   },
                 }}
-                pageSizeOptions={[10]}
-                disableRowSelectionOnClick
+                disableSelectionOnClick
               />
             </Box>
             {isEditOpen && (

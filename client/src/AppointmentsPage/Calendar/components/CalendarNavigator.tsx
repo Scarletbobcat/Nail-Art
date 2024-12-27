@@ -24,7 +24,7 @@ export default function CalendarNavigator({
       <LocalizationProvider dateAdapter={AdapterDayjs} dateLibInstance={dayjs}>
         <DateCalendar
           value={dayjs(startDate)}
-          onChange={(date) => setStartDate(date)}
+          onChange={(date: dayjs.Dayjs) => setStartDate(date)}
         />
       </LocalizationProvider>
     </div>

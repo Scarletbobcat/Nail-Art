@@ -140,15 +140,17 @@ export default function Employees() {
     <Box
       sx={{
         padding: 4,
+        height: "calc(100vh)",
       }}
     >
       <Paper
         variant="outlined"
         sx={{
           padding: 3,
+          height: "100%",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={2} sx={{ height: "100%" }}>
           <Stack
             direction="row"
             sx={{
@@ -167,20 +169,18 @@ export default function Employees() {
                 label="Name"
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={async () => {
-                            refreshEmps();
-                          }}
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={async () => {
+                          refreshEmps();
+                        }}
+                      >
+                        <SearchIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Stack>
@@ -194,15 +194,12 @@ export default function Employees() {
           <DataGrid
             rows={data}
             columns={columns}
-            disableRowSelectionOnClick
             initialState={{
               pagination: {
-                paginationModel: {
-                  pageSize: 10,
-                },
+                pageSize: 10,
               },
             }}
-            pageSizeOptions={[10]}
+            disableSelectionOnClick
           />
         </Stack>
         {isEditOpen && (

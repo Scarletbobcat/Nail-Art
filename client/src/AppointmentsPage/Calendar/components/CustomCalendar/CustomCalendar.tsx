@@ -129,8 +129,6 @@ export default function AppointmentCalendar({
   if (servicesError) {
     return <Typography>Error loading services</Typography>;
   }
-
-  console.log(appointments);
   return (
     <div>
       <Box

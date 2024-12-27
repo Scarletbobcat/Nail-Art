@@ -103,15 +103,17 @@ export default function Services() {
     <Box
       sx={{
         padding: 4,
+        height: "100vh",
       }}
     >
       <Paper
         variant="outlined"
         sx={{
           padding: 3,
+          height: "100%",
         }}
       >
-        <Stack spacing={2}>
+        <Stack spacing={2} sx={{ height: "100%" }}>
           <Stack
             direction="row"
             sx={{
@@ -130,20 +132,18 @@ export default function Services() {
                 label="Name"
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          onClick={async () => {
-                            refreshServices();
-                          }}
-                        >
-                          <SearchIcon />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={async () => {
+                          refreshServices();
+                        }}
+                      >
+                        <SearchIcon />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
                 }}
               />
             </Stack>
@@ -157,15 +157,12 @@ export default function Services() {
           <DataGrid
             rows={data}
             columns={columns}
-            disableRowSelectionOnClick
             initialState={{
               pagination: {
-                paginationModel: {
-                  pageSize: 10,
-                },
+                pageSize: 10,
               },
             }}
-            pageSizeOptions={[10]}
+            disableSelectionOnClick
           />
         </Stack>
         {isEditOpen && (
