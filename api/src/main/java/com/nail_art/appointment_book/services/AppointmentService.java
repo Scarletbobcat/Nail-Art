@@ -1,6 +1,7 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Appointment;
+import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,8 @@ public class AppointmentService {
     AppointmentRepository appointmentRepository;
     @Autowired
     private CounterService counterService;
+    @Autowired
+    private ClientService clientService;
 
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
@@ -32,6 +35,16 @@ public class AppointmentService {
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
         appointment.setReminderSent(false);
+        appointment.setClientId(0L);
+        if (appointment.getClientId() == null) {
+            Client client = new Client();
+            client.setName(appointment.getName());
+            client.setPhoneNumber(appointment.getPhoneNumber());
+            client.setAppointmentIds(List.of(id));
+            clientService.createClient(client);
+        } else {
+            clientService.addAppointmentToClient(appointment.getClientId(), id);
+        }
         return appointmentRepository.save(appointment);
     }
 
@@ -56,6 +69,9 @@ public class AppointmentService {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             appointmentRepository.delete(tempAppointment.get());
+            if (appointment.getClientId() != null) {
+                clientService.deleteAppointmentFromClient(appointment.getClientId(), appointment.getId());
+            }
             return true;
         }
         return false;

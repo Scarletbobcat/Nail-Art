@@ -19,6 +19,7 @@ import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
 import { Appointment, Employee, Service, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
+import ClientSelect from "./ClientSelect";
 
 export default function AppointmentModal({
   appointment,
@@ -86,7 +87,6 @@ export default function AppointmentModal({
       setIsLoading(false);
     }
   };
-
   return (
     <div>
       <CustomAlert
@@ -125,6 +125,19 @@ export default function AppointmentModal({
             >
               {type.charAt(0).toUpperCase() + type.slice(1)} Appointment
             </Typography>
+            <Stack>
+              <ClientSelect
+                onChange={(client) =>
+                  setForm({
+                    ...form,
+                    name: client.name,
+                    phoneNumber: client.phoneNumber,
+                    clientId: client.clientId,
+                  })
+                }
+                show={type === "create"}
+              />
+            </Stack>
             <Stack direction="row" spacing={2}>
               <TextField
                 fullWidth

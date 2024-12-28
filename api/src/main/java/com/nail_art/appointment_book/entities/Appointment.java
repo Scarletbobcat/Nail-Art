@@ -15,7 +15,10 @@ public class Appointment {
     @Id
     private String _id;
 
+    @NotNull
     private long id;
+
+    private Long clientId;
 
     @NotNull
     private String name;
