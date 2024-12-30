@@ -5,7 +5,7 @@ import {
   editService,
   getAllServices,
 } from "../api/services";
-import { IconButton, InputAdornment, Stack, TextField } from "@mui/material";
+import { Stack, TextField } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
@@ -22,6 +22,7 @@ import PlusIcon from "@mui/icons-material/Add";
 export default function Services() {
   const theme = useTheme();
   const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -34,7 +35,7 @@ export default function Services() {
     data: services,
     isLoading: servicesLoading,
     error: servicesError,
-    refetch: refreshServices,
+    refetch,
   } = useQuery({
     queryKey: ["services"],
     queryFn: () => getAllServices(name),
@@ -80,6 +81,12 @@ export default function Services() {
     },
   ];
 
+  const refreshServices = async () => {
+    setIsLoading(true);
+    await refetch();
+    setIsLoading(false);
+  };
+
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
       refreshServices();
@@ -97,7 +104,7 @@ export default function Services() {
     });
   }, [services]);
 
-  if (servicesLoading) return <CircularLoading />;
+  if (servicesLoading || isLoading) return <CircularLoading />;
   if (servicesError) return <div>Error: {servicesError.message}</div>;
   return (
     <Box
@@ -121,37 +128,36 @@ export default function Services() {
               padding: 2,
               borderRadius: 2,
             }}
+            justifyContent="space-between"
           >
             <Typography variant="h4" sx={{ color: "white" }}>
               Services
             </Typography>
+            <CustomButton
+              color="primary"
+              text={"Create"}
+              sx={{
+                color: "white",
+              }}
+              Icon={PlusIcon}
+              onClick={() => setIsCreateOpen(true)}
+            />
           </Stack>
           <Stack direction="row" spacing={2} justifyContent="space-between">
             <Stack direction="row" spacing={2}>
               <TextField
                 label="Name"
+                name="service"
+                value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={async () => {
-                          refreshServices();
-                        }}
-                      >
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
               />
             </Stack>
             <CustomButton
+              text="Search"
+              onClick={refreshServices}
+              Icon={SearchIcon}
               color="primary"
-              text={"Create"}
-              Icon={PlusIcon}
-              onClick={() => setIsCreateOpen(true)}
             />
           </Stack>
           <DataGrid
@@ -162,6 +168,7 @@ export default function Services() {
                 pageSize: 10,
               },
             }}
+            rowsPerPageOptions={[10]}
             disableSelectionOnClick
           />
         </Stack>

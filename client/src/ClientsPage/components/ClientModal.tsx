@@ -9,33 +9,50 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useState, FormEvent } from "react";
-import { Service, Alert } from "../../types";
+import { Client, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
 
-export default function ServiceModal({
-  service,
+export default function ClientModal({
+  client,
   type,
   onSubmit,
   isOpen,
   onClose,
-  renderServices,
+  renderEntities,
 }: {
-  service: Service;
+  client: Client;
   type: "create" | "edit" | "delete";
-  onSubmit: (e: Service) => void;
+  onSubmit: (e: Client) => void;
   isOpen: boolean;
   onClose: () => void;
-  renderServices: () => void;
+  renderEntities: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
-  const [form, setForm] = useState<Service>({
-    ...service,
+  const [form, setForm] = useState<Client>({
+    ...client,
   });
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({
     message: "",
     severity: "error",
   });
+
+  function changePhoneNumber(inputPhoneNumber: string) {
+    const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
+    if (regex.test(inputPhoneNumber)) {
+      let newPN = inputPhoneNumber;
+      // conditionally adds hyphen only when adding to phone number, not deleting
+      if (
+        (newPN.length === 3 && form.phoneNumber?.length === 2) ||
+        (newPN.length === 7 && form.phoneNumber?.length === 6)
+      ) {
+        newPN += "-";
+      }
+      setForm({ ...form, phoneNumber: newPN });
+    } else {
+      console.error("Phone number does not match regex");
+    }
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,7 +61,7 @@ export default function ServiceModal({
       console.log(await onSubmit(form));
       setIsLoading(false);
       onClose();
-      renderServices();
+      renderEntities();
     } catch {
       setIsAlertOpen(true);
       setAlert({
@@ -70,7 +87,7 @@ export default function ServiceModal({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: { xs: "90%", sm: 330 },
+            width: { xs: "90%", sm: 330, md: 500 },
             bgcolor: "background.paper",
             boxShadow: 24,
             p: 4,
@@ -83,15 +100,24 @@ export default function ServiceModal({
               component="h6"
               sx={{ mb: 4, fontWeight: "bold" }}
             >
-              {type.charAt(0).toUpperCase() + type.slice(1)} Service
+              {type.charAt(0).toUpperCase() + type.slice(1)} Client
             </Typography>
             <Stack direction="row" spacing={2}>
               <TextField
                 label="Name"
+                name="name"
                 fullWidth
                 disabled={type === "delete"}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+              <TextField
+                label="Phone Number"
+                fullWidth
+                value={form.phoneNumber}
+                disabled={type === "delete"}
+                onChange={(e) => changePhoneNumber(e.target.value)}
+                name="phoneNumber"
               />
             </Stack>
             <Box sx={{ mt: 3, display: "flex", justifyContent: "right" }}>

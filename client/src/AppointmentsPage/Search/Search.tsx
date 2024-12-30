@@ -1,11 +1,5 @@
 import { useState, useMemo } from "react";
-import {
-  Box,
-  TextField,
-  InputAdornment,
-  IconButton,
-  Typography,
-} from "@mui/material";
+import { Box, TextField, Typography } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
@@ -216,29 +210,24 @@ export default function Search() {
                 Appointments
               </Typography>
             </Stack>
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Phone Number"
-                onChange={(e) => changePhoneNumber(e.target.value)}
-                onKeyDown={handleKeyDown}
-                value={phoneNumber}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={async () => {
-                          setLoading(true);
-                          setTempData(
-                            await getAppointmentsByPhoneNumber(phoneNumber)
-                          );
-                          setLoading(false);
-                        }}
-                      >
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+            <Stack direction="row" spacing={2} justifyContent="space-between">
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Phone Number"
+                  onChange={(e) => changePhoneNumber(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  value={phoneNumber}
+                />
+              </Stack>
+              <CustomButton
+                text="Search"
+                onClick={async () => {
+                  setLoading(true);
+                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
+                  setLoading(false);
                 }}
+                Icon={SearchIcon}
+                color="primary"
               />
             </Stack>
             {/* content */}
@@ -251,6 +240,7 @@ export default function Search() {
                     pageSize: 10,
                   },
                 }}
+                rowsPerPageOptions={[10]}
                 disableSelectionOnClick
               />
             </Box>

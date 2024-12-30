@@ -144,6 +144,7 @@ export default function AppointmentModal({
                 required
                 disabled={type === "delete"}
                 label="Name"
+                name="name"
                 value={form.name || ""}
                 variant="outlined"
                 onChange={(e) => {
@@ -154,6 +155,7 @@ export default function AppointmentModal({
                 fullWidth
                 disabled={type === "delete"}
                 label="Phone Number"
+                name="phoneNumber"
                 value={form.phoneNumber}
                 variant="outlined"
                 onChange={(e) => changePhoneNumber(e.target.value)}

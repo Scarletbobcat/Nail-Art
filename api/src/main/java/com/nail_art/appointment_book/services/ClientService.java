@@ -4,8 +4,13 @@ import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,6 +21,9 @@ public class ClientService {
 
     @Autowired
     private CounterService counterService;
+
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     public List<Client> getAllClients() {
         return clientRepository.findAll();
@@ -69,5 +77,24 @@ public class ClientService {
             return true;
         }
         return false;
+    }
+
+    public List<Client> searchClients(Client client) {
+        Query query = new Query();
+        List<Criteria> criteria = new ArrayList<>();
+        for (Field field : client.getClass().getDeclaredFields()) {
+            field.setAccessible(true);
+            try {
+                if (field.get(client) != null) {
+                    criteria.add(Criteria.where(field.getName()).is(field.get(client)));
+                }
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (!criteria.isEmpty()) {
+            query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
+        }
+        return mongoTemplate.find(query, Client.class);
     }
 }

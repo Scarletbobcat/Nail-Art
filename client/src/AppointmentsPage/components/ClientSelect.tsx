@@ -26,7 +26,7 @@ export default function ClientSelect({
 
   const handleOpen = async () => {
     setIsLoading(true);
-    const clients = await getClients();
+    const clients = await getClients({});
     setOptions(clients);
     setIsLoading(false);
   };
@@ -76,7 +76,7 @@ export default function ClientSelect({
             onChange({
               name: value.name,
               phoneNumber: value.phoneNumber,
-              clientId: value.id,
+              clientId: parseInt(value.id),
             });
           } else {
             onChange({ name: "", phoneNumber: "" });

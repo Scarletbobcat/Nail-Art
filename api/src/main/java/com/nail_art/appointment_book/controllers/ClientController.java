@@ -17,10 +17,10 @@ public class ClientController {
     @Autowired
     ClientService clientService;
 
-    @GetMapping("/")
-    public ResponseEntity<List<Client>> getClients() {
-        return ResponseEntity.ok(clientService.getAllClients());
-    }
+//    @GetMapping("/")
+//    public ResponseEntity<List<Client>> getClients() {
+//        return ResponseEntity.ok(clientService.getAllClients());
+//    }
 
     @GetMapping("/{id}")
     public ResponseEntity<Client> getClient(@PathVariable int id) {
@@ -47,5 +47,20 @@ public class ClientController {
     @DeleteMapping("/delete")
     public ResponseEntity<Boolean> deleteClient(@RequestBody Client client) {
         return ResponseEntity.ok(clientService.deleteClient(client));
+    }
+
+    @GetMapping("/")
+    public ResponseEntity<List<Client>> searchClients(@RequestParam(required = false) String name, @RequestParam(required = false) String phoneNumber) {
+        Client query = new Client();
+        if (name != null) {
+            query.setName(name);
+        }
+        if (phoneNumber != null) {
+            query.setPhoneNumber(phoneNumber);
+        }
+        if (query == null) {
+            return ResponseEntity.ok(clientService.getAllClients());
+        }
+        return ResponseEntity.ok(clientService.searchClients(query));
     }
 }

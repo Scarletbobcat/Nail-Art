@@ -14,8 +14,7 @@ public class Client {
     @Id
     private String _id;
 
-    @NotNull
-    private long id;
+    private Long id;
 
     @NotNull
     private String name;

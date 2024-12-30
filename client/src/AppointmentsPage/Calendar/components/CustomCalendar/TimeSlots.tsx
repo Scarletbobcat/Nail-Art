@@ -115,7 +115,9 @@ const TimeSlotGrid = ({
         }
       })
       .filter((slot) => slot !== undefined);
-    const startTime = `${cells[0].hour}:${cells[0].minute || "00"}`;
+    const startTime = `${
+      cells[0].hour < 10 ? "0" + cells[0].hour : cells[0].hour
+    }:${cells[0].minute || "00"}`;
     const lastIndex = cells[cells.length - 1].index;
     const endTime = timeSlots[lastIndex + 1];
 
