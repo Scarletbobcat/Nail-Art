@@ -41,7 +41,7 @@ public class ClientService {
     }
 
     public Client createClient(Client client) {
-        long id = counterService.getNextSequence("Appointments");
+        long id = counterService.getNextSequence("Clients");
         client.setId(id);
         return clientRepository.save(client);
     }

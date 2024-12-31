@@ -1,11 +1,11 @@
 import { Autocomplete, TextField, Typography, Stack } from "@mui/material";
 import { useState } from "react";
 import { Client } from "../../types/Client";
-import { getClients } from "../../api/clients";
 
 export default function ClientSelect({
   onChange,
   show,
+  clients,
 }: {
   onChange: (client: {
     name: string;
@@ -13,17 +13,18 @@ export default function ClientSelect({
     clientId?: number | undefined;
   }) => void;
   show?: boolean;
+  clients: Client[];
 }) {
-  const [options, setOptions] = useState<Client[]>([]);
+  const [options] = useState<Client[]>(clients);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // const [isLoading] = useState(false);
 
-  const handleOpen = async () => {
-    setIsLoading(true);
-    const clients = await getClients({});
-    setOptions(clients);
-    setIsLoading(false);
-  };
+  // const handleOpen = async () => {
+  //   setIsLoading(true);
+  //   const clients = await getClients({});
+  //   setOptions(clients);
+  //   setIsLoading(false);
+  // };
 
   const filteredOptions = (options: Client[], inputValue: string) => {
     const filtered = options.filter((option) => {
@@ -58,8 +59,8 @@ export default function ClientSelect({
             </li>
           );
         }}
-        loading={isLoading}
-        onOpen={handleOpen}
+        // loading={isLoading}
+        // onOpen={handleOpen}
         isOptionEqualToValue={(option, value) => {
           return option.id === value.id;
         }}

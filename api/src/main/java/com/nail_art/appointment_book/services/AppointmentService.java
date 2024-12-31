@@ -36,7 +36,7 @@ public class AppointmentService {
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
         appointment.setReminderSent(false);
-        if (appointment.getClientId() == null) {
+        if (appointment.getClientId() == null && !appointment.getPhoneNumber().isEmpty()) {
             Client client = new Client();
             client.setName(appointment.getName());
             client.setPhoneNumber(appointment.getPhoneNumber());
@@ -45,7 +45,7 @@ public class AppointmentService {
             client.setId(clientId);
             appointment.setClientId(clientId);
             clientRepository.save(client);
-        } else {
+        } else if (appointment.getClientId() != null) {
             Client tempClient = clientRepository.findById(appointment.getClientId()).orElse(null);
             if (tempClient != null) {
                 List<Long> appointments = tempClient.getAppointmentIds();
@@ -87,8 +87,8 @@ public class AppointmentService {
                     basicEdit(clientAppointment);
                 }
                 clientRepository.save(client);
-                return Optional.of(appointmentRepository.save(tempAppointment.get()));
             }
+            return Optional.of(appointmentRepository.save(tempAppointment.get()));
         }
         return Optional.empty();
     }

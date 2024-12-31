@@ -10,10 +10,18 @@ import TodayButton from "./components/TodayButton";
 
 const CalendarClient = () => {
   const theme = useTheme();
-  const [startDate, setStartDate] = useState(dayjs());
+  const [startDate, setStartDate] = useState(
+    localStorage.getItem("startDate")
+      ? dayjs(localStorage.getItem("startDate"))
+      : dayjs()
+  );
 
   const handleDateChange = (days: number) => {
     setStartDate(dayjs(startDate).add(days, "day"));
+    localStorage.setItem(
+      "startDate",
+      dayjs(startDate).add(days, "day").format("YYYY-MM-DD")
+    );
   };
 
   return (
@@ -41,11 +49,21 @@ const CalendarClient = () => {
                 <TodayButton
                   onClick={() => {
                     setStartDate(dayjs());
+                    localStorage.setItem(
+                      "startDate",
+                      dayjs().format("YYYY-MM-DD")
+                    );
                   }}
                 />
                 <CalendarNavigator
                   startDate={startDate}
-                  setStartDate={setStartDate}
+                  setStartDate={(date: dayjs.Dayjs) => {
+                    setStartDate(date);
+                    localStorage.setItem(
+                      "startDate",
+                      date.format("YYYY-MM-DD")
+                    );
+                  }}
                 />
                 <ReminderButton />
               </Stack>
