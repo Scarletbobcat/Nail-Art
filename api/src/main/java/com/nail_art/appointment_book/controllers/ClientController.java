@@ -52,13 +52,9 @@ public class ClientController {
     @GetMapping("/")
     public ResponseEntity<List<Client>> searchClients(@RequestParam(required = false) String name, @RequestParam(required = false) String phoneNumber) {
         Client query = new Client();
-        if (name != null) {
-            query.setName(name);
-        }
-        if (phoneNumber != null) {
-            query.setPhoneNumber(phoneNumber);
-        }
-        if (query == null) {
+        query.setName(name);
+        query.setPhoneNumber(phoneNumber);
+        if (query.getName() == null && query.getPhoneNumber() == null) {
             return ResponseEntity.ok(clientService.getAllClients());
         }
         return ResponseEntity.ok(clientService.searchClients(query));

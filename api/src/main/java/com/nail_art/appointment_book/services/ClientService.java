@@ -2,6 +2,7 @@ package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.entities.Client;
+import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -24,6 +25,12 @@ public class ClientService {
 
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private AppointmentService appointmentService;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
 
     public List<Client> getAllClients() {
         return clientRepository.findAll();
@@ -65,6 +72,12 @@ public class ClientService {
             tempClient.setName(client.getName());
             tempClient.setPhoneNumber(client.getPhoneNumber());
             tempClient.setAppointmentIds(client.getAppointmentIds());
+            List<Appointment> tempAppointments = appointmentRepository.findByClientId(tempClient.getId());
+            for (Appointment appointment : tempAppointments) {
+                appointment.setName(client.getName());
+                appointment.setPhoneNumber(client.getPhoneNumber());
+                appointmentService.editAppointment(appointment);
+            }
             return Optional.of(clientRepository.save(tempClient));
         }
         return Optional.empty();

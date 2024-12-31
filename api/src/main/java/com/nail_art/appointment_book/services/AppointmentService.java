@@ -3,6 +3,7 @@ package com.nail_art.appointment_book.services;
 import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
+import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,7 @@ public class AppointmentService {
     @Autowired
     private CounterService counterService;
     @Autowired
-    private ClientService clientService;
+    private ClientRepository clientRepository;
 
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
@@ -35,20 +36,64 @@ public class AppointmentService {
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
         appointment.setReminderSent(false);
-        appointment.setClientId(0L);
         if (appointment.getClientId() == null) {
             Client client = new Client();
             client.setName(appointment.getName());
             client.setPhoneNumber(appointment.getPhoneNumber());
             client.setAppointmentIds(List.of(id));
-            clientService.createClient(client);
+            long clientId = counterService.getNextSequence("Appointments");
+            client.setId(clientId);
+            appointment.setClientId(clientId);
+            clientRepository.save(client);
         } else {
-            clientService.addAppointmentToClient(appointment.getClientId(), id);
+            Client tempClient = clientRepository.findById(appointment.getClientId()).orElse(null);
+            if (tempClient != null) {
+                List<Long> appointments = tempClient.getAppointmentIds();
+                appointments.add(appointment.getId());
+                tempClient.setAppointmentIds(appointments);
+                clientRepository.save(tempClient);
+            }
         }
         return appointmentRepository.save(appointment);
     }
 
     public Optional<Appointment> editAppointment(Appointment appointment) {
+        Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
+        if (tempAppointment.isPresent()) {
+            tempAppointment.get().setServices(appointment.getServices());
+            tempAppointment.get().setDate(appointment.getDate());
+            tempAppointment.get().setName(appointment.getName());
+            tempAppointment.get().setEmployeeId(appointment.getEmployeeId());
+            tempAppointment.get().setStartTime(appointment.getStartTime());
+            tempAppointment.get().setEndTime(appointment.getEndTime());
+            tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
+            tempAppointment.get().setReminderSent(appointment.getReminderSent());
+            tempAppointment.get().setShowedUp(appointment.getShowedUp());
+
+            // update client when editing appointment if client exists
+            Client client = clientRepository.findById(appointment.getClientId()).orElse(null);
+            System.out.println("Client: " + client);
+            if (client != null) {
+                client.setName(appointment.getName());
+                client.setPhoneNumber(appointment.getPhoneNumber());
+                // updating all appointments with the same client id
+                List<Appointment> tempAppointments = appointmentRepository.findByClientId(client.getId());
+                for (Appointment clientAppointment : tempAppointments) {
+                    if (clientAppointment.getId() == appointment.getId()) {
+                        continue;
+                    }
+                    clientAppointment.setName(client.getName());
+                    clientAppointment.setPhoneNumber(client.getPhoneNumber());
+                    basicEdit(clientAppointment);
+                }
+                clientRepository.save(client);
+                return Optional.of(appointmentRepository.save(tempAppointment.get()));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<Appointment> basicEdit(Appointment appointment) {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             tempAppointment.get().setServices(appointment.getServices());
@@ -69,8 +114,15 @@ public class AppointmentService {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             appointmentRepository.delete(tempAppointment.get());
-            if (appointment.getClientId() != null) {
-                clientService.deleteAppointmentFromClient(appointment.getClientId(), appointment.getId());
+            Long clientId = appointment.getClientId();
+            if (clientId != null) {
+                Client tempClient = clientRepository.findById(clientId).orElse(null);
+                if (tempClient != null) {
+                    List<Long> appointments = tempClient.getAppointmentIds();
+                    appointments.remove(appointment.getId());
+                    tempClient.setAppointmentIds(appointments);
+                    clientRepository.save(tempClient);
+                }
             }
             return true;
         }
