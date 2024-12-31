@@ -17,8 +17,9 @@ import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent } from "react";
-import { Appointment, Employee, Service, Alert } from "../../types";
+import { Appointment, Employee, Service, Alert, Client } from "../../types";
 import CustomAlert from "../../components/Alert";
+import ClientSelect from "./ClientSelect";
 
 export default function AppointmentModal({
   appointment,
@@ -29,6 +30,7 @@ export default function AppointmentModal({
   allEmployees,
   onSubmit,
   type,
+  clients,
 }: {
   appointment: Appointment;
   onClose: () => void;
@@ -38,6 +40,7 @@ export default function AppointmentModal({
   allEmployees: Employee[];
   onSubmit: (form: Appointment) => void;
   type: "delete" | "edit" | "create";
+  clients?: Client[];
 }) {
   const [form, setForm] = useState<Appointment>({
     ...appointment,
@@ -80,13 +83,12 @@ export default function AppointmentModal({
       // show alert if failed to create appointment
       setIsAlertOpen(true);
       setAlert({
-        message: "Failed to edit appointment",
+        message: `Failed to ${type} appointment`,
         severity: "error",
       });
       setIsLoading(false);
     }
   };
-
   return (
     <div>
       <CustomAlert
@@ -125,12 +127,35 @@ export default function AppointmentModal({
             >
               {type.charAt(0).toUpperCase() + type.slice(1)} Appointment
             </Typography>
+            <Stack>
+              <Stack
+                sx={{
+                  width: "100%",
+                }}
+              >
+                {clients && (
+                  <ClientSelect
+                    onChange={(client) =>
+                      setForm({
+                        ...form,
+                        name: client.name,
+                        phoneNumber: client.phoneNumber,
+                        clientId: client.clientId,
+                      })
+                    }
+                    show={type === "create"}
+                    clients={clients}
+                  />
+                )}
+              </Stack>
+            </Stack>
             <Stack direction="row" spacing={2}>
               <TextField
                 fullWidth
                 required
                 disabled={type === "delete"}
                 label="Name"
+                name="name"
                 value={form.name || ""}
                 variant="outlined"
                 onChange={(e) => {
@@ -141,6 +166,7 @@ export default function AppointmentModal({
                 fullWidth
                 disabled={type === "delete"}
                 label="Phone Number"
+                name="phoneNumber"
                 value={form.phoneNumber}
                 variant="outlined"
                 onChange={(e) => changePhoneNumber(e.target.value)}

@@ -5,7 +5,7 @@ import {
   editEmployee,
   getAllEmployees,
 } from "../api/employees";
-import { IconButton, InputAdornment, Stack, TextField } from "@mui/material";
+import { Stack, TextField } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
@@ -21,6 +21,7 @@ import CustomButton from "../components/Button";
 
 export default function Employees() {
   const theme = useTheme();
+  const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function Employees() {
     data: employees,
     isLoading: employeesLoading,
     error: employeesError,
-    refetch: refreshEmps,
+    refetch,
   } = useQuery({
     queryKey: ["employees"],
     queryFn: () => getAllEmployees(name),
@@ -110,6 +111,12 @@ export default function Employees() {
     },
   ];
 
+  const refreshEmps = async () => {
+    setIsLoading(true);
+    await refetch();
+    setIsLoading(false);
+  };
+
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
       refreshEmps();
@@ -128,7 +135,7 @@ export default function Employees() {
     });
   }, [employees]);
 
-  if (employeesLoading) {
+  if (employeesLoading || isLoading) {
     return <CircularLoading />;
   }
 
@@ -158,37 +165,36 @@ export default function Employees() {
               padding: 2,
               borderRadius: 2,
             }}
+            justifyContent="space-between"
           >
             <Typography variant="h4" sx={{ color: "white" }}>
               Employees
             </Typography>
+            <CustomButton
+              text={"Create"}
+              color="primary"
+              sx={{
+                color: "white",
+              }}
+              onClick={() => setIsCreateOpen(true)}
+              Icon={PlusIcon}
+            />
           </Stack>
           <Stack direction="row" spacing={2} justifyContent="space-between">
             <Stack direction="row" spacing={2}>
               <TextField
                 label="Name"
+                name="name"
+                value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={handleKeyDown}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={async () => {
-                          refreshEmps();
-                        }}
-                      >
-                        <SearchIcon />
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
               />
             </Stack>
             <CustomButton
-              text={"Create"}
+              text="Search"
+              onClick={refreshEmps}
+              Icon={SearchIcon}
               color="primary"
-              onClick={() => setIsCreateOpen(true)}
-              Icon={PlusIcon}
             />
           </Stack>
           <DataGrid
@@ -199,6 +205,7 @@ export default function Employees() {
                 pageSize: 10,
               },
             }}
+            rowsPerPageOptions={[10]}
             disableSelectionOnClick
           />
         </Stack>

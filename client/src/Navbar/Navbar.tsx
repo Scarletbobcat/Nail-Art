@@ -26,12 +26,10 @@ const navItems = [
   },
   { title: "Employees", url: "/Employees" },
   { title: "Services", url: "/Services" },
+  { title: "Clients", url: "/Clients" },
 ];
 
-const authItems = [
-  { title: "Login", url: "/Login" },
-  // { title: "Register", url: "/Register" },
-];
+const authItems = [{ title: "Login", url: "/Login" }];
 
 function Navbar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);

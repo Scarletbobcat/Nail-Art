@@ -13,6 +13,7 @@ import {
   getAppointmentsByDate,
 } from "../../../../api/appointments";
 import { getAllServices } from "../../../../api/services";
+import { getClients } from "../../../../api/clients";
 import ContextMenu from "./ContextMenu";
 import AppointmentModal from "../../../components/AppointmentModal";
 
@@ -84,6 +85,16 @@ export default function AppointmentCalendar({
     queryFn: () => getAllServices(),
   });
 
+  const {
+    data: clients,
+    error: clientsError,
+    isLoading: clientsLoading,
+    // refetch: refetchClients,
+  } = useQuery({
+    queryKey: ["clients"],
+    queryFn: () => getClients({}),
+  });
+
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
     setContextMenu(
@@ -92,10 +103,7 @@ export default function AppointmentCalendar({
             mouseX: event.clientX + 2,
             mouseY: event.clientY - 6,
           }
-        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
-          // Other native context menus might behave different.
-          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
-          null
+        : null
     );
   };
 
@@ -114,7 +122,12 @@ export default function AppointmentCalendar({
     setIsCreateOpen(true);
   };
 
-  if (employeeLoading || appointmentsLoading || servicesLoading) {
+  if (
+    employeeLoading ||
+    appointmentsLoading ||
+    servicesLoading ||
+    clientsLoading
+  ) {
     return <CircularLoading />;
   }
 
@@ -129,6 +142,11 @@ export default function AppointmentCalendar({
   if (servicesError) {
     return <Typography>Error loading services</Typography>;
   }
+
+  if (clientsError) {
+    return <Typography>Error loading clients</Typography>;
+  }
+
   return (
     <div>
       <Box
@@ -244,11 +262,12 @@ export default function AppointmentCalendar({
           appointment={createApp}
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
-          type={"create"}
+          type="create"
           onSubmit={createAppointment}
           renderEvents={appRefetch}
           allServices={services}
           allEmployees={employees}
+          clients={clients}
         />
       )}
       <ContextMenu

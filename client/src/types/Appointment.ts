@@ -9,4 +9,5 @@ export interface Appointment {
   phoneNumber?: string;
   reminderSent: boolean;
   showedUp: boolean;
+  clientId?: number;
 }
