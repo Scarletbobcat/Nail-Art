@@ -1,10 +1,4 @@
-import {
-  Autocomplete,
-  TextField,
-  CircularProgress,
-  Typography,
-  Stack,
-} from "@mui/material";
+import { Autocomplete, TextField, Typography, Stack } from "@mui/material";
 import { useState } from "react";
 import { Client } from "../../types/Client";
 import { getClients } from "../../api/clients";
@@ -64,7 +58,6 @@ export default function ClientSelect({
             </li>
           );
         }}
-        style={{ width: 300 }}
         loading={isLoading}
         onOpen={handleOpen}
         isOptionEqualToValue={(option, value) => {
@@ -91,12 +84,6 @@ export default function ClientSelect({
             label="Client"
             InputProps={{
               ...params.InputProps,
-              endAdornment: (
-                <>
-                  {isLoading && <CircularProgress color="inherit" size={20} />}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
             }}
           />
         )}

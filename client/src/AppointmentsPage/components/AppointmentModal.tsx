@@ -126,17 +126,23 @@ export default function AppointmentModal({
               {type.charAt(0).toUpperCase() + type.slice(1)} Appointment
             </Typography>
             <Stack>
-              <ClientSelect
-                onChange={(client) =>
-                  setForm({
-                    ...form,
-                    name: client.name,
-                    phoneNumber: client.phoneNumber,
-                    clientId: client.clientId,
-                  })
-                }
-                show={type === "create"}
-              />
+              <Stack
+                sx={{
+                  width: "100%",
+                }}
+              >
+                <ClientSelect
+                  onChange={(client) =>
+                    setForm({
+                      ...form,
+                      name: client.name,
+                      phoneNumber: client.phoneNumber,
+                      clientId: client.clientId,
+                    })
+                  }
+                  show={type === "create"}
+                />
+              </Stack>
             </Stack>
             <Stack direction="row" spacing={2}>
               <TextField
