@@ -38,8 +38,10 @@ api.interceptors.response.use(
       if (
         error.response.data == "Invalid or expired refresh token" ||
         error.response.data == "Refresh token is missing" ||
+        error.response.data == "User not found" ||
         error.config._retry
       ) {
+        localStorage.removeItem("token");
         localStorage.setItem("previousUrl", window.location.pathname);
         window.location.href = "/login";
       } else {
@@ -57,7 +59,7 @@ api.interceptors.response.use(
           ] = `Bearer ${localStorage.getItem("token")}`;
           return api(originalRequest);
         } catch (error) {
-          console.error("Refresh token failed:", error);
+          console.error(error);
           localStorage.setItem("previousUrl", window.location.pathname);
           window.location.href = "/login";
         }

@@ -17,11 +17,6 @@ public class ClientController {
     @Autowired
     ClientService clientService;
 
-//    @GetMapping("/")
-//    public ResponseEntity<List<Client>> getClients() {
-//        return ResponseEntity.ok(clientService.getAllClients());
-//    }
-
     @GetMapping("/{id}")
     public ResponseEntity<Client> getClient(@PathVariable int id) {
         return ResponseEntity.ok(clientService.getClientById(id));

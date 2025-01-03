@@ -3,7 +3,6 @@ package com.nail_art.appointment_book.services;
 import com.nail_art.appointment_book.entities.RefreshToken;
 import com.nail_art.appointment_book.repositories.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;

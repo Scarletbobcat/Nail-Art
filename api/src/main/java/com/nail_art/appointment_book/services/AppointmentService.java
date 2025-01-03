@@ -5,9 +5,7 @@ import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.http.ResponseEntity;
 
 import java.util.Calendar;
 import java.util.List;
