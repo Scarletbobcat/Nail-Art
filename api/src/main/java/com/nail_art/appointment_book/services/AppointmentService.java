@@ -5,7 +5,9 @@ import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.http.ResponseEntity;
 
 import java.util.Calendar;
 import java.util.List;
@@ -37,14 +39,24 @@ public class AppointmentService {
         appointment.setId(id);
         appointment.setReminderSent(false);
         if (appointment.getClientId() == null && !appointment.getPhoneNumber().isEmpty()) {
-            Client client = new Client();
-            client.setName(appointment.getName());
-            client.setPhoneNumber(appointment.getPhoneNumber());
-            client.setAppointmentIds(List.of(id));
-            long clientId = counterService.getNextSequence("Appointments");
-            client.setId(clientId);
-            appointment.setClientId(clientId);
-            clientRepository.save(client);
+            Client tempClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber()).orElse(null);
+            if (tempClient == null) {
+                Client client = new Client();
+                client.setName(appointment.getName());
+                client.setPhoneNumber(appointment.getPhoneNumber());
+                client.setAppointmentIds(List.of(id));
+                long clientId = counterService.getNextSequence("Appointments");
+                client.setId(clientId);
+                appointment.setClientId(clientId);
+                clientRepository.save(client);
+            } else {
+                List<Long> appointments = tempClient.getAppointmentIds();
+                appointments.add(appointment.getId());
+                tempClient.setAppointmentIds(appointments);
+                appointment.setClientId(tempClient.getId());
+                appointment.setName(tempClient.getName());
+                clientRepository.save(tempClient);
+            }
         } else if (appointment.getClientId() != null) {
             Client tempClient = clientRepository.findById(appointment.getClientId()).orElse(null);
             if (tempClient != null) {
@@ -71,6 +83,10 @@ public class AppointmentService {
             tempAppointment.get().setShowedUp(appointment.getShowedUp());
 
             // update client when editing appointment if client exists
+            Long clientId = appointment.getClientId();
+            if (clientId == null) {
+                return Optional.of(appointmentRepository.save(tempAppointment.get()));
+            }
             Client client = clientRepository.findById(appointment.getClientId()).orElse(null);
             System.out.println("Client: " + client);
             if (client != null) {
@@ -93,7 +109,7 @@ public class AppointmentService {
         return Optional.empty();
     }
 
-    private Optional<Appointment> basicEdit(Appointment appointment) {
+    private void basicEdit(Appointment appointment) {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             tempAppointment.get().setServices(appointment.getServices());
@@ -105,9 +121,8 @@ public class AppointmentService {
             tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
             tempAppointment.get().setReminderSent(appointment.getReminderSent());
             tempAppointment.get().setShowedUp(appointment.getShowedUp());
-            return Optional.of(appointmentRepository.save(tempAppointment.get()));
+            appointmentRepository.save(tempAppointment.get());
         }
-        return Optional.empty();
     }
 
     public Boolean deleteAppointment(Appointment appointment) {

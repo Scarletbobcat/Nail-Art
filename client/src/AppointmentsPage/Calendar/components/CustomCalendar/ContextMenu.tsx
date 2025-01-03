@@ -1,9 +1,16 @@
-import { ListItemIcon, Menu, MenuItem } from "@mui/material";
+import {
+  ListItemIcon,
+  Menu,
+  MenuItem,
+  CircularProgress,
+  Stack,
+} from "@mui/material";
 import React from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import { Appointment } from "../../../../types";
+import { useState } from "react";
 
 export default function ContextMenu({
   onClose,
@@ -24,6 +31,7 @@ export default function ContextMenu({
   appointment: Appointment;
   renderEvents: () => void;
 }) {
+  const [isLoading, setIsLoading] = useState(false);
   const onEditClick = (e: React.MouseEvent) => {
     setEdit(true);
     onClose(e);
@@ -33,9 +41,11 @@ export default function ContextMenu({
     onClose(e);
   };
   const onCheckClick = async (e: React.MouseEvent) => {
+    setIsLoading(true);
     await editShowedUp();
-    onClose(e);
     await renderEvents();
+    onClose(e);
+    setIsLoading(false);
   };
 
   return (
@@ -61,18 +71,32 @@ export default function ContextMenu({
       {appointment && !appointment.services.includes(3) ? (
         // otherwise, depending on the appointment showedUp status, render the check in/out option
         appointment && appointment.showedUp ? (
-          <MenuItem onClick={onCheckClick}>
-            <ListItemIcon>
-              <CheckIcon fontSize="small" />
-            </ListItemIcon>
-            Check Out
+          <MenuItem onClick={onCheckClick} disabled={isLoading}>
+            <Stack direction="row" spacing={2}>
+              <Stack direction="row">
+                <ListItemIcon>
+                  <CheckIcon fontSize="small" />
+                </ListItemIcon>
+                Check Out
+              </Stack>
+              <ListItemIcon>
+                {isLoading ? <CircularProgress size={20} /> : null}
+              </ListItemIcon>
+            </Stack>
           </MenuItem>
         ) : (
-          <MenuItem onClick={onCheckClick}>
-            <ListItemIcon>
-              <CheckIcon fontSize="small" />
-            </ListItemIcon>
-            Check In
+          <MenuItem onClick={onCheckClick} disabled={isLoading}>
+            <Stack direction="row" spacing={2}>
+              <Stack direction="row">
+                <ListItemIcon>
+                  <CheckIcon fontSize="small" />
+                </ListItemIcon>
+                Check In
+              </Stack>
+              <ListItemIcon>
+                {isLoading ? <CircularProgress size={20} /> : null}
+              </ListItemIcon>
+            </Stack>
           </MenuItem>
         )
       ) : null}

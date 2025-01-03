@@ -89,6 +89,9 @@ export default function AppointmentModal({
       setIsLoading(false);
     }
   };
+
+  console.log(form);
+
   return (
     <div>
       <CustomAlert

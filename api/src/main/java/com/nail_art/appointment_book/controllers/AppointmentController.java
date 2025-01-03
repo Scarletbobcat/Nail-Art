@@ -3,7 +3,6 @@ package com.nail_art.appointment_book.controllers;
 import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.services.AppointmentService;
 import jakarta.validation.Valid;
-import org.apache.coyote.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,7 +48,7 @@ public class AppointmentController {
     }
 
     @PutMapping("/edit")
-    public ResponseEntity<Optional<Appointment>> editAppointment(@RequestBody Appointment appointment) {
+    public ResponseEntity<Optional<Appointment>> editAppointment(@Valid @RequestBody Appointment appointment) {
         Optional<Appointment> appt = appointmentService.editAppointment(appointment);
         if (appt.isEmpty()) {
             return new ResponseEntity<>(Optional.of(appointment), HttpStatus.NOT_FOUND);

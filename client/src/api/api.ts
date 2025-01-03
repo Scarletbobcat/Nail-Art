@@ -35,7 +35,11 @@ api.interceptors.response.use(
   async (error) => {
     console.log(error);
     if (error.response.status === 401) {
-      if (error.response.data == "Invalid or expired refresh token") {
+      if (
+        error.response.data == "Invalid or expired refresh token" ||
+        error.response.data == "Refresh token is missing" ||
+        error.config._retry
+      ) {
         localStorage.setItem("previousUrl", window.location.pathname);
         window.location.href = "/login";
       } else {

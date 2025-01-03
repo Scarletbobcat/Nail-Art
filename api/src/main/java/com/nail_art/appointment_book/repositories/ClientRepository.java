@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface ClientRepository extends MongoRepository<Client, String> {
     Optional<Client> findById(long id);
+    Optional<Client> findByPhoneNumber(String phoneNumber);
 }
