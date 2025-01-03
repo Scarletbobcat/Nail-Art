@@ -26,7 +26,7 @@ Another very important feature of this application is actually the 'Remind Appoi
 
 With this page, the user is able to create an appointment by clicking and holding where the appointment will being, and dragging and releasing where they want the appointment to end.
 
-Once the user releases, a modal will open for them to create an appointment where they will be prompted to fill in the necessary fields:
+Once the user releases, a modal will open for them to create an appointment where they will be prompted to fill in the necessary fields. It also comes with a client dropdown where the user can search for an existing client and it will autofill their name and phone number:
 
 ![Create-Appointment-Modal](./images/create-appointment-modal.png)
 
@@ -53,3 +53,9 @@ This page is a simple CRUD page for the employees where the user can do all oper
 Similarly to the employees page, this page is for the services.
 
 ![Services](./images/services.png)
+
+### Clients
+
+I've also added a clients page where the user can search, edit, delete, and create clients. These clients are actually linked to their appointments to help with an autofill feature.
+
+![Clients](./images/clients.png)
