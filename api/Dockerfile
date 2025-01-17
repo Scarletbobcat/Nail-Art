@@ -8,7 +8,7 @@ WORKDIR /app
 COPY . /app
 
 # Build the application using Maven
-RUN ./mvnw package
+RUN ./mvnw clean package
 
 # Use a base image with JRE 21
 FROM bellsoft/liberica-runtime-container:jdk-21-slim-musl
