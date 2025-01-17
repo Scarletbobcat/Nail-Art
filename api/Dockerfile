@@ -1,20 +1,14 @@
 # Use a base image with JDK 21
 FROM bellsoft/liberica-runtime-container:jdk-21-stream-musl AS builder
 
-# Set the working directory inside the container
-WORKDIR /app
-
 # Copy the project files into the container
-COPY . /app
+COPY . .
 
 # Build the application using Maven
 RUN ./mvnw clean package
 
 # Use a base image with JRE 21
 FROM bellsoft/liberica-runtime-container:jdk-21-slim-musl
-
-# Set the working directory inside the container
-WORKDIR /app
 
 # Expose the port your application runs on
 EXPOSE 8080
@@ -23,7 +17,7 @@ EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
 # Copy the built JAR file from the builder stage
-COPY --from=builder /app/target/*.jar /app/app.jar
+COPY --from=builder /target/*.jar /app.jar
 
 # Run the application
 CMD ["java", "-jar", "app.jar"]
