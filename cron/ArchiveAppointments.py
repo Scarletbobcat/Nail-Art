@@ -19,10 +19,12 @@ today = datetime.date.today()
 
 past_appointments = appointments.find({"date": {"$lt": str(today)}})
 
-if (past_appointments):
+if (past_appointments.to_list()):
   print("Archiving appointments...")
   # inserting into archive collection
   archived_appointments.insert_many(past_appointments)
   # removing from appointments collection
   appointments.delete_many({"date": {"$lt": str(today)}})
   print("Archived appointments successfully!")
+else:
+  print("No appointments to archive.")
