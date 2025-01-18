@@ -5,7 +5,7 @@ FROM bellsoft/liberica-runtime-container:jdk-21-stream-musl AS builder
 COPY . .
 
 # Build the application using Maven
-RUN ./mvnw clean package -DSkipTests
+RUN ./mvnw clean package -DskipTests
 
 # Use a base image with JRE 21
 FROM bellsoft/liberica-runtime-container:jdk-21-slim-musl
