@@ -41,7 +41,7 @@ export default function ServiceModal({
     e.preventDefault();
     try {
       setIsLoading(true);
-      console.log(await onSubmit(form));
+      await onSubmit(form);
       setIsLoading(false);
       onClose();
       renderServices();

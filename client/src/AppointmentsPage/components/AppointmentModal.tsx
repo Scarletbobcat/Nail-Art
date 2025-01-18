@@ -16,10 +16,14 @@ import Chip from "@mui/material/Chip";
 import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useCallback } from "react";
 import { Appointment, Employee, Service, Alert, Client } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ClientSelect from "./ClientSelect";
+import { DateTimeValidationError } from "@mui/x-date-pickers/models";
+
+const nineAM = dayjs().hour(9).minute(0).second(0);
+const sevenPM = dayjs().hour(19).minute(0).second(0);
 
 export default function AppointmentModal({
   appointment,
@@ -51,6 +55,31 @@ export default function AppointmentModal({
     message: "",
     severity: "error",
   });
+  const [startError, setStartError] = useState<DateTimeValidationError | null>(
+    null
+  );
+  const [endError, setEndError] = useState<DateTimeValidationError | null>(
+    null
+  );
+
+  const errorMessage = useCallback((error: DateTimeValidationError | null) => {
+    switch (error) {
+      case "maxTime": {
+        return "Select a time during work hours";
+      }
+      case "minTime": {
+        return "Select a time during work hours";
+      }
+
+      case "invalidDate": {
+        return "Your time is not valid";
+      }
+
+      default: {
+        return "";
+      }
+    }
+  }, []);
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -64,8 +93,6 @@ export default function AppointmentModal({
         newPN += "-";
       }
       setForm({ ...form, phoneNumber: newPN });
-    } else {
-      console.error("Phone number does not match regex");
     }
   }
 
@@ -90,8 +117,6 @@ export default function AppointmentModal({
     }
   };
 
-  console.log(form);
-
   return (
     <div>
       <CustomAlert
@@ -108,7 +133,13 @@ export default function AppointmentModal({
       >
         <Paper
           component="form"
-          onSubmit={handleSave}
+          onSubmit={(e) => {
+            if (!startError && !endError) {
+              handleSave(e);
+            } else {
+              e.preventDefault();
+            }
+          }}
           sx={{
             position: "absolute",
             top: "50%",
@@ -181,6 +212,15 @@ export default function AppointmentModal({
                   <DateTimePicker
                     label="Start"
                     disabled={type === "delete"}
+                    minTime={nineAM}
+                    maxTime={sevenPM}
+                    minutesStep={15}
+                    onError={(newError) => setStartError(newError)}
+                    slotProps={{
+                      textField: {
+                        helperText: errorMessage(startError),
+                      },
+                    }}
                     value={form ? dayjs(form.date + form.startTime) : dayjs()}
                     onChange={(date) => {
                       setForm({
@@ -197,7 +237,16 @@ export default function AppointmentModal({
                   <DateTimePicker
                     value={form ? dayjs(form.date + form.endTime) : dayjs()}
                     label="End"
+                    minTime={nineAM}
+                    maxTime={sevenPM}
+                    minutesStep={15}
                     disabled={type === "delete"}
+                    onError={(newError) => setEndError(newError)}
+                    slotProps={{
+                      textField: {
+                        helperText: errorMessage(endError),
+                      },
+                    }}
                     onChange={(date) => {
                       setForm({
                         ...form,

@@ -81,7 +81,7 @@ export default function Search() {
       }
       setPhoneNumber(newPN);
     } else {
-      console.error("Phone number does not match regex");
+      // console.error("Phone number does not match regex");
     }
   }
 

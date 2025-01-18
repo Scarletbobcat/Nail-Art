@@ -50,7 +50,7 @@ export default function ClientModal({
       }
       setForm({ ...form, phoneNumber: newPN });
     } else {
-      console.error("Phone number does not match regex");
+      // console.error("Phone number does not match regex");
     }
   }
 
@@ -58,7 +58,7 @@ export default function ClientModal({
     e.preventDefault();
     try {
       setIsLoading(true);
-      console.log(await onSubmit(form));
+      await onSubmit(form);
       setIsLoading(false);
       onClose();
       renderEntities();

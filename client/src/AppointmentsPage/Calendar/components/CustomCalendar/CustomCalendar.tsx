@@ -285,12 +285,10 @@ export default function AppointmentCalendar({
             (app: Appointment) => app.id == selectedAppId
           );
           if (appointment) {
-            console.log(
-              await editAppointment({
-                ...appointment,
-                showedUp: !appointment.showedUp,
-              })
-            );
+            await editAppointment({
+              ...appointment,
+              showedUp: !appointment.showedUp,
+            });
           }
         }}
         open={contextMenu !== null}

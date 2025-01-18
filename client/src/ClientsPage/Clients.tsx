@@ -86,7 +86,6 @@ export default function Clients() {
               Icon={EditIcon}
               color="primary"
               onClick={() => {
-                console.log(params);
                 setSelectedClient(params.row.actions);
                 setIsEditOpen(true);
               }}
@@ -132,7 +131,7 @@ export default function Clients() {
       }
       setForm({ ...form, phoneNumber: newPN });
     } else {
-      console.error("Phone number does not match regex");
+      // console.error("Phone number does not match regex");
     }
   }
 

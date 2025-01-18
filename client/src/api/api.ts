@@ -33,8 +33,10 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    console.log(error);
-    if (error.response.status === 401) {
+    if (
+      error.response.status === 401 &&
+      error.response.data.detail !== "Bad credentials"
+    ) {
       if (
         error.response.data == "Invalid or expired refresh token" ||
         error.response.data == "Refresh token is missing" ||
@@ -47,19 +49,14 @@ api.interceptors.response.use(
       } else {
         try {
           const originalRequest: AxiosRequestConfig = error.config;
-
           await refreshToken();
-
           originalRequest.headers = originalRequest.headers ?? {};
-
           originalRequest._retry = true;
-
           originalRequest.headers[
             "Authorization"
           ] = `Bearer ${localStorage.getItem("token")}`;
           return api(originalRequest);
-        } catch (error) {
-          console.error(error);
+        } catch {
           localStorage.setItem("previousUrl", window.location.pathname);
           window.location.href = "/login";
         }

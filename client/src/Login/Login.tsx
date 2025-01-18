@@ -11,15 +11,18 @@ import {
 } from "@mui/material";
 import { login } from "../api/auth/auth";
 import { useNavigate } from "react-router-dom";
+import { AxiosError } from "axios";
 import { useState, FormEvent, ChangeEvent } from "react";
 export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setError("");
     try {
       // Redirect to a protected page after successful login
       const previousUrl = localStorage.getItem("previousUrl");
@@ -32,8 +35,19 @@ export default function Login() {
       } else {
         navigate("/");
       }
-    } catch (e) {
-      console.log(e);
+    } catch (error) {
+      // setting error to display
+      const errors = error as AxiosError;
+      setIsLoading(false);
+      if (
+        errors.response?.status === 401 &&
+        (errors.response?.data as { detail: string }).detail ===
+          "Bad credentials"
+      ) {
+        setError("Invalid username or password");
+      } else {
+        setError("An error occurred. Please try again later.");
+      }
     }
   }
 
@@ -104,19 +118,7 @@ export default function Login() {
                 onChange={handlePasswordChange}
               />
             </FormControl>
-            <Typography
-              sx={{
-                textAlign: "right",
-              }}
-            >
-              <span
-                style={{
-                  cursor: "pointer",
-                }}
-              >
-                Register
-              </span>
-            </Typography>
+            <Typography color="red">{error}</Typography>
             <FormControl>
               <Button
                 type="submit"
