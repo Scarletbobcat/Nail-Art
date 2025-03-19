@@ -9,14 +9,16 @@ connection_string = os.getenv("MONGO_URI")
 
 client = pymongo.MongoClient(connection_string)
 
-db = client["Nail-Art"]
+db = client["Nail-Art-Dev"]
 
 appointments = db["Appointments"]
 archived_appointments = db["ArchivedAppointments"]
 
 today = datetime.date.today()
 
-past_appointments = appointments.find({"date": {"$lt": str(today)}}).to_list()
+two_weeks_ago = today - datetime.timedelta(days=14)
+
+past_appointments = appointments.find({"date": {"$lt": str(two_weeks_ago)}}).to_list()
 
 month_ago = today - datetime.timedelta(days=30)
 
