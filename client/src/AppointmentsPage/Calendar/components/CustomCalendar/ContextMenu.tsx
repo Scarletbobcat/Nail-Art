@@ -9,8 +9,10 @@ import React from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
+import EventIcon from "@mui/icons-material/Event";
 import { Appointment } from "../../../../types";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function ContextMenu({
   onClose,
@@ -32,6 +34,7 @@ export default function ContextMenu({
   renderEvents: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
+  const nav = useNavigate();
   const onEditClick = (e: React.MouseEvent) => {
     setEdit(true);
     onClose(e);
@@ -45,6 +48,12 @@ export default function ContextMenu({
     await editShowedUp();
     await renderEvents();
     onClose(e);
+    setIsLoading(false);
+  };
+  const onFutureApptClick = async (e: React.MouseEvent) => {
+    setIsLoading(true);
+    onClose(e);
+    nav(`/Appointments/Search?pn=${appointment.phoneNumber}`);
     setIsLoading(false);
   };
 
@@ -100,6 +109,12 @@ export default function ContextMenu({
           </MenuItem>
         )
       ) : null}
+      <MenuItem onClick={onFutureApptClick}>
+        <ListItemIcon>
+          <EventIcon fontSize="small" />
+        </ListItemIcon>
+        All Appointments
+      </MenuItem>
     </Menu>
   );
 }

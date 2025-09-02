@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Box, TextField, Typography } from "@mui/material";
 import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
 import SearchIcon from "@mui/icons-material/Search";
@@ -18,6 +18,7 @@ import CircularLoading from "../../components/CircularLoading";
 import { useTheme } from "@mui/material/styles";
 import AppointmentModal from "../components/AppointmentModal";
 import CustomButton from "../../components/Button";
+import { useSearchParams } from "react-router-dom";
 
 interface TempData {
   id: number;
@@ -32,7 +33,9 @@ interface TempData {
 
 export default function Search() {
   const theme = useTheme();
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [searchParams] = useSearchParams();
+  const phoneNumberParam = searchParams.get("pn") || "";
+  const [phoneNumber, setPhoneNumber] = useState(phoneNumberParam);
   const [tempData, setTempData] = useState<TempData[]>();
   const [loading, setLoading] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -67,6 +70,27 @@ export default function Search() {
     queryKey: ["services"],
     queryFn: () => getAllServices(),
   });
+
+  // Automatically fetch appointments if phoneNumberParam is not empty
+  useEffect(() => {
+    const fetchAppointments = async () => {
+      if (phoneNumberParam && phoneNumberParam.trim() !== "") {
+        setLoading(true);
+        try {
+          const appointmentsData = await getAppointmentsByPhoneNumber(
+            phoneNumberParam
+          );
+          setTempData(appointmentsData);
+        } catch (error) {
+          console.error("Error fetching appointments:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchAppointments();
+  }, [phoneNumberParam]);
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -135,8 +159,16 @@ export default function Search() {
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
       setLoading(true);
-      setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
-      setLoading(false);
+      try {
+        const appointmentsData = await getAppointmentsByPhoneNumber(
+          phoneNumberParam
+        );
+        setTempData(appointmentsData);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
