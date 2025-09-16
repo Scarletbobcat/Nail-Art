@@ -70,6 +70,10 @@ public class AppointmentService {
     public Optional<Appointment> editAppointment(Appointment appointment) {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
+            if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime())) {
+                appointment.setReminderSent(false);
+            }
+            tempAppointment.get().setReminderSent(appointment.getReminderSent());
             tempAppointment.get().setServices(appointment.getServices());
             tempAppointment.get().setDate(appointment.getDate());
             tempAppointment.get().setName(appointment.getName());
@@ -77,7 +81,6 @@ public class AppointmentService {
             tempAppointment.get().setStartTime(appointment.getStartTime());
             tempAppointment.get().setEndTime(appointment.getEndTime());
             tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
-            tempAppointment.get().setReminderSent(appointment.getReminderSent());
             tempAppointment.get().setShowedUp(appointment.getShowedUp());
 
             // update client when editing appointment if client exists

@@ -161,7 +161,7 @@ export default function Search() {
       setLoading(true);
       try {
         const appointmentsData = await getAppointmentsByPhoneNumber(
-          phoneNumberParam
+          phoneNumber || phoneNumberParam
         );
         setTempData(appointmentsData);
       } catch (error) {
