@@ -23,7 +23,7 @@ import ClientSelect from "./ClientSelect";
 import { DateTimeValidationError } from "@mui/x-date-pickers/models";
 
 const nineAM = dayjs().hour(9).minute(0).second(0);
-const sevenPM = dayjs().hour(19).minute(0).second(0);
+const ninePM = dayjs().hour(21).minute(0).second(0);
 
 export default function AppointmentModal({
   appointment,
@@ -213,7 +213,7 @@ export default function AppointmentModal({
                     label="Start"
                     disabled={type === "delete"}
                     minTime={nineAM}
-                    maxTime={sevenPM}
+                    maxTime={ninePM}
                     minutesStep={15}
                     onError={(newError) => setStartError(newError)}
                     slotProps={{
@@ -238,7 +238,7 @@ export default function AppointmentModal({
                     value={form ? dayjs(form.date + form.endTime) : dayjs()}
                     label="End"
                     minTime={nineAM}
-                    maxTime={sevenPM}
+                    maxTime={ninePM}
                     minutesStep={15}
                     disabled={type === "delete"}
                     onError={(newError) => setEndError(newError)}

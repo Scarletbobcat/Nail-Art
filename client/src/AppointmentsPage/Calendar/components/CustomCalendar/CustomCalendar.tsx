@@ -17,7 +17,7 @@ import { getClients } from "../../../../api/clients";
 import ContextMenu from "./ContextMenu";
 import AppointmentModal from "../../../components/AppointmentModal";
 
-const businessTimes = Array.from({ length: 11 }, (_, i) => {
+const businessTimes = Array.from({ length: 13 }, (_, i) => {
   const hour = i + 9;
   if (hour >= 12) {
     return `${hour % 12 || 12} PM`;
@@ -248,6 +248,7 @@ export default function AppointmentCalendar({
                   appointments={appointments}
                   employee={employee}
                   businessStart={9}
+                  businessEnd={21}
                   onTimeRangeSelected={onTimeRangeSelected}
                   startDate={startDate}
                   services={services}
