@@ -70,7 +70,7 @@ public class AppointmentService {
     public Optional<Appointment> editAppointment(Appointment appointment) {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
-            if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime())) {
+            if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime()) || !appointment.getDate().equals(tempAppointment.get().getDate())) {
                 appointment.setReminderSent(false);
             }
             tempAppointment.get().setReminderSent(appointment.getReminderSent());
