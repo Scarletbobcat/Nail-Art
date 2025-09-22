@@ -9,7 +9,7 @@ connection_string = os.getenv("MONGO_URI")
 
 client = pymongo.MongoClient(connection_string)
 
-db = client["Nail-Art-Dev"]
+db = client["Nail-Art"]
 
 appointments = db["Appointments"]
 archived_appointments = db["ArchivedAppointments"]
