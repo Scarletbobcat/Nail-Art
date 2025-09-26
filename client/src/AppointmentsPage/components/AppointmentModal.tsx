@@ -61,6 +61,7 @@ export default function AppointmentModal({
   const [endError, setEndError] = useState<DateTimeValidationError | null>(
     null
   );
+  const [endTimeCustomError, setEndTimeCustomError] = useState<string>("");
 
   const errorMessage = useCallback((error: DateTimeValidationError | null) => {
     switch (error) {
@@ -134,7 +135,7 @@ export default function AppointmentModal({
         <Paper
           component="form"
           onSubmit={(e) => {
-            if (!startError && !endError) {
+            if (!startError && !endError && !endTimeCustomError) {
               handleSave(e);
             } else {
               e.preventDefault();
@@ -240,14 +241,47 @@ export default function AppointmentModal({
                     minTime={nineAM}
                     maxTime={ninePM}
                     minutesStep={15}
+                    shouldDisableTime={(time, view) => {
+                      if (!form.startTime) return true;
+
+                      const startDateTime = dayjs(form.date + form.startTime);
+
+                      if (view === "minutes" || view === "hours") {
+                        // For the same day, disable times that are before or equal to start time
+                        return (
+                          time.isSame(startDateTime) ||
+                          time.isBefore(startDateTime)
+                        );
+                      }
+
+                      return false;
+                    }}
                     disabled={type === "delete"}
                     onError={(newError) => setEndError(newError)}
                     slotProps={{
                       textField: {
-                        helperText: errorMessage(endError),
+                        helperText:
+                          endTimeCustomError || errorMessage(endError),
                       },
                     }}
                     onChange={(date) => {
+                      // Validate that end time is after start time
+                      if (date && form.startTime) {
+                        const startDateTime = dayjs(form.date + form.startTime);
+                        if (
+                          date.isSame(startDateTime) ||
+                          date.isBefore(startDateTime)
+                        ) {
+                          setEndTimeCustomError(
+                            "End time must be after start time"
+                          );
+                        } else {
+                          setEndTimeCustomError("");
+                        }
+                      } else {
+                        setEndTimeCustomError("");
+                      }
+
                       setForm({
                         ...form,
                         date: date ? date.format("YYYY-MM-DD") : form.date,
@@ -330,7 +364,12 @@ export default function AppointmentModal({
                 type="submit"
                 color={type === "delete" ? "error" : "primary"}
                 variant="contained"
-                disabled={isLoading}
+                disabled={
+                  isLoading ||
+                  Boolean(startError) ||
+                  Boolean(endError) ||
+                  Boolean(endTimeCustomError)
+                }
                 endIcon={isLoading ? <CircularProgress size={20} /> : null}
               >
                 {type.charAt(0).toUpperCase() + type.slice(1)}

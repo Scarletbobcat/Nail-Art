@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,6 +34,9 @@ public class AppointmentService {
     }
 
     public Appointment createAppointment(Appointment appointment) {
+        if (new Date(appointment.getDate() + appointment.getStartTime()).compareTo(new Date(appointment.getDate() + appointment.getEndTime())) > -1)
+            throw new IllegalArgumentException("End time must be after start time"); {
+        }
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
         appointment.setReminderSent(false);
