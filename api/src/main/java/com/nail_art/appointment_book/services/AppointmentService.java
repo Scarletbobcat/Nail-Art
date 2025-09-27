@@ -72,6 +72,9 @@ public class AppointmentService {
     }
 
     public Optional<Appointment> editAppointment(Appointment appointment) {
+        if (new Date(appointment.getDate() + appointment.getStartTime()).compareTo(new Date(appointment.getDate() + appointment.getEndTime())) > -1)
+            throw new IllegalArgumentException("End time must be after start time"); {
+        }
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime()) || !appointment.getDate().equals(tempAppointment.get().getDate())) {
