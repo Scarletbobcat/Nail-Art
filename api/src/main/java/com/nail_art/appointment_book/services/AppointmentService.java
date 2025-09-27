@@ -7,6 +7,7 @@ import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -34,7 +35,9 @@ public class AppointmentService {
     }
 
     public Appointment createAppointment(Appointment appointment) {
-        if (new Date(appointment.getDate() + appointment.getStartTime()).compareTo(new Date(appointment.getDate() + appointment.getEndTime())) > -1)
+        LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
+        LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
+        if (startDate.compareTo(endDate) > -1)
             throw new IllegalArgumentException("End time must be after start time"); {
         }
         long id = counterService.getNextSequence("Appointments");
@@ -72,7 +75,9 @@ public class AppointmentService {
     }
 
     public Optional<Appointment> editAppointment(Appointment appointment) {
-        if (new Date(appointment.getDate() + appointment.getStartTime()).compareTo(new Date(appointment.getDate() + appointment.getEndTime())) > -1)
+        LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
+        LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
+        if (startDate.compareTo(endDate) > -1)
             throw new IllegalArgumentException("End time must be after start time"); {
         }
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
@@ -96,7 +101,6 @@ public class AppointmentService {
                 return Optional.of(appointmentRepository.save(tempAppointment.get()));
             }
             Client client = clientRepository.findById(appointment.getClientId()).orElse(null);
-            System.out.println("Client: " + client);
             if (client != null) {
                 client.setName(appointment.getName());
                 client.setPhoneNumber(appointment.getPhoneNumber());
