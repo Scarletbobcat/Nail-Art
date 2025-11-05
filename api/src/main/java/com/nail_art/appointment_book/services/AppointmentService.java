@@ -22,6 +22,21 @@ public class AppointmentService {
     @Autowired
     private ClientRepository clientRepository;
 
+    // Helper to ensure time is formatted like "THH:mm" with zero-padded hour
+    private String normalizeTime(String time) {
+        if (time == null || time.isBlank()) {
+            throw new IllegalArgumentException("Time must not be null or empty");
+        }
+        String t = time.startsWith("T") ? time.substring(1) : time;
+        String[] parts = t.split(":");
+        if (parts.length < 2) {
+            throw new IllegalArgumentException("Invalid time format, expected H:mm or THH:mm");
+        }
+        int hour = Integer.parseInt(parts[0].trim());
+        int minute = Integer.parseInt(parts[1].trim());
+        return String.format("T%02d:%02d", hour, minute);
+    }
+
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
     }
@@ -35,6 +50,10 @@ public class AppointmentService {
     }
 
     public Appointment createAppointment(Appointment appointment) {
+        // normalize times so parsing is consistent (expected format: date + THH:mm)
+        appointment.setStartTime(normalizeTime(appointment.getStartTime()));
+        appointment.setEndTime(normalizeTime(appointment.getEndTime()));
+
         LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
         LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
         if (startDate.compareTo(endDate) > -1)
@@ -75,6 +94,10 @@ public class AppointmentService {
     }
 
     public Optional<Appointment> editAppointment(Appointment appointment) {
+        // normalize times before validation and saving
+        appointment.setStartTime(normalizeTime(appointment.getStartTime()));
+        appointment.setEndTime(normalizeTime(appointment.getEndTime()));
+
         LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
         LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
         if (startDate.compareTo(endDate) > -1)
@@ -128,8 +151,9 @@ public class AppointmentService {
             tempAppointment.get().setDate(appointment.getDate());
             tempAppointment.get().setName(appointment.getName());
             tempAppointment.get().setEmployeeId(appointment.getEmployeeId());
-            tempAppointment.get().setStartTime(appointment.getStartTime());
-            tempAppointment.get().setEndTime(appointment.getEndTime());
+            // ensure times are normalized when applying edits
+            tempAppointment.get().setStartTime(normalizeTime(appointment.getStartTime()));
+            tempAppointment.get().setEndTime(normalizeTime(appointment.getEndTime()));
             tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
             tempAppointment.get().setReminderSent(appointment.getReminderSent());
             tempAppointment.get().setShowedUp(appointment.getShowedUp());
