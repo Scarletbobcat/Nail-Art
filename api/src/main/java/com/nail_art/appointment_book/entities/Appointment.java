@@ -110,4 +110,28 @@ public class Appointment {
     public void setServices(List<Integer> services) {
         this.services = services;
     }
+
+    public Long getClientId() {
+        return clientId;
+    }
+
+    public void setClientId(Long clientId) {
+        this.clientId = clientId;
+    }
+
+    public Boolean getReminderSent() {
+        return reminderSent;
+    }
+
+    public void setReminderSent(Boolean reminderSent) {
+        this.reminderSent = reminderSent;
+    }
+
+    public Boolean getShowedUp() {
+        return showedUp;
+    }
+
+    public void setShowedUp(Boolean showedUp) {
+        this.showedUp = showedUp;
+    }
 }
