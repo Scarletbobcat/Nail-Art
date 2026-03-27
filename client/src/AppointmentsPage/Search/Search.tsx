@@ -11,7 +11,8 @@ import {
 import { Appointment, Employee, Service } from "../../types";
 import { Stack, Paper } from "@mui/material";
 import { getAllServices } from "../../api/services";
-import CircularLoading from "../../components/CircularLoading";
+import PageSkeleton from "../../components/PageSkeleton";
+import AnimatedPage from "../../components/AnimatedPage";
 import AppointmentModal from "../components/AppointmentModal";
 import CustomButton from "../../components/Button";
 import { useSearchParams } from "react-router-dom";
@@ -150,7 +151,7 @@ export default function Search() {
   }, [tempData, employees, services]);
 
   if (employeesLoading || loading || servicesLoading) {
-    return <CircularLoading />;
+    return <PageSkeleton />;
   }
 
   if (employeesError) {
@@ -161,6 +162,7 @@ export default function Search() {
   }
 
   return (
+    <AnimatedPage>
     <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
       <Paper variant="outlined" sx={{ p: SPACING.section }}>
         <PageHeader
@@ -248,5 +250,6 @@ export default function Search() {
         )}
       </Paper>
     </Box>
+    </AnimatedPage>
   );
 }

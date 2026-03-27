@@ -6,7 +6,8 @@ import {
   getAllEmployees,
 } from "../api/employees";
 import { Stack, TextField, Button } from "@mui/material";
-import CircularLoading from "../components/CircularLoading";
+import PageSkeleton from "../components/PageSkeleton";
+import AnimatedPage from "../components/AnimatedPage";
 import { useMemo, useState } from "react";
 import PlusIcon from "@mui/icons-material/Add";
 import { Employee } from "../types";
@@ -63,7 +64,7 @@ export default function Employees() {
   }, [employees]);
 
   if (employeesLoading || isLoading) {
-    return <CircularLoading />;
+    return <PageSkeleton />;
   }
 
   if (employeesError) {
@@ -71,6 +72,7 @@ export default function Employees() {
   }
 
   return (
+    <AnimatedPage>
     <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
       <Paper variant="outlined" sx={{ p: SPACING.section }}>
         <PageHeader
@@ -168,5 +170,6 @@ export default function Employees() {
         />
       )}
     </Box>
+    </AnimatedPage>
   );
 }

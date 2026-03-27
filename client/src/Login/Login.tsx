@@ -1,22 +1,27 @@
 import {
-  FormControl,
   Typography,
-  Card,
   Box,
   TextField,
-  FormLabel,
   Button,
-  Container,
+  Paper,
+  Stack,
   CircularProgress,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { login } from "../api/auth/auth";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
-import { useState, FormEvent, ChangeEvent } from "react";
+import { useState, FormEvent } from "react";
+import AnimatedPage from "../components/AnimatedPage";
+
 export default function Login() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,7 +29,6 @@ export default function Login() {
     e.preventDefault();
     setError("");
     try {
-      // Redirect to a protected page after successful login
       const previousUrl = localStorage.getItem("previousUrl");
       setIsLoading(true);
       await login(username, password);
@@ -36,7 +40,6 @@ export default function Login() {
         navigate("/");
       }
     } catch (error) {
-      // setting error to display
       const errors = error as AxiosError;
       setIsLoading(false);
       if (
@@ -51,87 +54,91 @@ export default function Login() {
     }
   }
 
-  function handleUsernameChange(e: ChangeEvent<HTMLInputElement>) {
-    setUsername(e.target.value);
-  }
-
-  function handlePasswordChange(e: ChangeEvent<HTMLInputElement>) {
-    setPassword(e.target.value);
-  }
-
   return (
-    <>
-      <Container>
-        <Card
+    <AnimatedPage>
+      <Box
+        sx={{
+          minHeight: "calc(100vh - 64px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: { xs: 2, sm: 4 },
+        }}
+      >
+        <Paper
           variant="outlined"
           sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "90%", sm: 545 },
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
+            width: "100%",
+            maxWidth: 400,
+            p: { xs: 3, sm: 4 },
           }}
         >
-          <Typography
-            variant="h4"
-            sx={{
-              mb: 2,
-            }}
-          >
-            Login
-          </Typography>
+          <Stack spacing={1} sx={{ mb: 3 }}>
+            <Typography variant="h5" fontWeight={700}>
+              Welcome back
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Sign in to manage your appointments
+            </Typography>
+          </Stack>
           <Box
             component="form"
             onSubmit={handleSubmit}
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              width: "100%",
-              gap: 2,
-            }}
+            sx={{ display: "flex", flexDirection: "column", gap: 2 }}
           >
-            <FormControl>
-              <FormLabel htmlFor="username">Username</FormLabel>
-              <TextField
-                type="username"
-                name="email"
-                placeholder="username"
-                required
-                variant="outlined"
-                onChange={handleUsernameChange}
-              />
-            </FormControl>
-            <FormControl>
-              <FormLabel htmlFor="password">Password</FormLabel>
-              <TextField
-                required
-                fullWidth
-                name="password"
-                placeholder="••••••"
-                type="password"
-                id="password"
-                autoComplete="password"
-                variant="outlined"
-                onChange={handlePasswordChange}
-              />
-            </FormControl>
-            <Typography color="red">{error}</Typography>
-            <FormControl>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={isLoading}
-                endIcon={isLoading && <CircularProgress size={20} />}
-              >
-                Login
-              </Button>
-            </FormControl>
+            <TextField
+              label="Username"
+              name="username"
+              required
+              fullWidth
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <TextField
+              label="Password"
+              name="password"
+              required
+              fullWidth
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              slotProps={{
+                input: {
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowPassword(!showPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            {error && (
+              <Typography color="error" variant="body2">
+                {error}
+              </Typography>
+            )}
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              disabled={isLoading}
+              endIcon={isLoading ? <CircularProgress size={20} /> : null}
+              sx={{ mt: 1 }}
+            >
+              Sign in
+            </Button>
           </Box>
-        </Card>
-      </Container>
-    </>
+        </Paper>
+      </Box>
+    </AnimatedPage>
   );
 }

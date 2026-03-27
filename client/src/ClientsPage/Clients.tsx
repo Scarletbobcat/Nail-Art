@@ -10,7 +10,8 @@ import { useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import PlusIcon from "@mui/icons-material/Add";
 import { Client } from "../types/Client";
-import CircularLoading from "../components/CircularLoading";
+import PageSkeleton from "../components/PageSkeleton";
+import AnimatedPage from "../components/AnimatedPage";
 import ClientModal from "./components/ClientModal";
 import PageHeader from "../components/PageHeader";
 import CardList from "../components/CardList";
@@ -56,7 +57,7 @@ export default function Clients() {
   }, [clients]);
 
   if (clientsLoading || isLoading) {
-    return <CircularLoading />;
+    return <PageSkeleton />;
   }
 
   if (error) {
@@ -84,6 +85,7 @@ export default function Clients() {
   }
 
   return (
+    <AnimatedPage>
     <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
       <Paper variant="outlined" sx={{ p: SPACING.section }}>
         <PageHeader
@@ -189,5 +191,6 @@ export default function Clients() {
         />
       )}
     </Box>
+    </AnimatedPage>
   );
 }

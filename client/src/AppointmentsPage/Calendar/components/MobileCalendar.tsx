@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Stack, Box, Typography, Chip, SwipeableDrawer, Fab } from "@mui/material";
+import { Stack, Box, Typography, Chip, SwipeableDrawer, Fab, CircularProgress } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PersonIcon from "@mui/icons-material/Person";
+import CheckIcon from "@mui/icons-material/Check";
+import EventIcon from "@mui/icons-material/Event";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { getAllEmployees } from "../../../api/employees";
 import {
@@ -20,7 +23,7 @@ import EmployeeSelector from "./EmployeeSelector";
 import MobileDateHeader from "./MobileDateHeader";
 import AppointmentModal from "../../components/AppointmentModal";
 
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 80;
 const START_HOUR = 9;
 const END_HOUR = 21;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
@@ -35,8 +38,10 @@ export default function MobileCalendar({
   onDateChange: (days: number) => void;
   onDateSet: (date: dayjs.Dayjs) => void;
 }) {
+  const navigate = useNavigate();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [detailApp, setDetailApp] = useState<Appointment | null>(null);
+  const [checkLoading, setCheckLoading] = useState(false);
   const [selectedApp, setSelectedApp] = useState<Appointment | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -106,6 +111,16 @@ export default function MobileCalendar({
         onSelect={setSelectedEmployeeId}
       />
       <MobileDateHeader startDate={startDate} onDateChange={onDateChange} onDateSet={onDateSet} />
+
+      <Stack direction="row" spacing={1} justifyContent="center">
+        <Chip
+          label="Today"
+          size="small"
+          variant={startDate.isSame(dayjs(), "day") ? "filled" : "outlined"}
+          color={startDate.isSame(dayjs(), "day") ? "primary" : "default"}
+          onClick={() => onDateSet(dayjs())}
+        />
+      </Stack>
 
       {/* Time grid */}
       <Box
@@ -215,6 +230,13 @@ export default function MobileCalendar({
             const duration = end.diff(start, "minute");
             const height = (duration / 60) * HOUR_HEIGHT;
 
+            // Color priority: showedUp (grey) > service type 3 (black) > employee color
+            let blockColor = empColor;
+            const isServiceType3 = app.services.includes(3);
+            if (isServiceType3) blockColor = "#000000";
+            if (app.showedUp) blockColor = "#666666";
+            const isSpecial = app.showedUp || isServiceType3;
+
             return (
               <Box
                 key={app.id}
@@ -225,16 +247,17 @@ export default function MobileCalendar({
                   left: TIME_LABEL_WIDTH + 4,
                   right: 8,
                   height: height - 2,
-                  bgcolor: `${empColor}18`,
-                  borderLeft: `3px solid ${empColor}`,
+                  bgcolor: isSpecial ? blockColor : `${blockColor}18`,
+                  borderLeft: `3px solid ${blockColor}`,
                   borderRadius: "4px",
                   px: 1,
                   py: 0.5,
                   overflow: "hidden",
                   cursor: "pointer",
+                  opacity: isSpecial ? 0.85 : 1,
                   transition: "box-shadow 0.15s",
                   "&:hover": { boxShadow: 2 },
-                  "&:active": { bgcolor: `${empColor}30` },
+                  "&:active": { opacity: 1 },
                   zIndex: 2,
                 }}
               >
@@ -244,21 +267,52 @@ export default function MobileCalendar({
                     fontWeight: 600,
                     fontSize: "0.8rem",
                     lineHeight: 1.2,
-                    color: "text.primary",
+                    color: isSpecial ? "white" : "text.primary",
                   }}
                   noWrap
                 >
                   {app.name}
                 </Typography>
-                {height > 36 && (
+                {height > 30 && (
                   <Typography
                     variant="caption"
-                    sx={{ color: "text.secondary", fontSize: "0.7rem", lineHeight: 1.2 }}
+                    sx={{
+                      color: isSpecial ? "rgba(255,255,255,0.8)" : "text.secondary",
+                      fontSize: "0.7rem",
+                      lineHeight: 1.3,
+                      display: "block",
+                    }}
                     noWrap
                   >
                     {start.format("h:mm")} – {end.format("h:mm A")}
-                    {" · "}
+                  </Typography>
+                )}
+                {height > 44 && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: isSpecial ? "rgba(255,255,255,0.8)" : "text.secondary",
+                      fontSize: "0.65rem",
+                      lineHeight: 1.3,
+                      display: "block",
+                    }}
+                    noWrap
+                  >
                     {getServiceNames(app.services)}
+                  </Typography>
+                )}
+                {height > 58 && app.phoneNumber && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: isSpecial ? "rgba(255,255,255,0.7)" : "text.secondary",
+                      fontSize: "0.65rem",
+                      lineHeight: 1.3,
+                      display: "block",
+                    }}
+                    noWrap
+                  >
+                    {app.phoneNumber}
                   </Typography>
                 )}
               </Box>
@@ -344,7 +398,7 @@ export default function MobileCalendar({
                 return name ? <Chip key={id} label={name} size="small" variant="outlined" /> : null;
               })}
             </Box>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               <Chip
                 label="Edit"
                 color="primary"
@@ -366,6 +420,38 @@ export default function MobileCalendar({
                 }}
                 sx={{ px: 2 }}
               />
+              {detailApp && !detailApp.services.includes(3) && (
+                <Chip
+                  icon={checkLoading ? <CircularProgress size={14} /> : <CheckIcon />}
+                  label={detailApp.showedUp ? "Check Out" : "Check In"}
+                  color={detailApp.showedUp ? "success" : "default"}
+                  variant="outlined"
+                  disabled={checkLoading}
+                  onClick={async () => {
+                    setCheckLoading(true);
+                    await editAppointment({
+                      ...detailApp,
+                      showedUp: !detailApp.showedUp,
+                    });
+                    await appRefetch();
+                    setCheckLoading(false);
+                    setDetailApp(null);
+                  }}
+                  sx={{ px: 1 }}
+                />
+              )}
+              {detailApp?.phoneNumber && (
+                <Chip
+                  icon={<EventIcon />}
+                  label="All Appointments"
+                  variant="outlined"
+                  onClick={() => {
+                    setDetailApp(null);
+                    navigate(`/Appointments/Search?pn=${detailApp.phoneNumber}`);
+                  }}
+                  sx={{ px: 1 }}
+                />
+              )}
             </Stack>
           </Box>
         )}

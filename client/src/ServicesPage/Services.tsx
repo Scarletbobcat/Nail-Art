@@ -6,7 +6,8 @@ import {
   getAllServices,
 } from "../api/services";
 import { Stack, TextField, Button } from "@mui/material";
-import CircularLoading from "../components/CircularLoading";
+import PageSkeleton from "../components/PageSkeleton";
+import AnimatedPage from "../components/AnimatedPage";
 import { useMemo, useState } from "react";
 import { Service } from "../types";
 import { Box, Paper } from "@mui/material";
@@ -60,10 +61,11 @@ export default function Services() {
     }));
   }, [services]);
 
-  if (servicesLoading || isLoading) return <CircularLoading />;
+  if (servicesLoading || isLoading) return <PageSkeleton />;
   if (servicesError) return <div>Error: {servicesError.message}</div>;
 
   return (
+    <AnimatedPage>
     <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
       <Paper variant="outlined" sx={{ p: SPACING.section }}>
         <PageHeader
@@ -146,5 +148,6 @@ export default function Services() {
         />
       )}
     </Box>
+    </AnimatedPage>
   );
 }
