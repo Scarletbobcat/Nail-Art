@@ -6,6 +6,7 @@ import CalendarNavigator from "./components/CalendarNavigator";
 import ReminderButton from "./components/ReminderButton";
 import dayjs from "dayjs";
 import TodayButton from "./components/TodayButton";
+import MobileCalendar from "./components/MobileCalendar";
 import PageHeader from "../../components/PageHeader";
 import { SPACING } from "../../constants/design";
 
@@ -34,13 +35,14 @@ const CalendarClient = () => {
           subtitle={startDate.format("dddd, MMMM D, YYYY")}
         />
         {isMobile ? (
-          <Stack spacing={2}>
-            <CalendarHeader
-              startDate={startDate}
-              onDateChange={handleDateChange}
-            />
-            <AppointmentCalendar startDate={startDate} />
-          </Stack>
+          <MobileCalendar
+            startDate={startDate}
+            onDateChange={handleDateChange}
+            onDateSet={(date) => {
+              setStartDate(date);
+              localStorage.setItem("startDate", date.format("YYYY-MM-DD"));
+            }}
+          />
         ) : (
           <Stack direction="row" spacing={2}>
             <Stack spacing={2}>

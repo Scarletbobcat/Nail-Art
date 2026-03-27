@@ -32,6 +32,7 @@ export default function MoreDrawer({
       open={open}
       onOpen={onOpen}
       onClose={onClose}
+      disableSwipeToOpen
       sx={{
         "& .MuiDrawer-paper": {
           borderTopLeftRadius: 16,
