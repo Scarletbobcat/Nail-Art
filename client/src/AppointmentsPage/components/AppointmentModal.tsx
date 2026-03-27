@@ -1,11 +1,8 @@
 import {
-  Modal,
   Button,
   Box,
-  Typography,
   TextField,
   Stack,
-  Paper,
   MenuItem,
   InputLabel,
   FormControl,
@@ -21,6 +18,7 @@ import { Appointment, Employee, Service, Alert, Client } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ClientSelect from "./ClientSelect";
 import { DateTimeValidationError } from "@mui/x-date-pickers/models";
+import ResponsiveModal from "../../components/ResponsiveModal";
 
 const nineAM = dayjs().hour(9).minute(0).second(0);
 const ninePM = dayjs().hour(21).minute(0).second(0);
@@ -126,42 +124,23 @@ export default function AppointmentModal({
         severity={alert.severity}
         onClose={() => setIsAlertOpen(false)}
       />
-      <Modal
+      <ResponsiveModal
         open={isOpen}
         onClose={onClose}
-        aria-labelledby="modal-title"
-        aria-describedby="modal-description"
+        title={`${type.charAt(0).toUpperCase() + type.slice(1)} Appointment`}
+        maxWidth={545}
       >
-        <Paper
+        <Box
           component="form"
-          onSubmit={(e) => {
+          onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
             if (!startError && !endError && !endTimeCustomError) {
               handleSave(e);
             } else {
               e.preventDefault();
             }
           }}
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: { xs: "90%", sm: 545 },
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            zIndex: 1,
-          }}
         >
           <Stack spacing={2}>
-            <Typography
-              id="modal-title"
-              variant="h5"
-              component="h6"
-              sx={{ mb: 4, fontWeight: "bold" }}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)} Appointment
-            </Typography>
             <Stack>
               <Stack
                 sx={{
@@ -184,7 +163,7 @@ export default function AppointmentModal({
                 )}
               </Stack>
             </Stack>
-            <Stack direction="row" spacing={2}>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
               <TextField
                 fullWidth
                 required
@@ -204,11 +183,12 @@ export default function AppointmentModal({
                 name="phoneNumber"
                 value={form.phoneNumber}
                 variant="outlined"
+                inputProps={{ inputMode: "tel" }}
                 onChange={(e) => changePhoneNumber(e.target.value)}
               />
             </Stack>
             <Stack spacing={2}>
-              <Stack direction="row" spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DateTimePicker
                     label="Start"
@@ -293,7 +273,7 @@ export default function AppointmentModal({
                   />
                 </LocalizationProvider>
               </Stack>
-              <Stack direction="row" spacing={2}>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <InputLabel id="employee-label">Employee</InputLabel>
                   <Select
@@ -375,8 +355,8 @@ export default function AppointmentModal({
               </Button>
             </Stack>
           </Box>
-        </Paper>
-      </Modal>
+        </Box>
+      </ResponsiveModal>
     </div>
   );
 }
