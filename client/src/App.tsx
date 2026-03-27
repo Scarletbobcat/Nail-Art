@@ -3,17 +3,27 @@ import Employees from "./EmployeesPage/Employees.jsx";
 import Services from "./ServicesPage/Services.tsx";
 import Login from "./Login/Login.tsx";
 import Navbar from "./Navbar/Navbar.tsx";
+import MobileBottomNav from "./Navbar/MobileBottomNav.tsx";
 import Search from "./AppointmentsPage/Search/Search.tsx";
 import Clients from "./ClientsPage/Clients.tsx";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+  Navigate,
+} from "react-router-dom";
+import { Box, useMediaQuery, useTheme } from "@mui/material";
 
-function App() {
+function AppContent() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Navbar />
+      <Navbar />
+      <Box sx={{ pb: isMobile ? "72px" : 0 }}>
         <Routes>
-          <Route path="/" element={<></>} />
+          <Route path="/" element={<Navigate to="/Appointments" replace />} />
           <Route path="/Appointments" element={<Calendar />} />
           <Route path="/Clients" element={<Clients />} />
           <Route path="/Login" element={<Login />} />
@@ -21,8 +31,17 @@ function App() {
           <Route path="/Services" element={<Services />} />
           <Route path="/Appointments/Search" element={<Search />} />
         </Routes>
-      </Router>
+      </Box>
+      <MobileBottomNav />
     </>
+  );
+}
+
+function App() {
+  return (
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <AppContent />
+    </Router>
   );
 }
 
