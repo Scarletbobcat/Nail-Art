@@ -16,3 +16,5 @@ export const SPACING = {
   section: { xs: 1.5, sm: 2, md: 3 },
   card: { xs: 1.5, sm: 2 },
 } as const;
+
+export const MAX_CONTENT_WIDTH = 960;

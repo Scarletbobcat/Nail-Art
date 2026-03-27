@@ -1,11 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
-import { Box, TextField, Typography } from "@mui/material";
-import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
+import { Box, TextField, Chip } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import {
   deleteAppointment,
   editAppointment,
@@ -15,10 +12,12 @@ import { Appointment, Employee, Service } from "../../types";
 import { Stack, Paper } from "@mui/material";
 import { getAllServices } from "../../api/services";
 import CircularLoading from "../../components/CircularLoading";
-import { useTheme } from "@mui/material/styles";
 import AppointmentModal from "../components/AppointmentModal";
 import CustomButton from "../../components/Button";
 import { useSearchParams } from "react-router-dom";
+import PageHeader from "../../components/PageHeader";
+import CardList from "../../components/CardList";
+import { SPACING, MAX_CONTENT_WIDTH } from "../../constants/design";
 
 interface TempData {
   id: number;
@@ -32,7 +31,6 @@ interface TempData {
 }
 
 export default function Search() {
-  const theme = useTheme();
   const [searchParams] = useSearchParams();
   const phoneNumberParam = searchParams.get("pn") || "";
   const [phoneNumber, setPhoneNumber] = useState(phoneNumberParam);
@@ -71,7 +69,6 @@ export default function Search() {
     queryFn: () => getAllServices(),
   });
 
-  // Automatically fetch appointments if phoneNumberParam is not empty
   useEffect(() => {
     const fetchAppointments = async () => {
       if (phoneNumberParam && phoneNumberParam.trim() !== "") {
@@ -96,7 +93,6 @@ export default function Search() {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
     if (regex.test(inputPhoneNumber)) {
       let newPN = inputPhoneNumber;
-      // conditionally adds hyphen only when adding to phone number, not deleting
       if (
         (newPN.length === 3 && phoneNumber.length === 2) ||
         (newPN.length === 7 && phoneNumber.length === 6)
@@ -104,58 +100,9 @@ export default function Search() {
         newPN += "-";
       }
       setPhoneNumber(newPN);
-    } else {
-      // console.error("Phone number does not match regex");
     }
   }
 
-  // header of table
-  const columns = [
-    { field: "id", headerName: "Id", width: 50 },
-    { field: "name", headerName: "Name", flex: 1 },
-    { field: "phoneNumber", headerName: "Phone Number", flex: 1 },
-    { field: "startTime", headerName: "Start Time", flex: 1 },
-    { field: "endTime", headerName: "End Time", flex: 1 },
-    { field: "date", headerName: "Date", flex: 1 },
-    { field: "employee", headerName: "Employee", flex: 1 },
-    {
-      field: "services",
-      headerName: "Services",
-      flex: 1,
-      // this is what is rendered in the cell if wanted to change in the future
-      // (maybe change so multiple services is easier to read)
-      // renderCell: (s) => {
-      //   return s.value;
-      // },
-    },
-    {
-      field: "Actions",
-      headerName: "Actions",
-      flex: 1,
-      renderCell: (params: GridRenderCellParams) => (
-        <Stack direction="row" spacing={1}>
-          <CustomButton
-            color="primary"
-            Icon={EditIcon}
-            onClick={() => {
-              setSelectedApp(params.row.actions);
-              setIsEditOpen(true);
-            }}
-          />
-          <CustomButton
-            color="error"
-            Icon={DeleteIcon}
-            onClick={() => {
-              setSelectedApp(params.row.actions);
-              setIsDeleteOpen(true);
-            }}
-          />
-        </Stack>
-      ),
-    },
-  ];
-
-  // searches if enter key is pressed
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
       setLoading(true);
@@ -172,7 +119,6 @@ export default function Search() {
     }
   };
 
-  // this makes the appointment data being fetched match the table format
   const data = useMemo(() => {
     if (!tempData || !employees) return [];
     const sortedTempData = [...tempData].sort((a, b) => a.id - b.id);
@@ -185,9 +131,11 @@ export default function Search() {
         name: row.name,
         phoneNumber: row.phoneNumber,
         startTime: new Date(row.date + row.startTime).toLocaleTimeString(
-          "en-US"
+          "en-US", { hour: "numeric", minute: "2-digit" }
         ),
-        endTime: new Date(row.date + row.endTime).toLocaleTimeString("en-US"),
+        endTime: new Date(row.date + row.endTime).toLocaleTimeString(
+          "en-US", { hour: "numeric", minute: "2-digit" }
+        ),
         date: row.date,
         employee: employee ? employee.name : "unknown",
         services: row.services.map((service) => {
@@ -213,100 +161,92 @@ export default function Search() {
   }
 
   return (
-    <>
-      <Box
-        sx={{
-          padding: 4,
-          height: "100vh",
-        }}
-      >
-        <Paper
-          variant="outlined"
-          sx={{
-            padding: 3,
-            height: "100%",
-          }}
+    <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
+      <Paper variant="outlined" sx={{ p: SPACING.section }}>
+        <PageHeader
+          title="Appointments"
+          subtitle="Search appointments by phone number"
+        />
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ mb: 2 }}
+          alignItems={{ sm: "center" }}
         >
-          <Stack spacing={2} sx={{ height: "100%" }}>
-            {/* header */}
-            <Stack
-              direction="row"
-              sx={{
-                justifyContent: "space-between",
-                backgroundColor: theme.palette.primary.main,
-                padding: 2,
-                borderRadius: 2,
-              }}
-            >
-              <Typography variant="h4" sx={{ color: "white" }}>
-                Appointments
-              </Typography>
-            </Stack>
-            <Stack direction="row" spacing={2} justifyContent="space-between">
-              <Stack direction="row" spacing={2}>
-                <TextField
-                  label="Phone Number"
-                  onChange={(e) => changePhoneNumber(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  value={phoneNumber}
-                />
-              </Stack>
-              <CustomButton
-                text="Search"
-                onClick={async () => {
-                  setLoading(true);
-                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
-                  setLoading(false);
-                }}
-                Icon={SearchIcon}
-                color="primary"
-              />
-            </Stack>
-            {/* content */}
-            <Box sx={{ height: 400, width: "100%", m: 1 }}>
-              <DataGrid
-                rows={data}
-                columns={columns}
-                initialState={{
-                  pagination: {
-                    paginationModel: { pageSize: 10 },
-                  },
-                }}
-                pageSizeOptions={[10]}
-                disableRowSelectionOnClick
-              />
+          <TextField
+            size="small"
+            label="Phone Number"
+            onChange={(e) => changePhoneNumber(e.target.value)}
+            onKeyDown={handleKeyDown}
+            value={phoneNumber}
+          />
+          <CustomButton
+            text="Search"
+            onClick={async () => {
+              setLoading(true);
+              setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
+              setLoading(false);
+            }}
+            Icon={SearchIcon}
+            color="primary"
+          />
+        </Stack>
+
+        <CardList
+          data={data}
+          emptyMessage="No appointments found"
+          renderPrimary={(item) => item.name}
+          renderSecondary={(item) => (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+              <span>{new Date(item.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
+              <span>{item.startTime} – {item.endTime}</span>
+              <span>with {item.employee}</span>
+              <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5 }}>
+                {item.services.map((s: string, i: number) => (
+                  <Chip key={i} label={s} size="small" variant="outlined" sx={{ height: 22, fontSize: "0.72rem" }} />
+                ))}
+              </Box>
             </Box>
-            {isEditOpen && (
-              <AppointmentModal
-                isOpen={isEditOpen}
-                type={"edit"}
-                onSubmit={editAppointment}
-                onClose={() => setIsEditOpen(false)}
-                appointment={selectedApp}
-                renderEvents={async () =>
-                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-                }
-                allEmployees={employees}
-                allServices={services}
-              />
-            )}
-            {isDeleteOpen && (
-              <AppointmentModal
-                allServices={services}
-                type={"delete"}
-                onSubmit={deleteAppointment}
-                isOpen={isDeleteOpen}
-                onClose={() => setIsDeleteOpen(false)}
-                appointment={selectedApp}
-                renderEvents={async () =>
-                  setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
-                }
-                allEmployees={employees}
-              />
-            )}
-          </Stack>
-        </Paper>
-      </Box>
-    </>
+          )}
+          onEdit={(item) => {
+            setSelectedApp(item.actions as unknown as Appointment);
+            setIsEditOpen(true);
+          }}
+          onDelete={(item) => {
+            setSelectedApp(item.actions as unknown as Appointment);
+            setIsDeleteOpen(true);
+          }}
+        />
+
+        {isEditOpen && (
+          <AppointmentModal
+            isOpen={isEditOpen}
+            type={"edit"}
+            onSubmit={editAppointment}
+            onClose={() => setIsEditOpen(false)}
+            appointment={selectedApp}
+            renderEvents={async () =>
+              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+            }
+            allEmployees={employees}
+            allServices={services}
+          />
+        )}
+        {isDeleteOpen && (
+          <AppointmentModal
+            allServices={services}
+            type={"delete"}
+            onSubmit={deleteAppointment}
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            appointment={selectedApp}
+            renderEvents={async () =>
+              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+            }
+            allEmployees={employees}
+          />
+        )}
+      </Paper>
+    </Box>
   );
 }

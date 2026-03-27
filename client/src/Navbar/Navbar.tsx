@@ -59,7 +59,7 @@ function Navbar() {
         color: "text.primary",
       }}
     >
-      <Toolbar>
+      <Toolbar sx={{ maxWidth: 960, mx: "auto", width: "100%" }}>
         <Typography
           variant="h5"
           sx={{

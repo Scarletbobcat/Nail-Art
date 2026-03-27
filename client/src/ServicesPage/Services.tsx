@@ -5,22 +5,20 @@ import {
   editService,
   getAllServices,
 } from "../api/services";
-import { Stack, TextField } from "@mui/material";
-import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
+import { Stack, TextField, Button } from "@mui/material";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
 import { Service } from "../types";
-import { Typography, Box, Paper } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { Box, Paper } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ServiceModal from "./components/ServiceModal";
 import CustomButton from "../components/Button";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import PlusIcon from "@mui/icons-material/Add";
+import PageHeader from "../components/PageHeader";
+import CardList from "../components/CardList";
+import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Services() {
-  const theme = useTheme();
   const [name, setName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -41,46 +39,6 @@ export default function Services() {
     queryFn: () => getAllServices(name),
   });
 
-  const columns = [
-    { field: "id", headerName: "ID", flex: 1 },
-    { field: "name", headerName: "Name", flex: 1 },
-    {
-      field: "Actions",
-      headerName: "Actions",
-      flex: 1,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "left",
-            alignItems: "center",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <Stack direction="row" spacing={2}>
-            <CustomButton
-              Icon={EditIcon}
-              color="primary"
-              onClick={() => {
-                setSelectedService(params.row.actions);
-                setIsEditOpen(true);
-              }}
-            />
-            <CustomButton
-              Icon={DeleteIcon}
-              color="error"
-              onClick={() => {
-                setSelectedService(params.row.actions);
-                setIsDeleteOpen(true);
-              }}
-            />
-          </Stack>
-        </Box>
-      ),
-    },
-  ];
-
   const refreshServices = async () => {
     setIsLoading(true);
     await refetch();
@@ -95,114 +53,98 @@ export default function Services() {
 
   const data = useMemo(() => {
     if (!services) return [];
-    return services.sort().map((row: Service) => {
-      return {
-        id: row.id,
-        name: row.name,
-        actions: row,
-      };
-    });
+    return services.sort().map((row: Service) => ({
+      id: row.id ?? 0,
+      name: row.name,
+      _raw: row,
+    }));
   }, [services]);
 
   if (servicesLoading || isLoading) return <CircularLoading />;
   if (servicesError) return <div>Error: {servicesError.message}</div>;
+
   return (
-    <Box
-      sx={{
-        padding: 4,
-        height: "100vh",
-      }}
-    >
-      <Paper
-        variant="outlined"
-        sx={{
-          padding: 3,
-          height: "100%",
-        }}
-      >
-        <Stack spacing={2} sx={{ height: "100%" }}>
-          <Stack
-            direction="row"
-            sx={{
-              backgroundColor: theme.palette.primary.main,
-              padding: 2,
-              borderRadius: 2,
-            }}
-            justifyContent="space-between"
-          >
-            <Typography variant="h4" sx={{ color: "white" }}>
-              Services
-            </Typography>
-            <CustomButton
-              color="primary"
-              text={"Create"}
-              sx={{
-                color: "white",
-              }}
-              Icon={PlusIcon}
+    <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
+      <Paper variant="outlined" sx={{ p: SPACING.section }}>
+        <PageHeader
+          title="Services"
+          subtitle="Manage your service offerings"
+          action={
+            <Button
+              variant="contained"
+              startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
-            />
-          </Stack>
-          <Stack direction="row" spacing={2} justifyContent="space-between">
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Name"
-                name="service"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            </Stack>
-            <CustomButton
-              text="Search"
-              onClick={refreshServices}
-              Icon={SearchIcon}
-              color="primary"
-            />
-          </Stack>
-          <DataGrid
-            rows={data}
-            columns={columns}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 10 },
-              },
-            }}
-            pageSizeOptions={[10]}
-            disableRowSelectionOnClick
+            >
+              Create
+            </Button>
+          }
+        />
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ mb: 2 }}
+          alignItems={{ sm: "center" }}
+        >
+          <TextField
+            size="small"
+            label="Name"
+            name="service"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <CustomButton
+            text="Search"
+            onClick={refreshServices}
+            Icon={SearchIcon}
+            color="primary"
           />
         </Stack>
-        {isEditOpen && (
-          <ServiceModal
-            type={"edit"}
-            onSubmit={editService}
-            service={selectedService}
-            isOpen={isEditOpen}
-            onClose={() => setIsEditOpen(false)}
-            renderServices={refreshServices}
-          />
-        )}
-        {isDeleteOpen && (
-          <ServiceModal
-            type={"delete"}
-            onSubmit={deleteService}
-            service={selectedService}
-            isOpen={isDeleteOpen}
-            onClose={() => setIsDeleteOpen(false)}
-            renderServices={refreshServices}
-          />
-        )}
-        {isCreateOpen && (
-          <ServiceModal
-            service={selectedService}
-            type={"create"}
-            onSubmit={createService}
-            renderServices={refreshServices}
-            isOpen={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-          />
-        )}
+
+        <CardList
+          data={data}
+          emptyMessage="No services found"
+          renderPrimary={(item) => item.name}
+          onEdit={(item) => {
+            setSelectedService(item._raw);
+            setIsEditOpen(true);
+          }}
+          onDelete={(item) => {
+            setSelectedService(item._raw);
+            setIsDeleteOpen(true);
+          }}
+        />
       </Paper>
+      {isEditOpen && (
+        <ServiceModal
+          type={"edit"}
+          onSubmit={editService}
+          service={selectedService}
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          renderServices={refreshServices}
+        />
+      )}
+      {isDeleteOpen && (
+        <ServiceModal
+          type={"delete"}
+          onSubmit={deleteService}
+          service={selectedService}
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          renderServices={refreshServices}
+        />
+      )}
+      {isCreateOpen && (
+        <ServiceModal
+          service={selectedService}
+          type={"create"}
+          onSubmit={createService}
+          renderServices={refreshServices}
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+        />
+      )}
     </Box>
   );
 }

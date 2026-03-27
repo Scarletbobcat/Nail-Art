@@ -5,22 +5,20 @@ import {
   editEmployee,
   getAllEmployees,
 } from "../api/employees";
-import { Stack, TextField } from "@mui/material";
-import { DataGrid, GridRenderCellParams } from "@mui/x-data-grid";
+import { Stack, TextField, Button } from "@mui/material";
 import CircularLoading from "../components/CircularLoading";
 import { useMemo, useState } from "react";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
 import PlusIcon from "@mui/icons-material/Add";
 import { Employee } from "../types";
-import { Typography, Box, Paper } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { Box, Paper } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import EmployeeModal from "./components/EmployeeModal";
 import CustomButton from "../components/Button";
+import PageHeader from "../components/PageHeader";
+import CardList from "../components/CardList";
+import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Employees() {
-  const theme = useTheme();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -42,75 +40,6 @@ export default function Employees() {
     queryFn: () => getAllEmployees(name),
   });
 
-  const columns = [
-    { field: "id", headerName: "ID", flex: 1 },
-    { field: "name", headerName: "Name", flex: 1 },
-    {
-      field: "color",
-      headerName: "Color",
-      flex: 1,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "left",
-            alignItems: "center",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <Box
-              sx={{
-                width: 24,
-                height: 24,
-                backgroundColor: params.value,
-                border: "1px solid #000",
-                borderRadius: "50%",
-              }}
-            />
-            <Typography>{params.value}</Typography>
-          </Stack>
-        </Box>
-      ),
-    },
-    {
-      field: "Actions",
-      headerName: "Actions",
-      flex: 1,
-      renderCell: (params: GridRenderCellParams) => (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "left",
-            alignItems: "center",
-            width: "100%",
-            height: "100%",
-          }}
-        >
-          <Stack direction="row" spacing={2}>
-            <CustomButton
-              Icon={EditIcon}
-              color="primary"
-              onClick={() => {
-                setSelectedEmp(params.row.actions);
-                setIsEditOpen(true);
-              }}
-            />
-            <CustomButton
-              color="error"
-              Icon={DeleteIcon}
-              onClick={() => {
-                setSelectedEmp(params.row.actions);
-                setIsDeleteOpen(true);
-              }}
-            />
-          </Stack>
-        </Box>
-      ),
-    },
-  ];
-
   const refreshEmps = async () => {
     setIsLoading(true);
     await refetch();
@@ -125,14 +54,12 @@ export default function Employees() {
 
   const data = useMemo(() => {
     if (!employees) return [];
-    return employees.map((row: Employee) => {
-      return {
-        id: row.id,
-        name: row.name,
-        color: row.color,
-        actions: row,
-      };
-    });
+    return employees.map((row: Employee) => ({
+      id: row.id,
+      name: row.name,
+      color: row.color,
+      _raw: row,
+    }));
   }, [employees]);
 
   if (employeesLoading || isLoading) {
@@ -144,102 +71,102 @@ export default function Employees() {
   }
 
   return (
-    <Box
-      sx={{
-        padding: 4,
-        height: "calc(100vh)",
-      }}
-    >
-      <Paper
-        variant="outlined"
-        sx={{
-          padding: 3,
-          height: "100%",
-        }}
-      >
-        <Stack spacing={2} sx={{ height: "100%" }}>
-          <Stack
-            direction="row"
-            sx={{
-              backgroundColor: theme.palette.primary.main,
-              padding: 2,
-              borderRadius: 2,
-            }}
-            justifyContent="space-between"
-          >
-            <Typography variant="h4" sx={{ color: "white" }}>
-              Employees
-            </Typography>
-            <CustomButton
-              text={"Create"}
-              color="primary"
-              sx={{
-                color: "white",
-              }}
+    <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
+      <Paper variant="outlined" sx={{ p: SPACING.section }}>
+        <PageHeader
+          title="Employees"
+          subtitle="Manage your team"
+          action={
+            <Button
+              variant="contained"
+              startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
-              Icon={PlusIcon}
-            />
-          </Stack>
-          <Stack direction="row" spacing={2} justifyContent="space-between">
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Name"
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-            </Stack>
-            <CustomButton
-              text="Search"
-              onClick={refreshEmps}
-              Icon={SearchIcon}
-              color="primary"
-            />
-          </Stack>
-          <DataGrid
-            rows={data}
-            columns={columns}
-            initialState={{
-              pagination: {
-                paginationModel: { pageSize: 10 },
-              },
-            }}
-            pageSizeOptions={[10]}
-            disableRowSelectionOnClick
+            >
+              Create
+            </Button>
+          }
+        />
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ mb: 2 }}
+          alignItems={{ sm: "center" }}
+        >
+          <TextField
+            size="small"
+            label="Name"
+            name="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <CustomButton
+            text="Search"
+            onClick={refreshEmps}
+            Icon={SearchIcon}
+            color="primary"
           />
         </Stack>
-        {isEditOpen && (
-          <EmployeeModal
-            employee={selectedEmp}
-            onSubmit={editEmployee}
-            type={"edit"}
-            isOpen={isEditOpen}
-            onClose={() => setIsEditOpen(false)}
-            renderEmps={refreshEmps}
-          />
-        )}
-        {isDeleteOpen && (
-          <EmployeeModal
-            employee={selectedEmp}
-            onSubmit={deleteEmployee}
-            type={"delete"}
-            isOpen={isDeleteOpen}
-            onClose={() => setIsDeleteOpen(false)}
-            renderEmps={refreshEmps}
-          />
-        )}
-        {isCreateOpen && (
-          <EmployeeModal
-            employee={{ id: "", name: "", color: "#000000" }}
-            onSubmit={createEmployee}
-            type={"create"}
-            renderEmps={refreshEmps}
-            isOpen={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-          />
-        )}
+
+        <CardList
+          data={data}
+          emptyMessage="No employees found"
+          renderPrimary={(item) => item.name}
+          renderSecondary={(item) => (
+            <Stack direction="row" alignItems="center" spacing={0.5}>
+              <Box
+                sx={{
+                  width: 14,
+                  height: 14,
+                  backgroundColor: item.color,
+                  borderRadius: "50%",
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              />
+              <span>{item.color}</span>
+            </Stack>
+          )}
+          onEdit={(item) => {
+            setSelectedEmp(item._raw);
+            setIsEditOpen(true);
+          }}
+          onDelete={(item) => {
+            setSelectedEmp(item._raw);
+            setIsDeleteOpen(true);
+          }}
+        />
       </Paper>
+      {isEditOpen && (
+        <EmployeeModal
+          employee={selectedEmp}
+          onSubmit={editEmployee}
+          type={"edit"}
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          renderEmps={refreshEmps}
+        />
+      )}
+      {isDeleteOpen && (
+        <EmployeeModal
+          employee={selectedEmp}
+          onSubmit={deleteEmployee}
+          type={"delete"}
+          isOpen={isDeleteOpen}
+          onClose={() => setIsDeleteOpen(false)}
+          renderEmps={refreshEmps}
+        />
+      )}
+      {isCreateOpen && (
+        <EmployeeModal
+          employee={{ id: "", name: "", color: "#000000" }}
+          onSubmit={createEmployee}
+          type={"create"}
+          renderEmps={refreshEmps}
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+        />
+      )}
     </Box>
   );
 }
