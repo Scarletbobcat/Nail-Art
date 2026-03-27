@@ -317,7 +317,7 @@ export default function AppointmentModal({
                 </FormControl>
                 <FormControl fullWidth>
                   <InputLabel id="service-label">Services</InputLabel>
-                  <Select
+                  <Select<number[]>
                     labelId="service-label"
                     disabled={type === "delete"}
                     multiple
@@ -325,12 +325,11 @@ export default function AppointmentModal({
                     fullWidth
                     label="Service"
                     value={form.services}
-                    onChange={(e: SelectChangeEvent<number[]>) => {
+                    onChange={(e) => {
+                      const value = e.target.value;
                       setForm({
                         ...form,
-                        services: Array.isArray(e.target.value)
-                          ? e.target.value.map((serviceId) => Number(serviceId))
-                          : [],
+                        services: (typeof value === "string" ? value.split(",").map(Number) : value),
                       });
                     }}
                     renderValue={(selected) => (

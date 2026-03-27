@@ -54,3 +54,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+.claude/

@@ -165,11 +165,11 @@ export default function Services() {
             columns={columns}
             initialState={{
               pagination: {
-                pageSize: 10,
+                paginationModel: { pageSize: 10 },
               },
             }}
-            rowsPerPageOptions={[10]}
-            disableSelectionOnClick
+            pageSizeOptions={[10]}
+            disableRowSelectionOnClick
           />
         </Stack>
         {isEditOpen && (

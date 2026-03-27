@@ -219,11 +219,11 @@ export default function Clients() {
             columns={columns}
             initialState={{
               pagination: {
-                pageSize: 10,
+                paginationModel: { pageSize: 10 },
               },
             }}
-            rowsPerPageOptions={[10]}
-            disableSelectionOnClick
+            pageSizeOptions={[10]}
+            disableRowSelectionOnClick
           />
         </Stack>
       </Paper>
