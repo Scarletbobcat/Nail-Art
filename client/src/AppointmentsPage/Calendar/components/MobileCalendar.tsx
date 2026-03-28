@@ -1,10 +1,22 @@
 import { useState, useRef, useEffect } from "react";
-import { Stack, Box, Typography, Chip, SwipeableDrawer, Fab, CircularProgress } from "@mui/material";
+import {
+  Stack,
+  Box,
+  Typography,
+  Chip,
+  SwipeableDrawer,
+  Fab,
+  CircularProgress,
+  Snackbar,
+  Alert,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import PersonIcon from "@mui/icons-material/Person";
 import CheckIcon from "@mui/icons-material/Check";
 import EventIcon from "@mui/icons-material/Event";
+import TodayIcon from "@mui/icons-material/Today";
+import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -14,6 +26,7 @@ import {
   createAppointment,
   deleteAppointment,
   editAppointment,
+  remindAppointments,
 } from "../../../api/appointments";
 import { getAllServices } from "../../../api/services";
 import { getClients } from "../../../api/clients";
@@ -50,6 +63,12 @@ export default function MobileCalendar({
     id: "", name: null, phoneNumber: "", date: "", startTime: "", endTime: "",
     employeeId: "", services: [], reminderSent: false, showedUp: false,
   });
+  const [remindLoading, setRemindLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({ open: false, message: "", severity: "success" });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { data: employees, isLoading: empLoading } = useQuery({
@@ -94,10 +113,15 @@ export default function MobileCalendar({
       .filter(Boolean)
       .join(", ");
 
+  const [now, setNow] = useState(dayjs());
+  useEffect(() => {
+    const id = setInterval(() => setNow(dayjs()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   if (empLoading || appLoading || svcLoading || clientsLoading) return <CircularLoading />;
 
   // Current time indicator position
-  const now = dayjs();
   const isToday = startDate.isSame(now, "day");
   const nowOffset = isToday
     ? ((now.hour() - START_HOUR) + now.minute() / 60) * HOUR_HEIGHT
@@ -114,11 +138,43 @@ export default function MobileCalendar({
 
       <Stack direction="row" spacing={1} justifyContent="center">
         <Chip
+          icon={<TodayIcon sx={{ fontSize: 16 }} />}
           label="Today"
           size="small"
-          variant={startDate.isSame(dayjs(), "day") ? "filled" : "outlined"}
-          color={startDate.isSame(dayjs(), "day") ? "primary" : "default"}
+          variant={isToday ? "filled" : "outlined"}
+          color={isToday ? "primary" : "default"}
           onClick={() => onDateSet(dayjs())}
+          sx={{ fontWeight: 500, px: 1 }}
+        />
+        <Chip
+          icon={
+            remindLoading ? (
+              <CircularProgress size={14} thickness={5} color="inherit" />
+            ) : (
+              <NotificationsNoneIcon sx={{ fontSize: 16 }} />
+            )
+          }
+          label={remindLoading ? "Sending..." : "Send Reminders"}
+          size="small"
+          variant="outlined"
+          disabled={remindLoading}
+          onClick={async () => {
+            try {
+              setRemindLoading(true);
+              const message = await remindAppointments();
+              setSnackbar({ open: true, message, severity: "success" });
+            } catch (error) {
+              const err = error as { response?: { data?: string }; message?: string };
+              setSnackbar({
+                open: true,
+                message: err.response?.data || err.message || "Failed to send reminders",
+                severity: "error",
+              });
+            } finally {
+              setRemindLoading(false);
+            }
+          }}
+          sx={{ fontWeight: 500, px: 1 }}
         />
       </Stack>
 
@@ -494,6 +550,23 @@ export default function MobileCalendar({
           allServices={services || []}
         />
       )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        sx={{ bottom: { xs: 80 } }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%", borderRadius: 2 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Stack>
   );
 }

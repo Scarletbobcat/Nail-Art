@@ -7,10 +7,17 @@ import {
   InputLabel,
   FormControl,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Chip from "@mui/material/Chip";
-import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
+import {
+  DateTimePicker,
+  MobileDatePicker,
+  MobileTimePicker,
+  LocalizationProvider,
+} from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent, useCallback } from "react";
@@ -18,6 +25,7 @@ import { Appointment, Employee, Service, Alert, Client } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ClientSelect from "./ClientSelect";
 import { DateTimeValidationError } from "@mui/x-date-pickers/models";
+import { TimeValidationError } from "@mui/x-date-pickers/models";
 import ResponsiveModal from "../../components/ResponsiveModal";
 
 const nineAM = dayjs().hour(9).minute(0).second(0);
@@ -60,6 +68,8 @@ export default function AppointmentModal({
     null
   );
   const [endTimeCustomError, setEndTimeCustomError] = useState<string>("");
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const errorMessage = useCallback((error: DateTimeValidationError | null) => {
     switch (error) {
@@ -188,91 +198,183 @@ export default function AppointmentModal({
               />
             </Stack>
             <Stack spacing={2}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateTimePicker
-                    label="Start"
-                    disabled={type === "delete"}
-                    minTime={nineAM}
-                    maxTime={ninePM}
-                    minutesStep={15}
-                    onError={(newError) => setStartError(newError)}
-                    slotProps={{
-                      textField: {
-                        helperText: errorMessage(startError),
-                      },
-                    }}
-                    value={form ? dayjs(form.date + form.startTime) : dayjs()}
-                    onChange={(date) => {
-                      setForm({
-                        ...form,
-                        date: date ? date.format("YYYY-MM-DD") : form.date,
-                        startTime: date
-                          ? "T" + date.format("HH:mm:ss")
-                          : form.startTime,
-                      });
-                    }}
-                  />
-                </LocalizationProvider>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateTimePicker
-                    value={form ? dayjs(form.date + form.endTime) : dayjs()}
-                    label="End"
-                    minTime={nineAM}
-                    maxTime={ninePM}
-                    minutesStep={15}
-                    shouldDisableTime={(time, view) => {
-                      if (!form.startTime) return true;
-
-                      const startDateTime = dayjs(form.date + form.startTime);
-
-                      if (view === "minutes" || view === "hours") {
-                        // For the same day, disable times that are before or equal to start time
-                        return (
-                          time.isSame(startDateTime) ||
-                          time.isBefore(startDateTime)
-                        );
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                {isMobile ? (
+                  <Stack spacing={2}>
+                    <MobileDatePicker
+                      label="Date"
+                      disabled={type === "delete"}
+                      value={form ? dayjs(form.date + form.startTime) : dayjs()}
+                      onChange={(date) => {
+                        setForm({
+                          ...form,
+                          date: date ? date.format("YYYY-MM-DD") : form.date,
+                        });
+                      }}
+                    />
+                    <Stack direction="row" spacing={2}>
+                      <MobileTimePicker
+                        label="Start Time"
+                        disabled={type === "delete"}
+                        minTime={nineAM}
+                        maxTime={ninePM}
+                        minutesStep={15}
+                        onError={(newError: TimeValidationError) =>
+                          setStartError(newError)
+                        }
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            helperText: errorMessage(startError),
+                          },
+                        }}
+                        value={
+                          form ? dayjs(form.date + form.startTime) : dayjs()
+                        }
+                        onChange={(time) => {
+                          setForm({
+                            ...form,
+                            startTime: time
+                              ? "T" + time.format("HH:mm:ss")
+                              : form.startTime,
+                          });
+                        }}
+                      />
+                      <MobileTimePicker
+                        label="End Time"
+                        disabled={type === "delete"}
+                        minTime={nineAM}
+                        maxTime={ninePM}
+                        minutesStep={15}
+                        onError={(newError: TimeValidationError) =>
+                          setEndError(newError)
+                        }
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            helperText:
+                              endTimeCustomError || errorMessage(endError),
+                          },
+                        }}
+                        value={
+                          form ? dayjs(form.date + form.endTime) : dayjs()
+                        }
+                        onChange={(time) => {
+                          if (time && form.startTime) {
+                            const startDateTime = dayjs(
+                              form.date + form.startTime
+                            );
+                            const endDateTime = time
+                              .year(startDateTime.year())
+                              .month(startDateTime.month())
+                              .date(startDateTime.date());
+                            if (
+                              endDateTime.isSame(startDateTime) ||
+                              endDateTime.isBefore(startDateTime)
+                            ) {
+                              setEndTimeCustomError(
+                                "End time must be after start time"
+                              );
+                            } else {
+                              setEndTimeCustomError("");
+                            }
+                          } else {
+                            setEndTimeCustomError("");
+                          }
+                          setForm({
+                            ...form,
+                            endTime: time
+                              ? "T" + time.format("HH:mm:ss")
+                              : form.endTime,
+                          });
+                        }}
+                      />
+                    </Stack>
+                  </Stack>
+                ) : (
+                  <Stack direction="row" spacing={2}>
+                    <DateTimePicker
+                      label="Start"
+                      disabled={type === "delete"}
+                      minTime={nineAM}
+                      maxTime={ninePM}
+                      minutesStep={15}
+                      onError={(newError) => setStartError(newError)}
+                      slotProps={{
+                        textField: {
+                          helperText: errorMessage(startError),
+                        },
+                      }}
+                      value={
+                        form ? dayjs(form.date + form.startTime) : dayjs()
                       }
-
-                      return false;
-                    }}
-                    disabled={type === "delete"}
-                    onError={(newError) => setEndError(newError)}
-                    slotProps={{
-                      textField: {
-                        helperText:
-                          endTimeCustomError || errorMessage(endError),
-                      },
-                    }}
-                    onChange={(date) => {
-                      // Validate that end time is after start time
-                      if (date && form.startTime) {
-                        const startDateTime = dayjs(form.date + form.startTime);
-                        if (
-                          date.isSame(startDateTime) ||
-                          date.isBefore(startDateTime)
-                        ) {
-                          setEndTimeCustomError(
-                            "End time must be after start time"
+                      onChange={(date) => {
+                        setForm({
+                          ...form,
+                          date: date ? date.format("YYYY-MM-DD") : form.date,
+                          startTime: date
+                            ? "T" + date.format("HH:mm:ss")
+                            : form.startTime,
+                        });
+                      }}
+                    />
+                    <DateTimePicker
+                      value={form ? dayjs(form.date + form.endTime) : dayjs()}
+                      label="End"
+                      minTime={nineAM}
+                      maxTime={ninePM}
+                      minutesStep={15}
+                      shouldDisableTime={(time, view) => {
+                        if (!form.startTime) return true;
+                        const startDateTime = dayjs(
+                          form.date + form.startTime
+                        );
+                        if (view === "minutes" || view === "hours") {
+                          return (
+                            time.isSame(startDateTime) ||
+                            time.isBefore(startDateTime)
                           );
+                        }
+                        return false;
+                      }}
+                      disabled={type === "delete"}
+                      onError={(newError) => setEndError(newError)}
+                      slotProps={{
+                        textField: {
+                          helperText:
+                            endTimeCustomError || errorMessage(endError),
+                        },
+                      }}
+                      onChange={(date) => {
+                        if (date && form.startTime) {
+                          const startDateTime = dayjs(
+                            form.date + form.startTime
+                          );
+                          if (
+                            date.isSame(startDateTime) ||
+                            date.isBefore(startDateTime)
+                          ) {
+                            setEndTimeCustomError(
+                              "End time must be after start time"
+                            );
+                          } else {
+                            setEndTimeCustomError("");
+                          }
                         } else {
                           setEndTimeCustomError("");
                         }
-                      } else {
-                        setEndTimeCustomError("");
-                      }
-
-                      setForm({
-                        ...form,
-                        date: date ? date.format("YYYY-MM-DD") : form.date,
-                        endTime: date
-                          ? "T" + date.format("HH:mm:ss")
-                          : form.endTime,
-                      });
-                    }}
-                  />
-                </LocalizationProvider>
-              </Stack>
+                        setForm({
+                          ...form,
+                          date: date ? date.format("YYYY-MM-DD") : form.date,
+                          endTime: date
+                            ? "T" + date.format("HH:mm:ss")
+                            : form.endTime,
+                        });
+                      }}
+                    />
+                  </Stack>
+                )}
+              </LocalizationProvider>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
                 <FormControl fullWidth>
                   <InputLabel id="employee-label">Employee</InputLabel>
