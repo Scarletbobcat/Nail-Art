@@ -2,6 +2,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import dayjs from "dayjs";
 import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
+import { Paper } from "@mui/material";
 
 export default function CalendarNavigator({
   startDate,
@@ -11,22 +12,22 @@ export default function CalendarNavigator({
   setStartDate: (date: dayjs.Dayjs) => void;
 }) {
   return (
-    <div>
-      {/* <DayPilotNavigator
-        selectMode="Day"
-        showMonths={1}
-        startDate={startDate}
-        selectionDay={startDate}
-        onTimeRangeSelected={(args: { day: DayPilot.Date }) =>
-          setStartDate(args.day)
-        }
-      /> */}
+    <Paper
+      variant="outlined"
+      sx={{
+        "& .MuiDateCalendar-root": {
+          width: "100%",
+        },
+      }}
+    >
       <LocalizationProvider dateAdapter={AdapterDayjs} dateLibInstance={dayjs}>
         <DateCalendar
           value={dayjs(startDate)}
-          onChange={(date) => { if (date) setStartDate(date); }}
+          onChange={(date) => {
+            if (date) setStartDate(date);
+          }}
         />
       </LocalizationProvider>
-    </div>
+    </Paper>
   );
 }

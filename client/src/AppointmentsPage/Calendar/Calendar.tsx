@@ -1,14 +1,11 @@
 import { useState } from "react";
 import AppointmentCalendar from "./components/CustomCalendar/CustomCalendar";
 import CalendarHeader from "./components/CalendarHeader";
-import { Stack, Box, Paper, useMediaQuery, useTheme } from "@mui/material";
-import CalendarNavigator from "./components/CalendarNavigator";
-import ReminderButton from "./components/ReminderButton";
+import { Box, Paper, useMediaQuery, useTheme } from "@mui/material";
 import dayjs from "dayjs";
-import TodayButton from "./components/TodayButton";
 import MobileCalendar from "./components/MobileCalendar";
 import PageHeader from "../../components/PageHeader";
-import { SPACING } from "../../constants/design";
+import { SPACING, MAX_CONTENT_WIDTH } from "../../constants/design";
 
 const CalendarClient = () => {
   const theme = useTheme();
@@ -27,8 +24,13 @@ const CalendarClient = () => {
     );
   };
 
+  const onDateSet = (date: dayjs.Dayjs) => {
+    setStartDate(date);
+    localStorage.setItem("startDate", date.format("YYYY-MM-DD"));
+  };
+
   return (
-    <Box sx={{ p: SPACING.page }}>
+    <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
       <Paper variant="outlined" sx={{ p: SPACING.section }}>
         <PageHeader
           title="Appointments"
@@ -38,43 +40,17 @@ const CalendarClient = () => {
           <MobileCalendar
             startDate={startDate}
             onDateChange={handleDateChange}
-            onDateSet={(date) => {
-              setStartDate(date);
-              localStorage.setItem("startDate", date.format("YYYY-MM-DD"));
-            }}
+            onDateSet={onDateSet}
           />
         ) : (
-          <Stack direction="row" spacing={2}>
-            <Stack spacing={2}>
-              <TodayButton
-                onClick={() => {
-                  setStartDate(dayjs());
-                  localStorage.setItem(
-                    "startDate",
-                    dayjs().format("YYYY-MM-DD")
-                  );
-                }}
-              />
-              <CalendarNavigator
-                startDate={startDate}
-                setStartDate={(date: dayjs.Dayjs) => {
-                  setStartDate(date);
-                  localStorage.setItem(
-                    "startDate",
-                    date.format("YYYY-MM-DD")
-                  );
-                }}
-              />
-              <ReminderButton />
-            </Stack>
-            <Stack spacing={2} sx={{ flex: 1 }}>
-              <CalendarHeader
-                startDate={startDate}
-                onDateChange={handleDateChange}
-              />
-              <AppointmentCalendar startDate={startDate} />
-            </Stack>
-          </Stack>
+          <>
+            <CalendarHeader
+              startDate={startDate}
+              onDateChange={handleDateChange}
+              onDateSet={onDateSet}
+            />
+            <AppointmentCalendar startDate={startDate} />
+          </>
         )}
       </Paper>
     </Box>

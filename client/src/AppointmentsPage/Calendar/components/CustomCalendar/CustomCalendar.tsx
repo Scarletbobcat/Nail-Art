@@ -1,4 +1,4 @@
-import { Typography, Paper, Box } from "@mui/material";
+import { Typography, Box } from "@mui/material";
 import dayjs from "dayjs";
 import TimeSlotGrid from "./TimeSlots";
 import { useQuery } from "@tanstack/react-query";
@@ -17,11 +17,16 @@ import { getClients } from "../../../../api/clients";
 import ContextMenu from "./ContextMenu";
 import AppointmentModal from "../../../components/AppointmentModal";
 
-const businessTimes = Array.from({ length: 13 }, (_, i) => {
-  const hour = i + 9;
-  if (hour >= 12) {
-    return `${hour % 12 || 12} PM`;
-  }
+const HOUR_HEIGHT = 64;
+const HEADER_HEIGHT = 44;
+const TIME_COL_WIDTH = 56;
+const START_HOUR = 9;
+const END_HOUR = 21;
+const TOTAL_HOURS = END_HOUR - START_HOUR;
+
+const businessTimes = Array.from({ length: TOTAL_HOURS }, (_, i) => {
+  const hour = i + START_HOUR;
+  if (hour >= 12) return `${hour % 12 || 12} PM`;
   return `${hour} AM`;
 });
 
@@ -89,7 +94,6 @@ export default function AppointmentCalendar({
     data: clients,
     error: clientsError,
     isLoading: clientsLoading,
-    // refetch: refetchClients,
   } = useQuery({
     queryKey: ["clients"],
     queryFn: () => getClients({}),
@@ -131,133 +135,154 @@ export default function AppointmentCalendar({
     return <CircularLoading />;
   }
 
-  if (employeeError) {
-    return <Typography>Error loading employees</Typography>;
-  }
-
-  if (appointmentsError) {
-    return <Typography>Error loading appointments</Typography>;
-  }
-
-  if (servicesError) {
-    return <Typography>Error loading services</Typography>;
-  }
-
-  if (clientsError) {
-    return <Typography>Error loading clients</Typography>;
+  if (employeeError || appointmentsError || servicesError || clientsError) {
+    return <Typography color="error">Error loading data</Typography>;
   }
 
   return (
-    <div>
+    <Box>
       <Box
         sx={{
-          height: "calc(100vh - 64px)",
+          height: "calc(100vh - 240px)",
+          minHeight: 400,
           display: "flex",
           flexDirection: "column",
+          border: "1px solid",
+          borderColor: "divider",
+          borderRadius: 2,
+          overflow: "hidden",
+          bgcolor: "background.paper",
         }}
       >
+        {/* Sticky header row */}
         <Box
           sx={{
             display: "flex",
-            flex: 1,
-            overflow: "auto",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            bgcolor: "background.default",
+            flexShrink: 0,
           }}
         >
-          {/* Time labels column */}
+          {/* Time column header */}
           <Box
             sx={{
-              width: "60px",
+              width: TIME_COL_WIDTH,
+              flexShrink: 0,
+              height: HEADER_HEIGHT,
             }}
-          >
-            <Paper
-              variant="outlined"
+          />
+          {/* Employee headers */}
+          {employees.map((employee: Employee) => (
+            <Box
+              key={employee.id}
               sx={{
-                height: "50px",
-                position: "sticky",
-                top: 0,
-                zIndex: 2,
-                borderRadius: 0,
+                flex: 1,
+                minWidth: 0,
+                height: HEADER_HEIGHT,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                backgroundColor: "white",
+                gap: 1,
+                borderLeft: "1px solid",
+                borderColor: "divider",
               }}
             >
-              <Typography variant="subtitle2">Time</Typography>
-            </Paper>
-            {businessTimes.map((time, index) =>
-              index !== businessTimes.length - 1 ? (
-                <Paper
-                  key={time}
-                  variant="outlined"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "white",
-                    borderTop: "none",
-                    borderRadius: 0,
-                    height: 80,
-                  }}
-                >
-                  <Typography variant="subtitle2">{time}</Typography>
-                </Paper>
-              ) : null
-            )}
-          </Box>
+              <Box
+                sx={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  bgcolor: employee.color || "primary.main",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                variant="body2"
+                fontWeight={600}
+                color="text.primary"
+                noWrap
+              >
+                {employee.name}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
 
-          {/* Employee columns */}
+        {/* Scrollable grid */}
+        <Box
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            display: "flex",
+          }}
+        >
+          {/* Time labels */}
           <Box
             sx={{
-              display: "flex",
-              flex: 1,
+              width: TIME_COL_WIDTH,
+              flexShrink: 0,
             }}
           >
-            {employees.map((employee: Employee) => (
+            {businessTimes.map((time) => (
               <Box
-                key={employee.id}
+                key={time}
                 sx={{
-                  flex: 1,
+                  height: HOUR_HEIGHT,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  justifyContent: "flex-end",
+                  pr: 1,
+                  pt: 0.25,
                 }}
               >
-                <Paper
-                  variant="outlined"
+                <Typography
+                  variant="caption"
                   sx={{
-                    height: "50px",
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 2,
-                    borderRadius: 0,
-                    borderLeft: "none",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "white",
+                    fontSize: "0.7rem",
+                    color: "text.secondary",
+                    lineHeight: 1,
+                    fontWeight: 500,
                   }}
                 >
-                  <Typography variant="subtitle1">{employee.name}</Typography>
-                </Paper>
-                <TimeSlotGrid
-                  onEventClick={(args: {
-                    originalEvent: React.MouseEvent;
-                    e: Appointment;
-                  }) => {
-                    handleContextMenu(args.originalEvent);
-                    setSelectedAppId(args.e.id);
-                  }}
-                  appointments={appointments}
-                  employee={employee}
-                  businessStart={9}
-                  businessEnd={21}
-                  onTimeRangeSelected={onTimeRangeSelected}
-                  startDate={startDate}
-                  services={services}
-                />
+                  {time}
+                </Typography>
               </Box>
             ))}
           </Box>
+
+          {/* Employee columns */}
+          {employees.map((employee: Employee) => (
+            <Box
+              key={employee.id}
+              sx={{
+                flex: 1,
+                minWidth: 0,
+                position: "relative",
+              }}
+            >
+              <TimeSlotGrid
+                onEventClick={(args: {
+                  originalEvent: React.MouseEvent;
+                  e: Appointment;
+                }) => {
+                  handleContextMenu(args.originalEvent);
+                  setSelectedAppId(args.e.id);
+                }}
+                appointments={appointments}
+                employee={employee}
+                businessStart={START_HOUR}
+                businessEnd={END_HOUR}
+                hourHeight={HOUR_HEIGHT}
+                onTimeRangeSelected={onTimeRangeSelected}
+                startDate={startDate}
+                services={services}
+              />
+            </Box>
+          ))}
         </Box>
       </Box>
+
       {isCreateOpen && (
         <AppointmentModal
           appointment={createApp}
@@ -325,6 +350,6 @@ export default function AppointmentCalendar({
           type={"delete"}
         />
       )}
-    </div>
+    </Box>
   );
 }
