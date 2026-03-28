@@ -5,7 +5,7 @@ import {
   editEmployee,
   getAllEmployees,
 } from "../api/employees";
-import { Stack, TextField, Button } from "@mui/material";
+import { Stack, TextField, Button, Fab } from "@mui/material";
 import PageSkeleton from "../components/PageSkeleton";
 import AnimatedPage from "../components/AnimatedPage";
 import { useMemo, useState } from "react";
@@ -14,7 +14,6 @@ import { Employee } from "../types";
 import { Box, Paper } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import EmployeeModal from "./components/EmployeeModal";
-import CustomButton from "../components/Button";
 import PageHeader from "../components/PageHeader";
 import CardList from "../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
@@ -83,6 +82,7 @@ export default function Employees() {
               variant="contained"
               startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
+              sx={{ display: { xs: "none", sm: "inline-flex" } }}
             >
               Create
             </Button>
@@ -95,6 +95,7 @@ export default function Employees() {
           alignItems={{ sm: "center" }}
         >
           <TextField
+            fullWidth
             size="small"
             label="Name"
             name="name"
@@ -102,12 +103,14 @@ export default function Employees() {
             onChange={(e) => setName(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <CustomButton
-            text="Search"
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
             onClick={refreshEmps}
-            Icon={SearchIcon}
-            color="primary"
-          />
+            sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+          >
+            Search
+          </Button>
         </Stack>
 
         <CardList
@@ -169,6 +172,20 @@ export default function Employees() {
           onClose={() => setIsCreateOpen(false)}
         />
       )}
+      <Fab
+        color="primary"
+        size="medium"
+        onClick={() => setIsCreateOpen(true)}
+        sx={{
+          position: "fixed",
+          bottom: 80,
+          right: 20,
+          zIndex: 10,
+          display: { xs: "flex", sm: "none" },
+        }}
+      >
+        <PlusIcon />
+      </Fab>
     </Box>
     </AnimatedPage>
   );

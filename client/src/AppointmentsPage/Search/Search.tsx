@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Box, TextField, Chip } from "@mui/material";
+import { Box, TextField, Chip, Button } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
 import { getAllEmployees } from "../../api/employees";
@@ -14,7 +14,6 @@ import { getAllServices } from "../../api/services";
 import PageSkeleton from "../../components/PageSkeleton";
 import AnimatedPage from "../../components/AnimatedPage";
 import AppointmentModal from "../components/AppointmentModal";
-import CustomButton from "../../components/Button";
 import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import CardList from "../../components/CardList";
@@ -176,22 +175,25 @@ export default function Search() {
           alignItems={{ sm: "center" }}
         >
           <TextField
+            fullWidth
             size="small"
             label="Phone Number"
             onChange={(e) => changePhoneNumber(e.target.value)}
             onKeyDown={handleKeyDown}
             value={phoneNumber}
           />
-          <CustomButton
-            text="Search"
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
             onClick={async () => {
               setLoading(true);
               setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
               setLoading(false);
             }}
-            Icon={SearchIcon}
-            color="primary"
-          />
+            sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+          >
+            Search
+          </Button>
         </Stack>
 
         <CardList

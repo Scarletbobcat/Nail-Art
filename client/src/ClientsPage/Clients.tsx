@@ -4,7 +4,7 @@ import {
   editClient,
   getClients,
 } from "../api/clients";
-import { Box, Paper, Stack, TextField, Button } from "@mui/material";
+import { Box, Paper, Stack, TextField, Button, Fab } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
@@ -15,7 +15,6 @@ import AnimatedPage from "../components/AnimatedPage";
 import ClientModal from "./components/ClientModal";
 import PageHeader from "../components/PageHeader";
 import CardList from "../components/CardList";
-import CustomButton from "../components/Button";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Clients() {
@@ -96,6 +95,7 @@ export default function Clients() {
               variant="contained"
               startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
+              sx={{ display: { xs: "none", sm: "inline-flex" } }}
             >
               Create
             </Button>
@@ -108,6 +108,7 @@ export default function Clients() {
           alignItems={{ sm: "center" }}
         >
           <TextField
+            fullWidth
             size="small"
             label="Name"
             name="name"
@@ -123,6 +124,7 @@ export default function Clients() {
             onKeyDown={handleKeyDown}
           />
           <TextField
+            fullWidth
             size="small"
             label="Phone Number"
             name="phoneNumber"
@@ -137,12 +139,14 @@ export default function Clients() {
             }}
             onKeyDown={handleKeyDown}
           />
-          <CustomButton
-            text="Search"
-            color="primary"
+          <Button
+            variant="contained"
+            startIcon={<SearchIcon />}
             onClick={refreshClients}
-            Icon={SearchIcon}
-          />
+            sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+          >
+            Search
+          </Button>
         </Stack>
 
         <CardList
@@ -190,6 +194,20 @@ export default function Clients() {
           onClose={() => setIsDeleteOpen(false)}
         />
       )}
+      <Fab
+        color="primary"
+        size="medium"
+        onClick={() => setIsCreateOpen(true)}
+        sx={{
+          position: "fixed",
+          bottom: 80,
+          right: 20,
+          zIndex: 10,
+          display: { xs: "flex", sm: "none" },
+        }}
+      >
+        <PlusIcon />
+      </Fab>
     </Box>
     </AnimatedPage>
   );
