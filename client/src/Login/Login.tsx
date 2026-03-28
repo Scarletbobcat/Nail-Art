@@ -63,14 +63,28 @@ export default function Login() {
           alignItems: "center",
           justifyContent: "center",
           p: { xs: 2, sm: 4 },
+          backgroundColor: "#3b82f6",
+          position: "relative",
+          overflow: "hidden",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: "-50%",
+            right: "-20%",
+            width: "60%",
+            height: "150%",
+            background: "radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%)",
+            pointerEvents: "none",
+          },
         }}
       >
         <Paper
-          variant="outlined"
           sx={{
             width: "100%",
             maxWidth: 400,
             p: { xs: 3, sm: 4 },
+            boxShadow: "0 25px 50px -12px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.05)",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
           }}
         >
           <Stack spacing={1} sx={{ mb: 3 }}>

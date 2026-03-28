@@ -44,8 +44,11 @@ export default function MobileBottomNav() {
           borderBottom: "none",
           borderLeft: "none",
           borderRight: "none",
+          backgroundColor: "rgba(255, 255, 255, 0.8)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
         }}
-        elevation={3}
+        elevation={0}
       >
         <BottomNavigation
           value={currentTab === -1 ? false : currentTab}

@@ -50,13 +50,12 @@ function Navbar() {
 
   return (
     <AppBar
-      position="static"
+      position="sticky"
       elevation={0}
       sx={{
-        backgroundColor: "background.paper",
-        borderBottom: "1px solid",
-        borderColor: "divider",
-        color: "text.primary",
+        backgroundColor: "#3b82f6",
+        color: "white",
+        border: "none",
       }}
     >
       <Toolbar sx={{ maxWidth: 960, mx: "auto", width: "100%" }}>
@@ -65,12 +64,13 @@ function Navbar() {
           sx={{
             pr: 3,
             fontWeight: 700,
+            letterSpacing: "-0.02em",
           }}
         >
           <Link
             to="/"
             style={{
-              color: "inherit",
+              color: "white",
               textDecoration: "none",
             }}
           >
@@ -94,11 +94,13 @@ function Navbar() {
                     component={Link}
                     to={item.url}
                     sx={{
-                      color: active ? "primary.main" : "text.primary",
-                      borderBottom: active ? 2 : 0,
-                      borderColor: "primary.main",
-                      borderRadius: 0,
+                      color: "white",
+                      bgcolor: active ? "rgba(255, 255, 255, 0.15)" : "transparent",
+                      borderRadius: 2,
                       px: 2,
+                      "&:hover": {
+                        bgcolor: "rgba(255, 255, 255, 0.1)",
+                      },
                     }}
                   >
                     {item.title}
@@ -114,11 +116,13 @@ function Navbar() {
                       aria-expanded={open ? "true" : undefined}
                       onClick={handleClick}
                       sx={{
-                        color: active ? "primary.main" : "text.primary",
-                        borderBottom: active ? 2 : 0,
-                        borderColor: "primary.main",
-                        borderRadius: 0,
+                        color: "white",
+                        bgcolor: active ? "rgba(255, 255, 255, 0.15)" : "transparent",
+                        borderRadius: 2,
                         px: 2,
+                        "&:hover": {
+                          bgcolor: "rgba(255, 255, 255, 0.1)",
+                        },
                       }}
                     >
                       {item.title}
@@ -172,6 +176,14 @@ function Navbar() {
                     to={item.url}
                     variant="outlined"
                     size="small"
+                    sx={{
+                      color: "white",
+                      borderColor: "rgba(255, 255, 255, 0.4)",
+                      "&:hover": {
+                        borderColor: "white",
+                        bgcolor: "rgba(255, 255, 255, 0.1)",
+                      },
+                    }}
                   >
                     {item.title}
                   </Button>

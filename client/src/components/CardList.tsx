@@ -3,6 +3,7 @@ import { Stack, Paper, Box, IconButton, Typography } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InboxIcon from "@mui/icons-material/Inbox";
+import { motion } from "framer-motion";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface CardListProps<T extends Record<string, any>> {
@@ -14,6 +15,22 @@ interface CardListProps<T extends Record<string, any>> {
   accentColor?: string;
   emptyMessage?: string;
 }
+
+const listVariants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.04 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 8 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: "easeOut" },
+  },
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function CardList<T extends Record<string, any>>({
@@ -35,16 +52,25 @@ export default function CardList<T extends Record<string, any>>({
   }
 
   return (
-    <Stack spacing={1.5}>
+    <Stack
+      component={motion.div}
+      variants={listVariants}
+      initial="hidden"
+      animate="visible"
+      spacing={1.5}
+    >
       {data.map((item, index) => (
         <Paper
+          component={motion.div}
+          variants={itemVariants}
           key={item.id ?? index}
           sx={{
             display: "flex",
             overflow: "hidden",
-            transition: "box-shadow 0.2s",
+            transition: "box-shadow 0.2s, transform 0.2s",
             "&:hover": {
-              boxShadow: 2,
+              boxShadow: 3,
+              transform: "translateY(-1px)",
             },
           }}
         >
