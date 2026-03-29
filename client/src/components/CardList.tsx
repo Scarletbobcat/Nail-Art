@@ -3,7 +3,7 @@ import { Stack, Paper, Box, IconButton, Typography } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import InboxIcon from "@mui/icons-material/Inbox";
-import { motion } from "framer-motion";
+import { motion, type Variants } from "framer-motion";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface CardListProps<T extends Record<string, any>> {
@@ -16,14 +16,14 @@ interface CardListProps<T extends Record<string, any>> {
   emptyMessage?: string;
 }
 
-const listVariants = {
+const listVariants: Variants = {
   hidden: {},
   visible: {
     transition: { staggerChildren: 0.04 },
   },
 };
 
-const itemVariants = {
+const itemVariants: Variants = {
   hidden: { opacity: 0, y: 8 },
   visible: {
     opacity: 1,
