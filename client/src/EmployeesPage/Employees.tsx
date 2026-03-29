@@ -3,9 +3,9 @@ import {
   createEmployee,
   deleteEmployee,
   editEmployee,
-  getAllEmployees,
+  getEmployeesPaginated,
 } from "../api/employees";
-import { Stack, TextField, Button, Fab } from "@mui/material";
+import { Stack, TextField, Button, TablePagination } from "@mui/material";
 import PageSkeleton from "../components/PageSkeleton";
 import AnimatedPage from "../components/AnimatedPage";
 import { useMemo, useState } from "react";
@@ -21,6 +21,8 @@ import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 export default function Employees() {
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -31,17 +33,18 @@ export default function Employees() {
   });
 
   const {
-    data: employees,
+    data: employeesData,
     isLoading: employeesLoading,
     error: employeesError,
     refetch,
   } = useQuery({
-    queryKey: ["employees"],
-    queryFn: () => getAllEmployees(name),
+    queryKey: ["employees", page, rowsPerPage],
+    queryFn: () => getEmployeesPaginated(name, page, rowsPerPage),
   });
 
   const refreshEmps = async () => {
     setIsLoading(true);
+    setPage(0);
     await refetch();
     setIsLoading(false);
   };
@@ -52,15 +55,17 @@ export default function Employees() {
     }
   };
 
+  const totalElements = employeesData?.totalElements ?? 0;
+
   const data = useMemo(() => {
-    if (!employees) return [];
-    return employees.map((row: Employee) => ({
+    if (!employeesData?.content) return [];
+    return employeesData.content.map((row: Employee) => ({
       id: row.id,
       name: row.name,
       color: row.color,
       _raw: row,
     }));
-  }, [employees]);
+  }, [employeesData]);
 
   if (employeesLoading || isLoading) {
     return <PageSkeleton />;
@@ -80,9 +85,10 @@ export default function Employees() {
           action={
             <Button
               variant="contained"
+              size="small"
               startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
-              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+              sx={{ display: { xs: "none", sm: "inline-flex" }, height: 40, minWidth: 120 }}
             >
               Create
             </Button>
@@ -105,12 +111,31 @@ export default function Employees() {
           />
           <Button
             variant="contained"
+            size="small"
             startIcon={<SearchIcon />}
             onClick={refreshEmps}
-            sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+            sx={{ height: 40, display: { xs: "none", sm: "inline-flex" }, flexShrink: 0, minWidth: 120 }}
           >
             Search
           </Button>
+          <Stack direction="row" spacing={1.5} sx={{ display: { xs: "flex", sm: "none" }, width: "100%" }}>
+            <Button
+              variant="outlined"
+              startIcon={<PlusIcon />}
+              onClick={() => setIsCreateOpen(true)}
+              sx={{ flex: 1, height: 40 }}
+            >
+              Create
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={refreshEmps}
+              sx={{ flex: 1, height: 40 }}
+            >
+              Search
+            </Button>
+          </Stack>
         </Stack>
 
         <CardList
@@ -141,6 +166,21 @@ export default function Employees() {
             setIsDeleteOpen(true);
           }}
         />
+        {totalElements > 0 && (
+          <TablePagination
+            component="div"
+            count={totalElements}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+            sx={{ borderTop: "1px solid", borderColor: "divider", mt: 2 }}
+          />
+        )}
       </Paper>
       {isEditOpen && (
         <EmployeeModal
@@ -172,20 +212,6 @@ export default function Employees() {
           onClose={() => setIsCreateOpen(false)}
         />
       )}
-      <Fab
-        color="primary"
-        size="medium"
-        onClick={() => setIsCreateOpen(true)}
-        sx={{
-          position: "fixed",
-          bottom: 80,
-          right: 20,
-          zIndex: 10,
-          display: { xs: "flex", sm: "none" },
-        }}
-      >
-        <PlusIcon />
-      </Fab>
     </Box>
     </AnimatedPage>
   );

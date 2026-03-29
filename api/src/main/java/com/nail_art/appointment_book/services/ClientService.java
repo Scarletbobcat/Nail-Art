@@ -5,9 +5,12 @@ import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Field;
@@ -32,8 +35,8 @@ public class ClientService {
     @Autowired
     private AppointmentRepository appointmentRepository;
 
-    public List<Client> getAllClients() {
-        return clientRepository.findAll();
+    public Page<Client> getAllClients(Pageable pageable) {
+        return clientRepository.findAll(pageable);
     }
 
     public Client getClientById(long id) {
@@ -92,7 +95,7 @@ public class ClientService {
         return false;
     }
 
-    public List<Client> searchClients(Client client) {
+    public Page<Client> searchClients(Client client, Pageable pageable) {
         Query query = new Query();
         List<Criteria> criteria = new ArrayList<>();
         for (Field field : client.getClass().getDeclaredFields()) {
@@ -108,6 +111,9 @@ public class ClientService {
         if (!criteria.isEmpty()) {
             query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
         }
-        return mongoTemplate.find(query, Client.class);
+        long total = mongoTemplate.count(query, Client.class);
+        query.with(pageable);
+        List<Client> clients = mongoTemplate.find(query, Client.class);
+        return PageableExecutionUtils.getPage(clients, pageable, () -> total);
     }
 }

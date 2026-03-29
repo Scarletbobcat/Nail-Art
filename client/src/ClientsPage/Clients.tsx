@@ -2,9 +2,9 @@ import {
   createClient,
   deleteClient,
   editClient,
-  getClients,
+  getClientsPaginated,
 } from "../api/clients";
-import { Box, Paper, Stack, TextField, Button, Fab } from "@mui/material";
+import { Box, Paper, Stack, TextField, Button, TablePagination } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
@@ -23,14 +23,16 @@ export default function Clients() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [form, setForm] = useState<{ name?: string; phoneNumber?: string }>({});
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
   const {
-    data: clients,
+    data: clientsData,
     isLoading: clientsLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => getClients(form),
+    queryKey: ["clients", page, rowsPerPage],
+    queryFn: () => getClientsPaginated({ ...form, page, size: rowsPerPage }),
   });
   const [selectedClient, setSelectedClient] = useState<Client>({
     id: "",
@@ -41,19 +43,22 @@ export default function Clients() {
 
   const refreshClients = async () => {
     setIsLoading(true);
+    setPage(0);
     await refetch();
     setIsLoading(false);
   };
 
+  const totalElements = clientsData?.totalElements ?? 0;
+
   const data = useMemo(() => {
-    if (!clients) return [];
-    return clients.map((row: Client) => ({
+    if (!clientsData?.content) return [];
+    return clientsData.content.map((row: Client) => ({
       id: row.id,
       name: row.name,
       phoneNumber: row.phoneNumber,
       _raw: row,
     }));
-  }, [clients]);
+  }, [clientsData]);
 
   if (clientsLoading || isLoading) {
     return <PageSkeleton />;
@@ -93,9 +98,10 @@ export default function Clients() {
           action={
             <Button
               variant="contained"
+              size="small"
               startIcon={<PlusIcon />}
               onClick={() => setIsCreateOpen(true)}
-              sx={{ display: { xs: "none", sm: "inline-flex" } }}
+              sx={{ display: { xs: "none", sm: "inline-flex" }, height: 40, minWidth: 120 }}
             >
               Create
             </Button>
@@ -141,12 +147,31 @@ export default function Clients() {
           />
           <Button
             variant="contained"
+            size="small"
             startIcon={<SearchIcon />}
             onClick={refreshClients}
-            sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
+            sx={{ height: 40, display: { xs: "none", sm: "inline-flex" }, flexShrink: 0, minWidth: 120 }}
           >
             Search
           </Button>
+          <Stack direction="row" spacing={1.5} sx={{ display: { xs: "flex", sm: "none" }, width: "100%" }}>
+            <Button
+              variant="outlined"
+              startIcon={<PlusIcon />}
+              onClick={() => setIsCreateOpen(true)}
+              sx={{ flex: 1, height: 40 }}
+            >
+              Create
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<SearchIcon />}
+              onClick={refreshClients}
+              sx={{ flex: 1, height: 40 }}
+            >
+              Search
+            </Button>
+          </Stack>
         </Stack>
 
         <CardList
@@ -163,6 +188,21 @@ export default function Clients() {
             setIsDeleteOpen(true);
           }}
         />
+        {totalElements > 0 && (
+          <TablePagination
+            component="div"
+            count={totalElements}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            rowsPerPageOptions={[10, 20, 50]}
+            sx={{ borderTop: "1px solid", borderColor: "divider", mt: 2 }}
+          />
+        )}
       </Paper>
       {isCreateOpen && (
         <ClientModal
@@ -194,20 +234,6 @@ export default function Clients() {
           onClose={() => setIsDeleteOpen(false)}
         />
       )}
-      <Fab
-        color="primary"
-        size="medium"
-        onClick={() => setIsCreateOpen(true)}
-        sx={{
-          position: "fixed",
-          bottom: 80,
-          right: 20,
-          zIndex: 10,
-          display: { xs: "flex", sm: "none" },
-        }}
-      >
-        <PlusIcon />
-      </Fab>
     </Box>
     </AnimatedPage>
   );

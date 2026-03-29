@@ -2,9 +2,9 @@ package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.repositories.ServiceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ServiceService {
@@ -13,8 +13,12 @@ public class ServiceService {
     @Autowired
     private CounterService counterService;
 
-    public List<com.nail_art.appointment_book.entities.Service> getAllServices() {
-        return serviceRepository.findAll();
+    public Page<com.nail_art.appointment_book.entities.Service> getAllServices(Pageable pageable) {
+        return serviceRepository.findAll(pageable);
+    }
+
+    public Page<com.nail_art.appointment_book.entities.Service> searchServices(String name, Pageable pageable) {
+        return serviceRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 
     public com.nail_art.appointment_book.entities.Service createService(com.nail_art.appointment_book.entities.Service service) {

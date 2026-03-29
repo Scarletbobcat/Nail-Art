@@ -3,9 +3,9 @@ package com.nail_art.appointment_book.services;
 import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.repositories.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class EmployeeService {
@@ -14,10 +14,12 @@ public class EmployeeService {
     @Autowired
     private CounterService counterService;
 
-    public List<Employee> getAllEmployees() {
-        List<Employee> employees = employeeRepository.findAll();
-        employees.sort((e1, e2) -> e1.getId() > e2.getId() ? 1 : -1);
-        return employees;
+    public Page<Employee> getAllEmployees(Pageable pageable) {
+        return employeeRepository.findAll(pageable);
+    }
+
+    public Page<Employee> searchEmployees(String name, Pageable pageable) {
+        return employeeRepository.findByNameContainingIgnoreCase(name, pageable);
     }
 
     public Employee createEmployee(Employee employee) {
