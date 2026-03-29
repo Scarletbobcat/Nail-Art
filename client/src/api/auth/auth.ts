@@ -21,3 +21,13 @@ export const refreshToken = async () => {
 
   return response.data;
 };
+
+export const logout = async () => {
+  try {
+    await api.post("/auth/logout");
+  } catch {
+    // Continue with local cleanup even if the server call fails
+  }
+  localStorage.removeItem("token");
+  window.location.href = "/Login";
+};

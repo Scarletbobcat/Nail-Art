@@ -96,4 +96,34 @@ public class AuthenticationController {
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired refresh token");
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest req) {
+        String refreshToken = null;
+        Cookie[] cookies = req.getCookies();
+
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("refreshToken".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                }
+            }
+        }
+
+        if (refreshToken != null) {
+            authenticationService.deleteRefreshToken(refreshToken);
+        }
+
+        ResponseCookie clearCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .path("/")
+                .maxAge(0)
+                .sameSite("None")
+                .secure(true)
+                .build();
+
+        return ResponseEntity.ok()
+                .header("Set-Cookie", clearCookie.toString())
+                .build();
+    }
 }

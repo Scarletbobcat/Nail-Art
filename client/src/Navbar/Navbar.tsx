@@ -9,6 +9,7 @@ import {
   Button,
   Box,
 } from "@mui/material";
+import { logout } from "../api/auth/auth";
 
 const navItems = [
   {
@@ -29,7 +30,6 @@ const navItems = [
   { title: "Clients", url: "/Clients" },
 ];
 
-const authItems = [{ title: "Login", url: "/Login" }];
 
 function Navbar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -167,29 +167,40 @@ function Navbar() {
             })}
           </Box>
           <Box sx={{ display: "flex" }}>
-            {authItems.map((item, index) => {
-              if (!localStorage.getItem("token")) {
-                return (
-                  <Button
-                    key={index}
-                    component={Link}
-                    to={item.url}
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      color: "white",
-                      borderColor: "rgba(255, 255, 255, 0.4)",
-                      "&:hover": {
-                        borderColor: "white",
-                        bgcolor: "rgba(255, 255, 255, 0.1)",
-                      },
-                    }}
-                  >
-                    {item.title}
-                  </Button>
-                );
-              }
-            })}
+            {localStorage.getItem("token") ? (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={logout}
+                sx={{
+                  color: "white",
+                  borderColor: "rgba(255, 255, 255, 0.4)",
+                  "&:hover": {
+                    borderColor: "white",
+                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                  },
+                }}
+              >
+                Logout
+              </Button>
+            ) : (
+              <Button
+                component={Link}
+                to="/Login"
+                variant="outlined"
+                size="small"
+                sx={{
+                  color: "white",
+                  borderColor: "rgba(255, 255, 255, 0.4)",
+                  "&:hover": {
+                    borderColor: "white",
+                    bgcolor: "rgba(255, 255, 255, 0.1)",
+                  },
+                }}
+              >
+                Login
+              </Button>
+            )}
           </Box>
         </Box>
       </Toolbar>

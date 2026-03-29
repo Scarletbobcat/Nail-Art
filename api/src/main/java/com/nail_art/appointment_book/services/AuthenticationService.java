@@ -28,7 +28,7 @@ public class AuthenticationService {
     }
 
     public User signup(RegisterUserDto input) {
-        if (userRepository.findByUsername(input.getUsername()).isPresent()) {
+        if (userRepository.findByUsernameIgnoreCase(input.getUsername()).isPresent()) {
             throw new RuntimeException("User with username '" + input.getUsername() + "' already exists.");
         }
         User user = new User();
@@ -47,7 +47,7 @@ public class AuthenticationService {
                 )
         );
 
-        return userRepository.findByUsername(input.getUsername())
+        return userRepository.findByUsernameIgnoreCase(input.getUsername())
                 .orElseThrow();
     }
 

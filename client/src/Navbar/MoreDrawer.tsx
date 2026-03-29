@@ -10,11 +10,12 @@ import { Link } from "react-router-dom";
 import BadgeIcon from "@mui/icons-material/Badge";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import LoginIcon from "@mui/icons-material/Login";
+import LogoutIcon from "@mui/icons-material/Logout";
+import { logout } from "../api/auth/auth";
 
 const moreItems = [
   { title: "Employees", url: "/Employees", icon: <BadgeIcon /> },
   { title: "Services", url: "/Services", icon: <ContentCutIcon /> },
-  { title: "Login", url: "/Login", icon: <LoginIcon /> },
 ];
 
 export default function MoreDrawer({
@@ -26,6 +27,8 @@ export default function MoreDrawer({
   onOpen: () => void;
   onClose: () => void;
 }) {
+  const isLoggedIn = Boolean(localStorage.getItem("token"));
+
   return (
     <SwipeableDrawer
       anchor="bottom"
@@ -63,6 +66,17 @@ export default function MoreDrawer({
             <ListItemText primary={item.title} />
           </ListItemButton>
         ))}
+        {isLoggedIn ? (
+          <ListItemButton onClick={() => { onClose(); logout(); }}>
+            <ListItemIcon><LogoutIcon /></ListItemIcon>
+            <ListItemText primary="Logout" />
+          </ListItemButton>
+        ) : (
+          <ListItemButton component={Link} to="/Login" onClick={onClose}>
+            <ListItemIcon><LoginIcon /></ListItemIcon>
+            <ListItemText primary="Login" />
+          </ListItemButton>
+        )}
       </List>
     </SwipeableDrawer>
   );
