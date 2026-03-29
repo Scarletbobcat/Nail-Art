@@ -181,7 +181,7 @@ public class AppointmentService {
     }
 
     public List<Appointment> getAppointmentsByPhoneNumber(String phoneNumber) {
-        return appointmentRepository.findByPhoneNumber(phoneNumber);
+        return appointmentRepository.findByPhoneNumberContaining(phoneNumber);
     }
 
     public List<Appointment> getAppointmentsNextWorkDay() {

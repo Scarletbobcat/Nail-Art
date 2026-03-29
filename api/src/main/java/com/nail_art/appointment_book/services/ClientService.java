@@ -13,7 +13,6 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -98,15 +97,11 @@ public class ClientService {
     public Page<Client> searchClients(Client client, Pageable pageable) {
         Query query = new Query();
         List<Criteria> criteria = new ArrayList<>();
-        for (Field field : client.getClass().getDeclaredFields()) {
-            field.setAccessible(true);
-            try {
-                if (field.get(client) != null) {
-                    criteria.add(Criteria.where(field.getName()).is(field.get(client)));
-                }
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
-            }
+        if (client.getName() != null && !client.getName().isBlank()) {
+            criteria.add(Criteria.where("name").regex(client.getName(), "i"));
+        }
+        if (client.getPhoneNumber() != null && !client.getPhoneNumber().isBlank()) {
+            criteria.add(Criteria.where("phoneNumber").regex(client.getPhoneNumber(), "i"));
         }
         if (!criteria.isEmpty()) {
             query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
