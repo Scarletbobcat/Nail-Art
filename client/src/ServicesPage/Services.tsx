@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createService,
   deleteService,
@@ -19,6 +19,7 @@ import CardList from "../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Services() {
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -45,6 +46,7 @@ export default function Services() {
     setIsLoading(true);
     setPage(0);
     await refetch();
+    queryClient.invalidateQueries({ queryKey: ["services"] });
     setIsLoading(false);
   };
 

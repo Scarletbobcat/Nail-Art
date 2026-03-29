@@ -1,7 +1,7 @@
 import { Typography, Box } from "@mui/material";
 import dayjs from "dayjs";
 import TimeSlotGrid from "./TimeSlots";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllEmployees } from "../../../../api/employees";
 import { Employee, Appointment } from "../../../../types";
 import CircularLoading from "../../../../components/CircularLoading";
@@ -41,6 +41,7 @@ export default function AppointmentCalendar({
 }: {
   startDate: dayjs.Dayjs;
 }) {
+  const queryClient = useQueryClient();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAppId, setSelectedAppId] = useState("");
@@ -73,28 +74,18 @@ export default function AppointmentCalendar({
 
   const {
     data: appointments,
-    error: appointmentsError,
-    isLoading: appointmentsLoading,
     refetch: appRefetch,
   } = useQuery({
     queryKey: ["appointments", startDate],
     queryFn: () => getAppointmentsByDate(startDate.format("YYYY-MM-DD")),
   });
 
-  const {
-    data: services,
-    error: servicesError,
-    isLoading: servicesLoading,
-  } = useQuery({
+  const { data: services } = useQuery({
     queryKey: ["services"],
     queryFn: () => getAllServices(),
   });
 
-  const {
-    data: clients,
-    error: clientsError,
-    isLoading: clientsLoading,
-  } = useQuery({
+  const { data: clients } = useQuery({
     queryKey: ["clients"],
     queryFn: () => getClients({}),
   });
@@ -126,16 +117,11 @@ export default function AppointmentCalendar({
     setIsCreateOpen(true);
   };
 
-  if (
-    employeeLoading ||
-    appointmentsLoading ||
-    servicesLoading ||
-    clientsLoading
-  ) {
+  if (employeeLoading) {
     return <CircularLoading />;
   }
 
-  if (employeeError || appointmentsError || servicesError || clientsError) {
+  if (employeeError) {
     return <Typography color="error">Error loading data</Typography>;
   }
 
@@ -269,14 +255,14 @@ export default function AppointmentCalendar({
                   handleContextMenu(args.originalEvent);
                   setSelectedAppId(args.e.id);
                 }}
-                appointments={appointments}
+                appointments={appointments || []}
                 employee={employee}
                 businessStart={START_HOUR}
                 businessEnd={END_HOUR}
                 hourHeight={HOUR_HEIGHT}
                 onTimeRangeSelected={onTimeRangeSelected}
                 startDate={startDate}
-                services={services}
+                services={services || []}
               />
             </Box>
           ))}
@@ -290,8 +276,13 @@ export default function AppointmentCalendar({
           onClose={() => setIsCreateOpen(false)}
           type="create"
           onSubmit={createAppointment}
-          renderEvents={appRefetch}
-          allServices={services}
+          renderEvents={(form) => {
+            appRefetch();
+            if (form && !form.clientId) {
+              queryClient.invalidateQueries({ queryKey: ["clients"] });
+            }
+          }}
+          allServices={services || []}
           allEmployees={employees}
           clients={clients}
         />
@@ -302,12 +293,12 @@ export default function AppointmentCalendar({
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
-        appointment={appointments.find(
+        appointment={(appointments || []).find(
           (app: Appointment) => app.id == selectedAppId
         )}
         renderEvents={appRefetch}
         editShowedUp={async () => {
-          const appointment = appointments.find(
+          const appointment = (appointments || []).find(
             (app: Appointment) => app.id == selectedAppId
           );
           if (appointment) {
@@ -324,7 +315,7 @@ export default function AppointmentCalendar({
       />
       {isEditOpen && (
         <AppointmentModal
-          appointment={appointments.find(
+          appointment={(appointments || []).find(
             (app: Appointment) => app.id == selectedAppId
           )}
           isOpen={isEditOpen}
@@ -332,14 +323,14 @@ export default function AppointmentCalendar({
           onSubmit={editAppointment}
           onClose={() => setIsEditOpen(false)}
           renderEvents={appRefetch}
-          allServices={services}
+          allServices={services || []}
           allEmployees={employees}
         />
       )}
       {isDeleteOpen && (
         <AppointmentModal
-          allServices={services}
-          appointment={appointments.find(
+          allServices={services || []}
+          appointment={(appointments || []).find(
             (app: Appointment) => app.id == selectedAppId
           )}
           onSubmit={deleteAppointment}

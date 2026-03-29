@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createEmployee,
   deleteEmployee,
@@ -19,6 +19,7 @@ import CardList from "../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Employees() {
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [page, setPage] = useState(0);
@@ -46,6 +47,7 @@ export default function Employees() {
     setIsLoading(true);
     setPage(0);
     await refetch();
+    queryClient.invalidateQueries({ queryKey: ["employees"] });
     setIsLoading(false);
   };
 

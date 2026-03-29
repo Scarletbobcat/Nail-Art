@@ -45,7 +45,7 @@ export default function AppointmentModal({
   appointment: Appointment;
   onClose: () => void;
   isOpen: boolean;
-  renderEvents: () => void;
+  renderEvents: (form?: Appointment) => void;
   allServices: Service[];
   allEmployees: Employee[];
   onSubmit: (form: Appointment) => void;
@@ -114,7 +114,7 @@ export default function AppointmentModal({
       setIsLoading(false);
       // closing modal and re-rendering events
       onClose();
-      renderEvents();
+      renderEvents(form);
     } catch {
       // show alert if failed to create appointment
       setIsAlertOpen(true);

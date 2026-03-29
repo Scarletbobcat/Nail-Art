@@ -5,7 +5,7 @@ import {
   getClientsPaginated,
 } from "../api/clients";
 import { Box, Paper, Stack, TextField, Button, TablePagination } from "@mui/material";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import SearchIcon from "@mui/icons-material/Search";
 import PlusIcon from "@mui/icons-material/Add";
@@ -18,6 +18,7 @@ import CardList from "../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 
 export default function Clients() {
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -45,6 +46,7 @@ export default function Clients() {
     setIsLoading(true);
     setPage(0);
     await refetch();
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
     setIsLoading(false);
   };
 

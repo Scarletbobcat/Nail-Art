@@ -17,7 +17,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import EventIcon from "@mui/icons-material/Event";
 import TodayIcon from "@mui/icons-material/Today";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import { getAllEmployees } from "../../../api/employees";
@@ -52,6 +52,7 @@ export default function MobileCalendar({
   onDateSet: (date: dayjs.Dayjs) => void;
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [detailApp, setDetailApp] = useState<Appointment | null>(null);
   const [checkLoading, setCheckLoading] = useState(false);
@@ -75,15 +76,15 @@ export default function MobileCalendar({
     queryKey: ["employees"],
     queryFn: () => getAllEmployees(),
   });
-  const { data: appointments, isLoading: appLoading, refetch: appRefetch } = useQuery({
+  const { data: appointments, refetch: appRefetch } = useQuery({
     queryKey: ["appointments", startDate],
     queryFn: () => getAppointmentsByDate(startDate.format("YYYY-MM-DD")),
   });
-  const { data: services, isLoading: svcLoading } = useQuery({
+  const { data: services } = useQuery({
     queryKey: ["services"],
     queryFn: () => getAllServices(),
   });
-  const { data: clients, isLoading: clientsLoading } = useQuery({
+  const { data: clients } = useQuery({
     queryKey: ["clients"],
     queryFn: () => getClients({}),
   });
@@ -119,7 +120,7 @@ export default function MobileCalendar({
     return () => clearInterval(id);
   }, []);
 
-  if (empLoading || appLoading || svcLoading || clientsLoading) return <CircularLoading />;
+  if (empLoading) return <CircularLoading />;
 
   // Current time indicator position
   const isToday = startDate.isSame(now, "day");
@@ -520,7 +521,12 @@ export default function MobileCalendar({
           onSubmit={createAppointment}
           onClose={() => setIsCreateOpen(false)}
           appointment={createApp}
-          renderEvents={() => appRefetch()}
+          renderEvents={(form) => {
+            appRefetch();
+            if (form && !form.clientId) {
+              queryClient.invalidateQueries({ queryKey: ["clients"] });
+            }
+          }}
           allEmployees={employees || []}
           allServices={services || []}
           clients={clients}
