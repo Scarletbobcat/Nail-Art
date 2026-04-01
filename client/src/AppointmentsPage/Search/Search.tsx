@@ -202,7 +202,7 @@ export default function Search() {
           renderPrimary={(item) => item.name}
           renderSecondary={(item) => (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-              <span>{new Date(item.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</span>
+              <span>{new Date(item.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</span>
               <span>{item.startTime} – {item.endTime}</span>
               <span>with {item.employee}</span>
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5 }}>

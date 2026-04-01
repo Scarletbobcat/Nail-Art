@@ -54,7 +54,7 @@ public class ClientController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").descending());
+        Pageable pageable = PageRequest.of(page, Math.min(size, 2000), Sort.by("id").descending());
         Client query = new Client();
         query.setName(name);
         query.setPhoneNumber(phoneNumber);

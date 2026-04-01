@@ -322,7 +322,7 @@ export default function AppointmentCalendar({
           type={"edit"}
           onSubmit={editAppointment}
           onClose={() => setIsEditOpen(false)}
-          renderEvents={appRefetch}
+          renderEvents={() => { appRefetch(); }}
           allServices={services || []}
           allEmployees={employees}
         />
@@ -336,7 +336,7 @@ export default function AppointmentCalendar({
           onSubmit={deleteAppointment}
           isOpen={isDeleteOpen}
           onClose={() => setIsDeleteOpen(false)}
-          renderEvents={appRefetch}
+          renderEvents={() => { appRefetch(); }}
           allEmployees={employees}
           type={"delete"}
         />

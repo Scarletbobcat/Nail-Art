@@ -10,7 +10,7 @@ export const getClients = async (form: {
     params: {
       name: form.name,
       phoneNumber: form.phoneNumber,
-      size: 1000,
+      size: 2000,
     },
   });
   return response.data.content;
