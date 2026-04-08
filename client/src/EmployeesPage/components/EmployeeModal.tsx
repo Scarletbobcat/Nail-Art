@@ -39,9 +39,10 @@ export default function EmployeeModal({
       setIsLoading(false);
       onClose();
       renderEmps();
-    } catch {
+    } catch (error) {
+      const err = error as { response?: { data?: { description?: string } } };
       setIsAlertOpen(true);
-      setAlert({ message: "Failed to create employee", severity: "error" });
+      setAlert({ message: err.response?.data?.description || `Failed to ${type} employee`, severity: "error" });
       setIsLoading(false);
     }
   };

@@ -37,6 +37,22 @@ public class AppointmentService {
         return String.format("T%02d:%02d", hour, minute);
     }
 
+    private void checkForConflicts(String date, long employeeId, String startTime, String endTime, long excludeId) {
+        List<Appointment> existing = appointmentRepository.findByDateAndEmployeeId(date, employeeId);
+        LocalDateTime newStart = LocalDateTime.parse(date + startTime);
+        LocalDateTime newEnd = LocalDateTime.parse(date + endTime);
+        for (Appointment appt : existing) {
+            if (appt.getId() == excludeId) {
+                continue;
+            }
+            LocalDateTime existStart = LocalDateTime.parse(appt.getDate() + appt.getStartTime());
+            LocalDateTime existEnd = LocalDateTime.parse(appt.getDate() + appt.getEndTime());
+            if (newStart.isBefore(existEnd) && newEnd.isAfter(existStart)) {
+                throw new IllegalArgumentException("Time slot conflicts with an existing appointment");
+            }
+        }
+    }
+
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
     }
@@ -59,6 +75,8 @@ public class AppointmentService {
         if (startDate.compareTo(endDate) > -1)
             throw new IllegalArgumentException("End time must be after start time"); {
         }
+        checkForConflicts(appointment.getDate(), appointment.getEmployeeId(),
+                appointment.getStartTime(), appointment.getEndTime(), -1);
         long id = counterService.getNextSequence("Appointments");
         appointment.setId(id);
         appointment.setReminderSent(false);
@@ -90,6 +108,8 @@ public class AppointmentService {
         if (startDate.compareTo(endDate) > -1)
             throw new IllegalArgumentException("End time must be after start time"); {
         }
+        checkForConflicts(appointment.getDate(), appointment.getEmployeeId(),
+                appointment.getStartTime(), appointment.getEndTime(), appointment.getId());
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime()) || !appointment.getDate().equals(tempAppointment.get().getDate())) {

@@ -36,13 +36,17 @@ class AppointmentServiceTest {
     private AppointmentService appointmentService;
 
     private Appointment makeAppointment(String name, String phone, String date, String start, String end) {
+        return makeAppointment(name, phone, date, start, end, 1);
+    }
+
+    private Appointment makeAppointment(String name, String phone, String date, String start, String end, long employeeId) {
         Appointment appt = new Appointment();
         appt.setName(name);
         appt.setPhoneNumber(phone);
         appt.setDate(date);
         appt.setStartTime(start);
         appt.setEndTime(end);
-        appt.setEmployeeId(1);
+        appt.setEmployeeId(employeeId);
         appt.setServices(List.of(1));
         appt.setReminderSent(false);
         appt.setShowedUp(false);
@@ -55,6 +59,7 @@ class AppointmentServiceTest {
         @Test
         void createsNewClientWhenPhoneProvidedAndNoClientExists() {
             Appointment appt = makeAppointment("Jane Doe", "330-555-1234", "2026-04-10", "T10:00", "T11:00");
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
             when(counterService.getNextSequence("Clients")).thenReturn(50L);
             when(clientRepository.findByPhoneNumber("330-555-1234")).thenReturn(Optional.empty());
@@ -79,6 +84,7 @@ class AppointmentServiceTest {
             existing.setName("Jane Doe");
             existing.setPhoneNumber("330-555-1234");
 
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
             when(clientRepository.findByPhoneNumber("330-555-1234")).thenReturn(Optional.of(existing));
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -93,6 +99,7 @@ class AppointmentServiceTest {
         @Test
         void skipsClientLinkingWhenPhoneIsEmpty() {
             Appointment appt = makeAppointment("Walk-in", "", "2026-04-10", "T10:00", "T11:00");
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -105,6 +112,7 @@ class AppointmentServiceTest {
         @Test
         void setsIdAndReminderSent() {
             Appointment appt = makeAppointment("Test", "", "2026-04-10", "T10:00", "T11:00");
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(42L);
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -133,6 +141,7 @@ class AppointmentServiceTest {
         @Test
         void normalizesUnpaddedTimes() {
             Appointment appt = makeAppointment("Test", "", "2026-04-10", "T9:00", "T10:00");
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(1L);
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -153,6 +162,7 @@ class AppointmentServiceTest {
         @Test
         void usesClientsCounterNotAppointmentsForNewClient() {
             Appointment appt = makeAppointment("New Person", "555-123-4567", "2026-04-10", "T10:00", "T11:00");
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
             when(counterService.getNextSequence("Clients")).thenReturn(50L);
             when(clientRepository.findByPhoneNumber("555-123-4567")).thenReturn(Optional.empty());
@@ -164,6 +174,108 @@ class AppointmentServiceTest {
             verify(counterService).getNextSequence("Appointments");
             verify(counterService).getNextSequence("Clients");
             verify(counterService, times(2)).getNextSequence(anyString());
+        }
+
+        @Test
+        void throwsWhenTimeSlotOverlapsExistingAppointment() {
+            // Existing: 10:00-11:00 for employee 1
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00");
+            existing.setId(1);
+            // New: 10:30-11:30 — starts during existing
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:30", "T11:30");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.createAppointment(newAppt));
+        }
+
+        @Test
+        void throwsWhenNewAppointmentFullyInsideExisting() {
+            // Existing: 10:00-12:00
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T12:00");
+            existing.setId(1);
+            // New: 10:30-11:30 — fully inside existing
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:30", "T11:30");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.createAppointment(newAppt));
+        }
+
+        @Test
+        void throwsWhenNewAppointmentFullyContainsExisting() {
+            // Existing: 10:30-11:30
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:30", "T11:30");
+            existing.setId(1);
+            // New: 10:00-12:00 — fully contains existing
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:00", "T12:00");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.createAppointment(newAppt));
+        }
+
+        @Test
+        void throwsWhenExactSameTimeSlot() {
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00");
+            existing.setId(1);
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:00", "T11:00");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.createAppointment(newAppt));
+        }
+
+        @Test
+        void allowsAdjacentAppointments() {
+            // Existing: 10:00-11:00
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00");
+            existing.setId(1);
+            // New: 11:00-12:00 — starts exactly when existing ends
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T11:00", "T12:00");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+            when(counterService.getNextSequence("Appointments")).thenReturn(2L);
+            when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            Appointment result = appointmentService.createAppointment(newAppt);
+
+            assertEquals(2L, result.getId());
+        }
+
+        @Test
+        void allowsSameTimeSlotForDifferentEmployee() {
+            // Existing: 10:00-11:00 for employee 1
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00", 1);
+            existing.setId(1);
+            // New: 10:00-11:00 for employee 2 — different employee, no conflict
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:00", "T11:00", 2);
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 2)).thenReturn(List.of());
+            when(counterService.getNextSequence("Appointments")).thenReturn(2L);
+            when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            Appointment result = appointmentService.createAppointment(newAppt);
+
+            assertEquals(2L, result.getId());
+        }
+
+        @Test
+        void throwsWhenNewAppointmentEndsInsideExisting() {
+            // Existing: 11:00-12:00
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T11:00", "T12:00");
+            existing.setId(1);
+            // New: 10:30-11:30 — ends during existing
+            Appointment newAppt = makeAppointment("New", "", "2026-04-10", "T10:30", "T11:30");
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.createAppointment(newAppt));
         }
     }
 
@@ -253,6 +365,48 @@ class AppointmentServiceTest {
             appointmentService.editAppointment(edited);
 
             assertFalse(edited.getReminderSent());
+        }
+
+        @Test
+        void throwsWhenEditCausesTimeConflict() {
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00");
+            existing.setId(1);
+
+            Appointment otherAppt = makeAppointment("Other", "", "2026-04-10", "T11:00", "T12:00");
+            otherAppt.setId(2);
+
+            // Edit appointment 2 to overlap with appointment 1
+            Appointment edited = makeAppointment("Other", "", "2026-04-10", "T10:30", "T11:30");
+            edited.setId(2);
+            edited.setReminderSent(false);
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing, otherAppt));
+
+            assertThrows(IllegalArgumentException.class, () ->
+                    appointmentService.editAppointment(edited));
+        }
+
+        @Test
+        void allowsEditWithoutConflictWhenTimesChange() {
+            Appointment existing = makeAppointment("Existing", "", "2026-04-10", "T10:00", "T11:00");
+            existing.setId(1);
+
+            Appointment otherAppt = makeAppointment("Other", "", "2026-04-10", "T13:00", "T14:00");
+            otherAppt.setId(2);
+            otherAppt.setReminderSent(false);
+
+            // Edit appointment 2 to 12:00-13:00 — no conflict
+            Appointment edited = makeAppointment("Other", "", "2026-04-10", "T12:00", "T13:00");
+            edited.setId(2);
+            edited.setReminderSent(false);
+
+            when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of(existing, otherAppt));
+            when(appointmentRepository.findById(2L)).thenReturn(Optional.of(otherAppt));
+            when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+            Optional<Appointment> result = appointmentService.editAppointment(edited);
+
+            assertTrue(result.isPresent());
         }
 
         @Test
