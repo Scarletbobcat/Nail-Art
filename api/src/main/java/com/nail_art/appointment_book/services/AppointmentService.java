@@ -117,7 +117,7 @@ public class AppointmentService {
             if (clientId == null) {
                 return Optional.of(appointmentRepository.save(tempAppointment.get()));
             }
-            Client client = clientRepository.findById(appointment.getClientId()).orElse(null);
+            Client client = clientRepository.findById(clientId).orElse(null);
             if (client != null) {
                 client.setName(appointment.getName());
                 client.setPhoneNumber(appointment.getPhoneNumber());
