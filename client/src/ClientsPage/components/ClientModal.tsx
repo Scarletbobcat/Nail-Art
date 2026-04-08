@@ -52,9 +52,10 @@ export default function ClientModal({
       setIsLoading(false);
       onClose();
       renderEntities();
-    } catch {
+    } catch (error) {
+      const err = error as { response?: { data?: { description?: string } } };
       setIsAlertOpen(true);
-      setAlert({ message: "Failed to create client", severity: "error" });
+      setAlert({ message: err.response?.data?.description || `Failed to ${type} client`, severity: "error" });
     }
   };
 

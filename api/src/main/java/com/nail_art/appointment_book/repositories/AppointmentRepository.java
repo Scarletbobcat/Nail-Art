@@ -18,4 +18,6 @@ public interface AppointmentRepository extends MongoRepository<Appointment, Stri
     List<Appointment> findByPhoneNumberContaining(String phoneNumber);
 
     List<Appointment> findByClientId(long clientId);
+
+    List<Appointment> findByDateAndEmployeeId(String date, long employeeId);
 }

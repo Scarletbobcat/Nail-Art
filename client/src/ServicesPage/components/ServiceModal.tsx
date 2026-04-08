@@ -38,9 +38,10 @@ export default function ServiceModal({
       setIsLoading(false);
       onClose();
       renderServices();
-    } catch {
+    } catch (error) {
+      const err = error as { response?: { data?: { description?: string } } };
       setIsAlertOpen(true);
-      setAlert({ message: "Failed to create service", severity: "error" });
+      setAlert({ message: err.response?.data?.description || `Failed to ${type} service`, severity: "error" });
     }
   };
 

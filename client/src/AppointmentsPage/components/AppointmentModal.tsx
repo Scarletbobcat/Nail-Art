@@ -115,11 +115,11 @@ export default function AppointmentModal({
       // closing modal and re-rendering events
       onClose();
       renderEvents(form);
-    } catch {
-      // show alert if failed to create appointment
+    } catch (error) {
+      const err = error as { response?: { data?: { description?: string } } };
       setIsAlertOpen(true);
       setAlert({
-        message: `Failed to ${type} appointment`,
+        message: err.response?.data?.description || `Failed to ${type} appointment`,
         severity: "error",
       });
       setIsLoading(false);
