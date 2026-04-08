@@ -68,26 +68,13 @@ public class AppointmentService {
                 Client client = new Client();
                 client.setName(appointment.getName());
                 client.setPhoneNumber(appointment.getPhoneNumber());
-                client.setAppointmentIds(List.of(id));
-                long clientId = counterService.getNextSequence("Appointments");
+                long clientId = counterService.getNextSequence("Clients");
                 client.setId(clientId);
                 appointment.setClientId(clientId);
                 clientRepository.save(client);
             } else {
-                List<Long> appointments = tempClient.getAppointmentIds();
-                appointments.add(appointment.getId());
-                tempClient.setAppointmentIds(appointments);
                 appointment.setClientId(tempClient.getId());
                 appointment.setName(tempClient.getName());
-                clientRepository.save(tempClient);
-            }
-        } else if (appointment.getClientId() != null) {
-            Client tempClient = clientRepository.findById(appointment.getClientId()).orElse(null);
-            if (tempClient != null) {
-                List<Long> appointments = tempClient.getAppointmentIds();
-                appointments.add(appointment.getId());
-                tempClient.setAppointmentIds(appointments);
-                clientRepository.save(tempClient);
             }
         }
         return appointmentRepository.save(appointment);
@@ -118,8 +105,15 @@ public class AppointmentService {
             tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
             tempAppointment.get().setShowedUp(appointment.getShowedUp());
 
-            // update client when editing appointment if client exists
+            // link client if appointment has a phone number but no clientId
             Long clientId = appointment.getClientId();
+            if (clientId == null && appointment.getPhoneNumber() != null && !appointment.getPhoneNumber().isEmpty()) {
+                Client matchedClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber()).orElse(null);
+                if (matchedClient != null) {
+                    clientId = matchedClient.getId();
+                    tempAppointment.get().setClientId(clientId);
+                }
+            }
             if (clientId == null) {
                 return Optional.of(appointmentRepository.save(tempAppointment.get()));
             }
@@ -165,16 +159,6 @@ public class AppointmentService {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
             appointmentRepository.delete(tempAppointment.get());
-            Long clientId = appointment.getClientId();
-            if (clientId != null) {
-                Client tempClient = clientRepository.findById(clientId).orElse(null);
-                if (tempClient != null) {
-                    List<Long> appointments = tempClient.getAppointmentIds();
-                    appointments.remove(appointment.getId());
-                    tempClient.setAppointmentIds(appointments);
-                    clientRepository.save(tempClient);
-                }
-            }
             return true;
         }
         return false;

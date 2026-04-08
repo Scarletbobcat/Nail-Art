@@ -43,29 +43,14 @@ public class ClientService {
     }
 
     public Client createClient(Client client) {
+        if (client.getPhoneNumber() != null && !client.getPhoneNumber().isEmpty()) {
+            clientRepository.findByPhoneNumber(client.getPhoneNumber()).ifPresent(existing -> {
+                throw new IllegalArgumentException("A client with phone number " + client.getPhoneNumber() + " already exists");
+            });
+        }
         long id = counterService.getNextSequence("Clients");
         client.setId(id);
         return clientRepository.save(client);
-    }
-
-    public void deleteAppointmentFromClient(long clientId, long appointmentId) {
-        Client tempClient = clientRepository.findById(clientId).orElse(null);
-        if (tempClient != null) {
-            List<Long> appointments = tempClient.getAppointmentIds();
-            appointments.remove(appointmentId);
-            tempClient.setAppointmentIds(appointments);
-            clientRepository.save(tempClient);
-        }
-    }
-
-    public void addAppointmentToClient(long clientId, long appointmentId) {
-        Client tempClient = clientRepository.findById(clientId).orElse(null);
-        if (tempClient != null) {
-            List<Long> appointments = tempClient.getAppointmentIds();
-            appointments.add(appointmentId);
-            tempClient.setAppointmentIds(appointments);
-            clientRepository.save(tempClient);
-        }
     }
 
     public Optional<Client> editClient(Client client) {
@@ -73,7 +58,6 @@ public class ClientService {
         if (tempClient != null) {
             tempClient.setName(client.getName());
             tempClient.setPhoneNumber(client.getPhoneNumber());
-            tempClient.setAppointmentIds(client.getAppointmentIds());
             List<Appointment> tempAppointments = appointmentRepository.findByClientId(tempClient.getId());
             for (Appointment appointment : tempAppointments) {
                 appointment.setName(client.getName());

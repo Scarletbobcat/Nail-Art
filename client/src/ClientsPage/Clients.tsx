@@ -39,7 +39,6 @@ export default function Clients() {
     id: "",
     name: "",
     phoneNumber: "",
-    appointmentIds: [],
   });
 
   const refreshClients = async () => {
@@ -210,7 +209,7 @@ export default function Clients() {
         <ClientModal
           type="create"
           onSubmit={createClient}
-          client={{ id: "", name: "", phoneNumber: "", appointmentIds: [] }}
+          client={{ id: "", name: "", phoneNumber: "" }}
           renderEntities={refreshClients}
           isOpen={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
