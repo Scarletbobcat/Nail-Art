@@ -6,8 +6,6 @@ import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.List;
-
 @Data
 @Document(collection = "Clients")
 public class Client {
@@ -21,8 +19,6 @@ public class Client {
 
     @Pattern(regexp = "^((\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4})?$", message = "Not a valid phone number")
     private String phoneNumber;
-
-    private List<Long> appointmentIds;
 
     public Long getId() {
         return id;
@@ -48,11 +44,4 @@ public class Client {
         this.phoneNumber = phoneNumber;
     }
 
-    public List<Long> getAppointmentIds() {
-        return appointmentIds;
-    }
-
-    public void setAppointmentIds(List<Long> appointmentIds) {
-        this.appointmentIds = appointmentIds;
-    }
 }
