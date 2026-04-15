@@ -62,8 +62,7 @@ public class SmsService {
 
             // sets reminderSent to true if SMS was sent successfully
             if (response.getStatusCode() == HttpStatus.OK) {
-                appointment.setReminderSent(true);
-                appointmentService.editAppointment(appointment);
+                appointmentService.markReminderSent(appointment.getId());
             // skips appointment if SMS failed to send because they are unsubscribed
             } else if (Objects.equals(response.getBody(), "Failed to send SMS: Attempt to send to unsubscribed recipient")) {
                 continue;

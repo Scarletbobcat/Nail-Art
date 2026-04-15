@@ -158,6 +158,14 @@ public class AppointmentService {
         return Optional.empty();
     }
 
+    public void markReminderSent(long appointmentId) {
+        Optional<Appointment> appointment = getAppointmentById(appointmentId);
+        if (appointment.isPresent()) {
+            appointment.get().setReminderSent(true);
+            appointmentRepository.save(appointment.get());
+        }
+    }
+
     private void basicEdit(Appointment appointment) {
         Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
         if (tempAppointment.isPresent()) {
