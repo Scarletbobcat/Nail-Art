@@ -39,7 +39,7 @@ public class SmsService {
     @Autowired
     private AppointmentService appointmentService;
 
-    @Scheduled(cron = "0 0 10 * * *", zone = "America/New_York")
+    @Scheduled(cron = "0 0 15 * * *", zone = "America/New_York")
     public void sendReminders() {
         List<Appointment> appointments = appointmentService.getAppointmentsForTomorrow();
         int sent = 0;
