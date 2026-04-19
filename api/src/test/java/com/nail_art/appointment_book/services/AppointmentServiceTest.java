@@ -11,8 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -449,6 +452,169 @@ class AppointmentServiceTest {
 
             assertFalse(appointmentService.deleteAppointment(appt));
             verify(appointmentRepository, never()).delete(any());
+        }
+    }
+
+    @Nested
+    class GetAppointmentsForTomorrow {
+
+        private static final ZoneId ET = ZoneId.of("America/New_York");
+
+        @Test
+        void returnsAppointmentsFromRepository() {
+            String expectedDate = LocalDate.now(ET).plusDays(1).toString();
+            Appointment appt = makeAppointment("Jane", "330-555-1111", expectedDate, "T10:00", "T11:00");
+            when(appointmentRepository.findByDate(expectedDate)).thenReturn(List.of(appt));
+
+            List<Appointment> result = appointmentService.getAppointmentsForTomorrow();
+
+            assertEquals(1, result.size());
+            assertEquals("Jane", result.get(0).getName());
+        }
+
+        @Test
+        void returnsEmptyListWhenNoAppointments() {
+            String expectedDate = LocalDate.now(ET).plusDays(1).toString();
+            when(appointmentRepository.findByDate(expectedDate)).thenReturn(List.of());
+
+            List<Appointment> result = appointmentService.getAppointmentsForTomorrow();
+
+            assertTrue(result.isEmpty());
+        }
+
+        @Test
+        void usesEasternTimezoneForTomorrowCalculation() {
+            LocalDate fixedToday = LocalDate.of(2026, 4, 18);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(fixedToday);
+                when(appointmentRepository.findByDate("2026-04-19")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-04-19");
+                verify(appointmentRepository, never()).findByDate("2026-04-18");
+                mocked.verify(() -> LocalDate.now(ET));
+            }
+        }
+
+        @Test
+        void crossesMonthBoundary() {
+            LocalDate lastOfMonth = LocalDate.of(2026, 4, 30);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(lastOfMonth);
+                when(appointmentRepository.findByDate("2026-05-01")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-05-01");
+            }
+        }
+
+        @Test
+        void crossesYearBoundary() {
+            LocalDate newYearsEve = LocalDate.of(2026, 12, 31);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(newYearsEve);
+                when(appointmentRepository.findByDate("2027-01-01")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2027-01-01");
+            }
+        }
+
+        @Test
+        void handlesLeapDayInLeapYear() {
+            LocalDate feb28LeapYear = LocalDate.of(2028, 2, 28);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(feb28LeapYear);
+                when(appointmentRepository.findByDate("2028-02-29")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2028-02-29");
+            }
+        }
+
+        @Test
+        void skipsFeb29InNonLeapYear() {
+            LocalDate feb28NonLeapYear = LocalDate.of(2026, 2, 28);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(feb28NonLeapYear);
+                when(appointmentRepository.findByDate("2026-03-01")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-03-01");
+            }
+        }
+
+        @Test
+        void leapDayRollsIntoMarchFirst() {
+            LocalDate feb29 = LocalDate.of(2028, 2, 29);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(feb29);
+                when(appointmentRepository.findByDate("2028-03-01")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2028-03-01");
+            }
+        }
+
+        @Test
+        void padsSingleDigitMonthAndDayWithLeadingZeros() {
+            LocalDate early = LocalDate.of(2026, 1, 4);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(early);
+                when(appointmentRepository.findByDate("2026-01-05")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-01-05");
+            }
+        }
+
+        @Test
+        void handlesDstSpringForwardDay() {
+            // DST begins in 2026 on March 8
+            LocalDate dstSpringForward = LocalDate.of(2026, 3, 8);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(dstSpringForward);
+                when(appointmentRepository.findByDate("2026-03-09")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-03-09");
+            }
+        }
+
+        @Test
+        void handlesDstFallBackDay() {
+            // DST ends in 2026 on November 1
+            LocalDate dstFallBack = LocalDate.of(2026, 11, 1);
+            try (MockedStatic<LocalDate> mocked = mockStatic(LocalDate.class)) {
+                mocked.when(() -> LocalDate.now(ET)).thenReturn(dstFallBack);
+                when(appointmentRepository.findByDate("2026-11-02")).thenReturn(List.of());
+
+                appointmentService.getAppointmentsForTomorrow();
+
+                verify(appointmentRepository).findByDate("2026-11-02");
+            }
+        }
+
+        @Test
+        void returnsMultipleAppointmentsInRepositoryOrder() {
+            String expectedDate = LocalDate.now(ET).plusDays(1).toString();
+            Appointment first = makeAppointment("Alice", "330-555-1111", expectedDate, "T09:00", "T10:00");
+            Appointment second = makeAppointment("Bob", "330-555-2222", expectedDate, "T10:00", "T11:00");
+            when(appointmentRepository.findByDate(expectedDate)).thenReturn(List.of(first, second));
+
+            List<Appointment> result = appointmentService.getAppointmentsForTomorrow();
+
+            assertEquals(2, result.size());
+            assertEquals("Alice", result.get(0).getName());
+            assertEquals("Bob", result.get(1).getName());
         }
     }
 }

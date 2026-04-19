@@ -7,9 +7,9 @@ import com.nail_art.appointment_book.repositories.ClientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 
@@ -196,20 +196,8 @@ public class AppointmentService {
         return appointmentRepository.findByPhoneNumberContaining(phoneNumber);
     }
 
-    public List<Appointment> getAppointmentsNextWorkDay() {
-        Calendar calendar = Calendar.getInstance();
-        String date = "";
-        List<Appointment> appointments = null;
-        int daysChecked = 0;
-        do {
-            calendar.add(Calendar.DATE, 1);
-            date = String.format("%d-%02d-%02d",
-                    calendar.get(Calendar.YEAR)
-                    ,(calendar.get(Calendar.MONTH) + 1)
-                    ,calendar.get(Calendar.DATE));
-            appointments = appointmentRepository.findByDate(date);
-            daysChecked++;
-        } while (appointments.isEmpty() && daysChecked < 30);
+    public List<Appointment> getAppointmentsForTomorrow() {
+        String date = LocalDate.now(ZoneId.of("America/New_York")).plusDays(1).toString();
         return appointmentRepository.findByDate(date);
     }
 }
