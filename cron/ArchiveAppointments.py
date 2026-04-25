@@ -22,21 +22,24 @@ past_appointments = appointments.find({"date": {"$lt": str(two_weeks_ago)}}).to_
 
 month_ago = today - datetime.timedelta(days=30)
 
-appoinments_greater_than_month = archived_appointments.find({"date": {"$lt": str(month_ago)}}).to_list()
+appoinments_greater_than_month = archived_appointments.find(
+    {"date": {"$lt": str(month_ago)}}
+).to_list()
 
-if (past_appointments):
-  print("Archiving appointments...")
-  # inserting into archive collection
-  archived_appointments.insert_many(past_appointments)
-  # removing from appointments collection
-  appointments.delete_many({"date": {"$lt": str(today)}})
-  print("Archived appointments successfully!")
+if past_appointments:
+    print("Archiving appointments...")
+    # inserting into archive collection
+    archived_appointments.insert_many(past_appointments)
+    # removing from appointments collection
+    appointments.delete_many({"date": {"$lt": str(today)}})
+    print("Archived appointments successfully!")
 else:
-  print("No appointments to archive.")
+    print("No appointments to archive.")
 
-if (appoinments_greater_than_month):
-  print("Removing appointments older than a month...")
-  archived_appointments.delete_many({"date": {"$lt": str(month_ago)}})
-  print("Removed appointments older than a month successfully!")
+if appoinments_greater_than_month:
+    print("Removing appointments older than a month...")
+    archived_appointments.delete_many({"date": {"$lt": str(month_ago)}})
+    print("Removed appointments older than a month successfully!")
 else:
-  print("No archived appointments to remove.")
+    print("No archived appointments to remove.")
+
