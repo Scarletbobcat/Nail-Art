@@ -1,6 +1,6 @@
 import type { Breakpoint } from "@mui/material";
 
-export const MOBILE_BREAKPOINT: Breakpoint = "sm";
+export const MOBILE_BREAKPOINT: Breakpoint = "md";
 
 export const CALENDAR_COLORS = {
   border: "#e0e0e0",
@@ -17,4 +17,4 @@ export const SPACING = {
   card: { xs: 1.5, sm: 2 },
 } as const;
 
-export const MAX_CONTENT_WIDTH = 960;
+export const MAX_CONTENT_WIDTH = 1200;

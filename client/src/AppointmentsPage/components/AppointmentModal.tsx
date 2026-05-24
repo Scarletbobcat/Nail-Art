@@ -27,6 +27,7 @@ import ClientSelect from "./ClientSelect";
 import { DateTimeValidationError } from "@mui/x-date-pickers/models";
 import { TimeValidationError } from "@mui/x-date-pickers/models";
 import ResponsiveModal from "../../components/ResponsiveModal";
+import { MOBILE_BREAKPOINT } from "../../constants/design";
 
 const nineAM = dayjs().hour(9).minute(0).second(0);
 const ninePM = dayjs().hour(21).minute(0).second(0);
@@ -69,7 +70,7 @@ export default function AppointmentModal({
   );
   const [endTimeCustomError, setEndTimeCustomError] = useState<string>("");
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
 
   const errorMessage = useCallback((error: DateTimeValidationError | null) => {
     switch (error) {
