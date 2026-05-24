@@ -5,11 +5,11 @@ import { Box, Paper, useMediaQuery, useTheme } from "@mui/material";
 import dayjs from "dayjs";
 import MobileCalendar from "./components/MobileCalendar";
 import PageHeader from "../../components/PageHeader";
-import { SPACING, MAX_CONTENT_WIDTH } from "../../constants/design";
+import { SPACING, MAX_CONTENT_WIDTH, MOBILE_BREAKPOINT } from "../../constants/design";
 
 const CalendarClient = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
   const [startDate, setStartDate] = useState(
     localStorage.getItem("startDate")
       ? dayjs(localStorage.getItem("startDate"))

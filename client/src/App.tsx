@@ -13,10 +13,11 @@ import {
   Navigate,
 } from "react-router-dom";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
+import { MOBILE_BREAKPOINT } from "./constants/design";
 
 function AppContent() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
 
   return (
     <>

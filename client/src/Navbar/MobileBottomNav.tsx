@@ -12,6 +12,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import PeopleIcon from "@mui/icons-material/People";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import MoreDrawer from "./MoreDrawer";
+import { MOBILE_BREAKPOINT } from "../constants/design";
 
 const tabs = [
   { label: "Calendar", icon: <CalendarTodayIcon />, path: "/Appointments" },
@@ -21,7 +22,7 @@ const tabs = [
 
 export default function MobileBottomNav() {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
   const navigate = useNavigate();
   const location = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);

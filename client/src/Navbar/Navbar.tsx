@@ -10,6 +10,7 @@ import {
   Box,
 } from "@mui/material";
 import { logout } from "../api/auth/auth";
+import { MAX_CONTENT_WIDTH } from "../constants/design";
 
 const navItems = [
   {
@@ -58,7 +59,7 @@ function Navbar() {
         border: "none",
       }}
     >
-      <Toolbar sx={{ maxWidth: 960, mx: "auto", width: "100%" }}>
+      <Toolbar sx={{ maxWidth: MAX_CONTENT_WIDTH, mx: "auto", width: "100%" }}>
         <Typography
           variant="h5"
           sx={{

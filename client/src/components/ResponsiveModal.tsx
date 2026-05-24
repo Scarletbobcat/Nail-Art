@@ -8,6 +8,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { MOBILE_BREAKPOINT } from "../constants/design";
 
 export default function ResponsiveModal({
   open,
@@ -23,7 +24,7 @@ export default function ResponsiveModal({
   maxWidth?: number;
 }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
 
   if (isMobile) {
     return (
