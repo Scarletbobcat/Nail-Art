@@ -1,6 +1,6 @@
 import type { Breakpoint } from "@mui/material";
 
-export const MOBILE_BREAKPOINT: Breakpoint = "md";
+export const MOBILE_BREAKPOINT: Breakpoint = "sm";
 
 export const CALENDAR_COLORS = {
   border: "#e0e0e0",
