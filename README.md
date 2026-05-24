@@ -1,61 +1,110 @@
-# Nail Art & Spa LLC. Appointment Book Web App
+# Nail Art & Spa — Appointment Book
 
-This is an internal application used by Nail Art & Spa LLC. for management of their appointments, employees, and services.
+Internal web app that replaces a paper appointment book for Nail Art & Spa LLC. Front desk staff use it to schedule appointments against employee columns, track clients, send reminder texts, and manage employees and services.
 
-## Technologies
+The app runs on a daily-use cadence: the calendar is the home page, appointments are created by dragging across an employee's column, and the API blasts SMS reminders to tomorrow's bookings at 3 PM ET every day.
 
-1. Front End
-   1. [Vite React + TypeScript](https://vite.dev)
-   2. [Material-UI](https://mui.com/material-ui/)
-2. Back End
-   1. [Java Spring Boot](https://spring.io)
-   2. [MongoDB Atlas](https://www.mongodb.com)
+## Screenshots
 
-## Features
+### Appointments calendar
 
-### Appointment Calendar
-
-The main feature of this application is to manage appointments - this includes the basic CRUD (Create, Read, Update, Delete) operations. This is done through a resource calendar type of UI, an example shown below:
+The calendar is the default view. Columns are employees, rows are 15-minute slots. Click + drag in a column to open the create modal; click an existing appointment for an edit / delete / check-in menu.
 
 ![Calendar](./images/example-calendar.png)
-![Calendar-Shown](./images/example-calendar-shown.png)
 
-The buttons above the calendar is used to change the date by one day, while the navigator to the left can be used to change the date by larger date ranges. The 'Today' button above the navigator changes the date back to the current date.
+Once an appointment is marked as "checked in" / "showed up", it turns gray so the front desk can see who's already in the chair:
 
-Another very important feature of this application is actually the 'Remind Appointments' button. This uses Twilio to send SMS messages to every appointment on the next work-day reminding them of their appointment. This saves the business time by not sending each reminder text by hand.
+![Calendar with checked-in appointment](./images/example-calendar-shown.png)
 
-With this page, the user is able to create an appointment by clicking and holding where the appointment will being, and dragging and releasing where they want the appointment to end.
+### Create / edit appointment
 
-Once the user releases, a modal will open for them to create an appointment where they will be prompted to fill in the necessary fields. It also comes with a client dropdown where the user can search for an existing client and it will autofill their name and phone number:
+The modal autofills client name and phone number from the clients list. The same modal is reused for edit and delete (with fields disabled in the delete view).
 
-![Create-Appointment-Modal](./images/create-appointment-modal.png)
+![Create appointment](./images/create-appointment-modal.png)
+![Edit appointment](./images/edit-appointment-modal.png)
 
-They will also be able to edit, delete, and mark appointments as 'here' appointments right from this page by left-clicking on an appointment. A menu will appear for the user to choose an option. Once an appointment is marked as 'here', the color of the appointment will turn gray to indicate this. The edit modal is as shown:
+### Appointment search
 
-![Edit-Appointment-Modal](./images/edit-appointment-modal.png)
+Partial, case-insensitive phone-number search across appointments. Edit and delete are available inline:
 
-The delete appointment modal is exactly the same as the edit modal, the only differences are the title, every field is disabled to prevent the user from changing anything accidentally, and the confirmation button.
-
-### Appointment Search
-
-This page is used to search for appointments by their phone number. The user is also able to edit or delete an appointment on this page using the same modals as the previous one.
-
-![Appointment-Search](./images/appointment-search.png)
+![Appointment search](./images/appointment-search.png)
 
 ### Employees
 
-This page is a simple CRUD page for the employees where the user can do all operations. The color for each employee here is used to coordinate the colors of the appointments on the calendar page.
+CRUD for the salon's employees. Each employee has a color used to coordinate their column on the calendar:
 
 ![Employees](./images/employees.png)
 
 ### Services
 
-Similarly to the employees page, this page is for the services.
+CRUD for the service menu. Service IDs are referenced by appointments:
 
 ![Services](./images/services.png)
 
 ### Clients
 
-I've also added a clients page where the user can search, edit, delete, and create clients. These clients are actually linked to their appointments to help with an autofill feature.
+Searchable client directory. Clients are linked to their appointments by phone number, which drives the autofill in the create modal:
 
 ![Clients](./images/clients.png)
+
+## Tech stack
+
+- **Frontend** (`client/`): [Vite](https://vite.dev) + React 18 + TypeScript, [Material UI](https://mui.com/material-ui/) v7 (`@mui/material`, `@mui/x-data-grid`, `@mui/x-date-pickers`), [TanStack Query](https://tanstack.com/query), `react-router-dom` v6.
+- **Backend** (`api/`): [Spring Boot 3](https://spring.io) on Java 21, Spring Security with JWT + refresh-cookie auth, Spring Data MongoDB. SMS reminders via [Twilio](https://www.twilio.com).
+- **Database**: [MongoDB Atlas](https://www.mongodb.com).
+- **Cron** (`cron/`): Python 3.14 scripts (managed with [`uv`](https://github.com/astral-sh/uv)) for archive sweeping and ad-hoc data hygiene.
+
+A high-level architecture sketch lives in [`docs/reference/architecture.md`](./docs/reference/architecture.md).
+
+## Quick start
+
+Prerequisites: Node.js 20+, JDK 21, a MongoDB Atlas connection string, and (optional) Twilio credentials.
+
+See [`docs/reference/local-development.md`](./docs/reference/local-development.md) for the full env-var list.
+
+```sh
+cd client && npm install && cd ..
+just dev                              # runs `just web` + `just api` in parallel
+```
+
+The frontend serves at `http://localhost:5173`, the API at `http://localhost:8080`.
+
+There is no public signup. Bootstrap the first user via `POST /auth/register`.
+
+For the published Docker stack:
+
+```sh
+./start-app.sh                        # pulls scarletbobcat/nail-art:{client,api} and brings up docker-compose
+```
+
+## Repository layout
+
+```
+client/   Vite + React + MUI single-page app
+api/      Spring Boot 3 REST API + JWT auth + Twilio SMS
+cron/     Python maintenance scripts (archive, dedupe, sanity)
+docs/     Canonical documentation (start at docs/INDEX.md)
+images/   README screenshots
+```
+
+## Documentation
+
+- [`docs/INDEX.md`](./docs/INDEX.md) — full documentation map.
+- [`AGENTS.md`](./AGENTS.md) — short router for contributors and AI agents.
+- [`docs/reference/architecture.md`](./docs/reference/architecture.md) — system shape, request flow, deployment.
+- [`docs/reference/conventions.md`](./docs/reference/conventions.md) — naming and patterns to follow.
+- [`docs/reference/lessons.md`](./docs/reference/lessons.md) — gotchas distilled from prior incidents (auth, counters, reminders, pagination).
+- [`docs/modules/`](./docs/modules) — per-module deep dives: [client](./docs/modules/client.md), [api](./docs/modules/api.md), [cron](./docs/modules/cron.md).
+
+## CI
+
+`.github/workflows/ci.yml` runs on every push and PR to `main`:
+
+- Backend: `./mvnw test -Dtest="com.nail_art.appointment_book.services.**"`
+- Frontend: `npx tsc -b --noEmit` and `npm run lint`
+
+Run `cd client && npm run build` locally before committing frontend changes — it catches the type-project drift that breaks the Render build.
+
+## License
+
+See [`LICENSE`](./LICENSE).
