@@ -23,7 +23,7 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: ./mvnw test -Dtest="com.nail_art.appointment_book.services.**" -q
+        run: ./mvnw test -Dtest="com.nail_art.appointment_book.**" -q
 
   frontend-lint:
     name: Frontend Lint & Typecheck
@@ -45,6 +45,9 @@ jobs:
 
       - name: Typecheck
         run: npx tsc -b --noEmit
+
+      - name: Test
+        run: npm test
 
       - name: Lint
         run: npm run lint

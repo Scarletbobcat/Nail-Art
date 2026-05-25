@@ -19,9 +19,11 @@ just api                # api only
 
 cd client && npm run build     # tsc -b && vite build  (run before committing FE changes)
 cd client && npm run lint
+cd client && npm test
 cd client && npx tsc -b --noEmit
 
 cd api && ./mvnw test -Dtest="com.nail_art.appointment_book.services.**"
+cd api && ./mvnw test -Dtest="PostgresIntegrationSmokeTest"
 cd api && ./mvnw spring-boot:run
 
 ./start-app.sh          # docker-compose stack from published images
@@ -34,6 +36,8 @@ cd api && ./mvnw spring-boot:run
 - Go through the shared `axios` instance (`client/src/api/api.ts`) for HTTP. Per-resource API modules live in `client/src/api/<resource>/`.
 - Use `CounterService.getNextSequence("<collection>")` for numeric IDs on the backend. Match the counter name to the collection.
 - Add service-layer tests under `com.nail_art.appointment_book.services` for new backend behavior — CI runs that package.
+- Integration tests against real Postgres extend `com.nail_art.appointment_book.PostgresIntegrationTest`; the base manages a shared Testcontainers Postgres 16 container and applied Flyway migrations.
+- Frontend tests use Vitest; run them with `cd client && npm test`.
 - Run `cd client && npm run build` before committing frontend changes.
 - Keep brainstorm / requirements drafts in `docs/brainstorms/` and out of feature commits.
 
