@@ -18,6 +18,7 @@ This directory is the canonical map of the Nail Art & Spa appointment book. Root
 
 - [Local development](reference/local-development.md) — how to run the stack and what each port serves.
 - [Docker / deployment notes](reference/deployment.md) — published images and runtime expectations.
+- [PostgreSQL cutover runbook](operations/postgres-cutover-runbook.md) — cutover-day checklist, rollback path, and post-cutover cleanup.
 
 ## Changelog
 
