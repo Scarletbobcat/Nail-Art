@@ -6,6 +6,7 @@ import Navbar from "./Navbar/Navbar.tsx";
 import MobileBottomNav from "./Navbar/MobileBottomNav.tsx";
 import Search from "./AppointmentsPage/Search/Search.tsx";
 import Clients from "./ClientsPage/Clients.tsx";
+import { RequireMe } from "./components/RequireMe";
 import {
   BrowserRouter as Router,
   Route,
@@ -25,12 +26,47 @@ function AppContent() {
       <Box sx={{ pb: isMobile ? "72px" : 0 }}>
         <Routes>
           <Route path="/" element={<Navigate to="/Appointments" replace />} />
-          <Route path="/Appointments" element={<Calendar />} />
-          <Route path="/Clients" element={<Clients />} />
+          <Route
+            path="/Appointments"
+            element={
+              <RequireMe>
+                <Calendar />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Clients"
+            element={
+              <RequireMe>
+                <Clients />
+              </RequireMe>
+            }
+          />
           <Route path="/Login" element={<Login />} />
-          <Route path="/Employees" element={<Employees />} />
-          <Route path="/Services" element={<Services />} />
-          <Route path="/Appointments/Search" element={<Search />} />
+          <Route
+            path="/Employees"
+            element={
+              <RequireMe>
+                <Employees />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Services"
+            element={
+              <RequireMe>
+                <Services />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Appointments/Search"
+            element={
+              <RequireMe>
+                <Search />
+              </RequireMe>
+            }
+          />
         </Routes>
       </Box>
       <MobileBottomNav />

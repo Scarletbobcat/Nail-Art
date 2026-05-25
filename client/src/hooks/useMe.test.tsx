@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 
@@ -32,6 +32,7 @@ function createQueryClient() {
     defaultOptions: {
       queries: {
         gcTime: 0,
+        retryDelay: 0,
       },
     },
   });
@@ -125,16 +126,10 @@ describe("useMe", () => {
   });
 
   it("surfaces 503 as an error after the configured retries", async () => {
-    vi.useFakeTimers();
     mockedFetchMe().mockRejectedValue(axiosError(503));
 
     const { result } = renderHook(() => useMe(), {
       wrapper: queryWrapper(),
-    });
-
-    await waitFor(() => expect(mockedFetchMe()).toHaveBeenCalledTimes(1));
-    await act(async () => {
-      await vi.runAllTimersAsync();
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
@@ -163,7 +158,7 @@ describe("RequireMe", () => {
       isPending: false,
       refetch: vi.fn(),
       ...state,
-    } as ReturnType<typeof useMe>);
+    } as unknown as ReturnType<typeof useMe>);
   }
 
   function renderProtected() {

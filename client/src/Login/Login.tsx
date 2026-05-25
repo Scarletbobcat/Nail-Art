@@ -12,13 +12,17 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { login } from "../api/auth/auth";
+import { fetchMe } from "../api/me";
+import { meQueryKey } from "../hooks/useMe";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useState, FormEvent } from "react";
 import AnimatedPage from "../components/AnimatedPage";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Login() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +36,7 @@ export default function Login() {
       const previousUrl = localStorage.getItem("previousUrl");
       setIsLoading(true);
       await login(username, password);
+      await queryClient.prefetchQuery({ queryKey: meQueryKey, queryFn: fetchMe });
       setIsLoading(false);
       if (previousUrl) {
         navigate(previousUrl);

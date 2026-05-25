@@ -33,15 +33,21 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    const status = error.response?.status;
+
+    if (status === 503) {
+      return Promise.reject(error);
+    }
+
     if (
-      error.response.status === 401 &&
-      error.response.data.detail !== "Bad credentials"
+      status === 401 &&
+      error.response?.data?.detail !== "Bad credentials"
     ) {
       if (
-        error.response.data == "Invalid or expired refresh token" ||
-        error.response.data == "Refresh token is missing" ||
-        error.response.data == "User not found" ||
-        error.config._retry
+        error.response?.data == "Invalid or expired refresh token" ||
+        error.response?.data == "Refresh token is missing" ||
+        error.response?.data == "User not found" ||
+        error.config?._retry
       ) {
         localStorage.removeItem("token");
         localStorage.setItem("previousUrl", window.location.pathname);
@@ -62,7 +68,7 @@ api.interceptors.response.use(
         }
       }
     }
-    if (error.response.status === 403) {
+    if (status === 403) {
       localStorage.setItem("previousUrl", window.location.pathname);
       window.location.href = "/login";
     }
