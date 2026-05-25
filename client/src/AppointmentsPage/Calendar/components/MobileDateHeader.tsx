@@ -8,10 +8,12 @@ import dayjs from "dayjs";
 import { useSwipeable } from "react-swipeable";
 
 export default function MobileDateHeader({
+  orgTz,
   startDate,
   onDateChange,
   onDateSet,
 }: {
+  orgTz: string;
   startDate: dayjs.Dayjs;
   onDateChange: (days: number) => void;
   onDateSet: (date: dayjs.Dayjs) => void;
@@ -62,6 +64,7 @@ export default function MobileDateHeader({
       >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DateCalendar
+            timezone={orgTz}
             value={startDate}
             onChange={(date) => {
               if (date) {

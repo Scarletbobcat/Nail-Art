@@ -1,12 +1,14 @@
 import { Appointment, Service } from "../../../../types";
 import { Typography, Box, Tooltip, Stack } from "@mui/material";
-import dayjs from "dayjs";
+import { formatTime } from "../../../../utils/datetime";
 
 export default function CustomAppointment({
   appointment,
   onEventClick,
   isSpecial = false,
   services = [],
+  orgTz,
+  bgcolor,
 }: {
   appointment: Appointment;
   onEventClick?: (e: {
@@ -15,13 +17,11 @@ export default function CustomAppointment({
   }) => void;
   services?: Service[];
   isSpecial?: boolean;
+  orgTz: string;
+  bgcolor?: string;
 }) {
-  const startTime = dayjs(
-    `${appointment.date} ${appointment.startTime.split("T")[1]}`
-  ).format("h:mm");
-  const endTime = dayjs(
-    `${appointment.date} ${appointment.endTime.split("T")[1]}`
-  ).format("h:mm A");
+  const startTime = formatTime(appointment.startsAt, orgTz).replace(/\s[AP]M$/, "");
+  const endTime = formatTime(appointment.endsAt, orgTz);
 
   const textColor = isSpecial ? "white" : "text.primary";
   const secondaryColor = isSpecial ? "rgba(255,255,255,0.8)" : "text.secondary";
@@ -53,11 +53,12 @@ export default function CustomAppointment({
   return (
     <Tooltip title={tooltipContent} arrow placement="right" followCursor>
       <Box
+        data-testid="desktop-appointment"
         onMouseUp={(event) =>
           onEventClick &&
           onEventClick({ originalEvent: event, e: appointment })
         }
-        sx={{ height: "100%", width: "100%" }}
+        sx={{ height: "100%", width: "100%", bgcolor }}
       >
         <Typography
           sx={{

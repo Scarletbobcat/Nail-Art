@@ -14,7 +14,10 @@ export const getAppointmentsByPhoneNumber = async (phoneNumber: string) => {
 };
 
 export const editAppointment = async (appointment: Appointment) => {
-  const response = await api.put(`/appointments/edit`, appointment);
+  if (!appointment.id) {
+    throw new Error("Appointment id is required to edit an appointment");
+  }
+  const response = await api.put(`/appointments/edit/${appointment.id}`, appointment);
 
   return response.data;
 };
@@ -26,9 +29,10 @@ export const createAppointment = async (appointment: Appointment) => {
 };
 
 export const deleteAppointment = async (appointment: Appointment) => {
-  const response = await api.delete(`/appointments/delete`, {
-    data: appointment,
-  });
+  if (!appointment.id) {
+    throw new Error("Appointment id is required to delete an appointment");
+  }
+  const response = await api.delete(`/appointments/delete/${appointment.id}`);
 
   return response.data;
 };

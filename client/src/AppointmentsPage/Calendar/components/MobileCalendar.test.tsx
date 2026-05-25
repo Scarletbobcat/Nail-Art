@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import dayjs from "dayjs";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -76,7 +76,7 @@ function appointment(overrides: Partial<Appointment> = {}): Appointment {
     endsAt: "2026-05-26T14:30:00Z",
     name: "Mina",
     phoneNumber: "555-0100",
-    services: [services[0].id],
+    services: [String(services[0].id)],
     reminderSent: false,
     showedUp: false,
     ...overrides,
@@ -111,7 +111,7 @@ describe("MobileCalendar timezone layout", () => {
     );
 
     await screen.findByText("Mina");
-    const block = screen.getByText("Mina").closest(".MuiBox-root") as HTMLElement;
+    const block = screen.getByTestId("mobile-appointment") as HTMLElement;
     const top = block?.style.top;
 
     if (!block || !top) {
@@ -143,7 +143,8 @@ describe("MobileCalendar timezone layout", () => {
       { wrapper }
     );
 
-    const block = (await screen.findByText("Blocked")).closest(".MuiBox-root");
+    await waitFor(() => expect(screen.getByTestId("mobile-appointment")).toBeInTheDocument());
+    const block = screen.getByTestId("mobile-appointment");
 
     expect(
       block,
@@ -166,7 +167,10 @@ describe("MobileCalendar timezone layout", () => {
       { wrapper }
     );
 
-    await waitFor(() => expect(vi.mocked(getAppointmentsByDate)).toHaveBeenCalled());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(vi.mocked(getAppointmentsByDate)).toHaveBeenCalled();
     const nowLine = container.querySelector('[data-testid="mobile-calendar-now-line"]') as HTMLElement | null;
     const actualTop = nowLine?.style.top;
 

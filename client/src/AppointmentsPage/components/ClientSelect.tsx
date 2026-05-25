@@ -10,7 +10,7 @@ export default function ClientSelect({
   onChange: (client: {
     name: string;
     phoneNumber: string;
-    clientId?: number | undefined;
+    clientId?: string | undefined;
   }) => void;
   show?: boolean;
   clients: Client[];
@@ -67,6 +67,7 @@ export default function ClientSelect({
             onChange({
               name: value.name,
               phoneNumber: value.phoneNumber ? value.phoneNumber : "",
+              clientId: value.id,
             });
           } else {
             onChange({ name: "", phoneNumber: "" });

@@ -10,7 +10,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckIcon from "@mui/icons-material/Check";
 import EventIcon from "@mui/icons-material/Event";
-import { Appointment } from "../../../../types";
+import { Appointment, Service } from "../../../../types";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +23,7 @@ export default function ContextMenu({
   editShowedUp,
   renderEvents,
   appointment,
+  services,
 }: {
   onClose: (e: React.MouseEvent) => void;
   setEdit: (editOpen: boolean) => void;
@@ -30,7 +31,8 @@ export default function ContextMenu({
   open: boolean;
   anchorPosition: { top: number; left: number } | undefined;
   editShowedUp: () => void;
-  appointment: Appointment;
+  appointment?: Appointment;
+  services: Service[];
   renderEvents: () => void;
 }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -51,11 +53,17 @@ export default function ContextMenu({
     setIsLoading(false);
   };
   const onFutureApptClick = async (e: React.MouseEvent) => {
+    if (!appointment) return;
     setIsLoading(true);
     onClose(e);
     nav(`/Appointments/Search?pn=${appointment.phoneNumber}`);
     setIsLoading(false);
   };
+  const unavailabilityService = services.find((service) => service.isUnavailabilityMarker);
+  const isUnavailabilityAppointment =
+    !!appointment &&
+    !!unavailabilityService?.id &&
+    appointment.services.includes(String(unavailabilityService.id));
 
   return (
     <Menu
@@ -76,9 +84,7 @@ export default function ContextMenu({
         </ListItemIcon>
         Delete
       </MenuItem>
-      {/* if the event is not a service appointment, do not render the check in/out option */}
-      {appointment && !appointment.services.includes(3) ? (
-        // otherwise, depending on the appointment showedUp status, render the check in/out option
+      {appointment && !isUnavailabilityAppointment ? (
         appointment && appointment.showedUp ? (
           <MenuItem onClick={onCheckClick} disabled={isLoading}>
             <Stack direction="row" spacing={2}>
@@ -109,7 +115,7 @@ export default function ContextMenu({
           </MenuItem>
         )
       ) : null}
-      <MenuItem onClick={onFutureApptClick}>
+      <MenuItem onClick={onFutureApptClick} disabled={!appointment?.phoneNumber}>
         <ListItemIcon>
           <EventIcon fontSize="small" />
         </ListItemIcon>

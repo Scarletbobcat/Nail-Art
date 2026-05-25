@@ -16,6 +16,7 @@ import { getAllServices } from "../../../../api/services";
 import { getClients } from "../../../../api/clients";
 import ContextMenu from "./ContextMenu";
 import AppointmentModal from "../../../components/AppointmentModal";
+import { toIsoFromSalonInput } from "../../../../utils/datetime";
 
 const HOUR_HEIGHT = 64;
 const HEADER_HEIGHT = 44;
@@ -37,8 +38,10 @@ interface TimeRangeEvent {
 }
 
 export default function AppointmentCalendar({
+  orgTz,
   startDate,
 }: {
+  orgTz: string;
   startDate: dayjs.Dayjs;
 }) {
   const queryClient = useQueryClient();
@@ -49,9 +52,8 @@ export default function AppointmentCalendar({
     id: "",
     name: null,
     phoneNumber: "",
-    date: "",
-    startTime: "",
-    endTime: "",
+    startsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), "09:00:00", orgTz),
+    endsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), "10:00:00", orgTz),
     employeeId: "",
     services: [],
     reminderSent: false,
@@ -109,9 +111,8 @@ export default function AppointmentCalendar({
   const onTimeRangeSelected = (e: TimeRangeEvent) => {
     setCreateApp({
       ...createApp,
-      date: startDate.format("YYYY-MM-DD"),
-      startTime: "T" + e.startTime,
-      endTime: "T" + e.endTime,
+      startsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), e.startTime, orgTz),
+      endsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), e.endTime, orgTz),
       employeeId: e.employee,
     });
     setIsCreateOpen(true);
@@ -124,6 +125,10 @@ export default function AppointmentCalendar({
   if (employeeError) {
     return <Typography color="error">Error loading data</Typography>;
   }
+
+  const selectedAppointment = (appointments || []).find(
+    (app: Appointment) => app.id === selectedAppId
+  );
 
   return (
     <Box>
@@ -263,6 +268,7 @@ export default function AppointmentCalendar({
                 onTimeRangeSelected={onTimeRangeSelected}
                 startDate={startDate}
                 services={services || []}
+                orgTz={orgTz}
               />
             </Box>
           ))}
@@ -285,6 +291,7 @@ export default function AppointmentCalendar({
           allServices={services || []}
           allEmployees={employees}
           clients={clients}
+          orgTz={orgTz}
         />
       )}
       <ContextMenu
@@ -293,18 +300,14 @@ export default function AppointmentCalendar({
             ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
             : undefined
         }
-        appointment={(appointments || []).find(
-          (app: Appointment) => app.id == selectedAppId
-        )}
+        appointment={selectedAppointment}
+        services={services || []}
         renderEvents={appRefetch}
         editShowedUp={async () => {
-          const appointment = (appointments || []).find(
-            (app: Appointment) => app.id == selectedAppId
-          );
-          if (appointment) {
+          if (selectedAppointment) {
             await editAppointment({
-              ...appointment,
-              showedUp: !appointment.showedUp,
+              ...selectedAppointment,
+              showedUp: !selectedAppointment.showedUp,
             });
           }
         }}
@@ -313,11 +316,9 @@ export default function AppointmentCalendar({
         setDelete={setIsDeleteOpen}
         onClose={handleMenuClose}
       />
-      {isEditOpen && (
+      {isEditOpen && selectedAppointment && (
         <AppointmentModal
-          appointment={(appointments || []).find(
-            (app: Appointment) => app.id == selectedAppId
-          )}
+          appointment={selectedAppointment}
           isOpen={isEditOpen}
           type={"edit"}
           onSubmit={editAppointment}
@@ -325,20 +326,20 @@ export default function AppointmentCalendar({
           renderEvents={() => { appRefetch(); }}
           allServices={services || []}
           allEmployees={employees}
+          orgTz={orgTz}
         />
       )}
-      {isDeleteOpen && (
+      {isDeleteOpen && selectedAppointment && (
         <AppointmentModal
           allServices={services || []}
-          appointment={(appointments || []).find(
-            (app: Appointment) => app.id == selectedAppId
-          )}
+          appointment={selectedAppointment}
           onSubmit={deleteAppointment}
           isOpen={isDeleteOpen}
           onClose={() => setIsDeleteOpen(false)}
           renderEvents={() => { appRefetch(); }}
           allEmployees={employees}
           type={"delete"}
+          orgTz={orgTz}
         />
       )}
     </Box>

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { Appointment } from "../../../../types";
 import { UNAVAILABILITY_BG } from "../../../../utils/colors";
 import CustomAppointment from "./Appointment";
+const orgTz = "America/New_York";
 
 const baseAppointment: Appointment = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -18,7 +19,14 @@ const baseAppointment: Appointment = {
 
 describe("CustomAppointment desktop styling", () => {
   it("uses the passed bgcolor for special appointments", () => {
-    render(<CustomAppointment appointment={baseAppointment} bgcolor={UNAVAILABILITY_BG} isSpecial />);
+    render(
+      <CustomAppointment
+        appointment={baseAppointment}
+        bgcolor={UNAVAILABILITY_BG}
+        isSpecial
+        orgTz={orgTz}
+      />
+    );
 
     expect(screen.getByTestId("desktop-appointment")).toHaveStyle({
       backgroundColor: UNAVAILABILITY_BG,
@@ -26,7 +34,7 @@ describe("CustomAppointment desktop styling", () => {
   });
 
   it("preserves default styling when bgcolor is undefined", () => {
-    render(<CustomAppointment appointment={baseAppointment} />);
+    render(<CustomAppointment appointment={baseAppointment} orgTz={orgTz} />);
 
     expect(screen.getByTestId("desktop-appointment")).not.toHaveStyle({
       backgroundColor: UNAVAILABILITY_BG,

@@ -12,21 +12,24 @@ import TodayIcon from "@mui/icons-material/Today";
 import { DateCalendar, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+import { nowInSalon } from "../../../utils/datetime";
 
 interface CalendarHeaderProps {
+  orgTz: string;
   startDate: dayjs.Dayjs;
   onDateChange: (days: number) => void;
   onDateSet: (date: dayjs.Dayjs) => void;
 }
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({
+  orgTz,
   startDate,
   onDateChange,
   onDateSet,
 }) => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
-  const isToday = startDate.isSame(dayjs(), "day");
+  const isToday = startDate.isSame(nowInSalon(orgTz), "day");
 
   return (
     <>
@@ -65,7 +68,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
             variant={isToday ? "contained" : "outlined"}
             size="small"
             startIcon={<TodayIcon />}
-            onClick={() => onDateSet(dayjs())}
+            onClick={() => onDateSet(nowInSalon(orgTz))}
           >
             Today
           </Button>
@@ -81,6 +84,7 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
       >
         <LocalizationProvider dateAdapter={AdapterDayjs}>
           <DateCalendar
+            timezone={orgTz}
             value={startDate}
             onChange={(date) => {
               if (date) {

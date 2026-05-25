@@ -31,6 +31,13 @@ import CircularLoading from "../../../components/CircularLoading";
 import EmployeeSelector from "./EmployeeSelector";
 import MobileDateHeader from "./MobileDateHeader";
 import AppointmentModal from "../../components/AppointmentModal";
+import {
+  formatTime,
+  minutesFromMidnight,
+  nowInSalon,
+  toIsoFromSalonInput,
+} from "../../../utils/datetime";
+import { UNAVAILABILITY_BG } from "../../../utils/colors";
 
 const HOUR_HEIGHT = 80;
 const START_HOUR = 9;
@@ -39,10 +46,12 @@ const TOTAL_HOURS = END_HOUR - START_HOUR;
 const TIME_LABEL_WIDTH = 52;
 
 export default function MobileCalendar({
+  orgTz,
   startDate,
   onDateChange,
   onDateSet,
 }: {
+  orgTz: string;
   startDate: dayjs.Dayjs;
   onDateChange: (days: number) => void;
   onDateSet: (date: dayjs.Dayjs) => void;
@@ -57,7 +66,11 @@ export default function MobileCalendar({
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [createApp, setCreateApp] = useState<Appointment>({
-    id: "", name: null, phoneNumber: "", date: "", startTime: "", endTime: "",
+    id: "",
+    name: null,
+    phoneNumber: "",
+    startsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), "09:00:00", orgTz),
+    endsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), "10:00:00", orgTz),
     employeeId: "", services: [], reminderSent: false, showedUp: false,
   });
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -82,6 +95,9 @@ export default function MobileCalendar({
   const activeEmpId = selectedEmployeeId || employees?.[0]?.id || "";
   const activeEmp = employees?.find((e: Employee) => e.id === activeEmpId);
   const empColor = activeEmp?.color || "#3b82f6";
+  const unavailabilityServiceId = services
+    ?.find((service: Service) => service.isUnavailabilityMarker)
+    ?.id?.toString();
 
   const empAppointments = (appointments || []).filter(
     (a: Appointment) => a.employeeId === activeEmpId
@@ -98,17 +114,17 @@ export default function MobileCalendar({
     setDetailApp(app);
   };
 
-  const getServiceNames = (serviceIds: number[]) =>
+  const getServiceNames = (serviceIds: string[]) =>
     serviceIds
-      .map((id) => services?.find((s: Service) => s.id === id)?.name)
+      .map((id) => services?.find((s: Service) => String(s.id) === id)?.name)
       .filter(Boolean)
       .join(", ");
 
-  const [now, setNow] = useState(dayjs());
+  const [now, setNow] = useState(nowInSalon(orgTz));
   useEffect(() => {
-    const id = setInterval(() => setNow(dayjs()), 60_000);
+    const id = setInterval(() => setNow(nowInSalon(orgTz)), 60_000);
     return () => clearInterval(id);
-  }, []);
+  }, [orgTz]);
 
   if (empLoading) return <CircularLoading />;
 
@@ -125,7 +141,12 @@ export default function MobileCalendar({
         selectedId={activeEmpId}
         onSelect={setSelectedEmployeeId}
       />
-      <MobileDateHeader startDate={startDate} onDateChange={onDateChange} onDateSet={onDateSet} />
+      <MobileDateHeader
+        orgTz={orgTz}
+        startDate={startDate}
+        onDateChange={onDateChange}
+        onDateSet={onDateSet}
+      />
 
       <Stack direction="row" spacing={1} justifyContent="center">
         <Chip
@@ -134,7 +155,7 @@ export default function MobileCalendar({
           size="small"
           variant={isToday ? "filled" : "outlined"}
           color={isToday ? "primary" : "default"}
-          onClick={() => onDateSet(dayjs())}
+          onClick={() => onDateSet(nowInSalon(orgTz))}
           sx={{ fontWeight: 500, px: 1 }}
         />
       </Stack>
@@ -224,9 +245,10 @@ export default function MobileCalendar({
           {/* Current time indicator */}
           {isToday && nowOffset >= 0 && nowOffset <= TOTAL_HOURS * HOUR_HEIGHT && (
             <Box
+              data-testid="mobile-calendar-now-line"
+              style={{ top: `${nowOffset}px` }}
               sx={{
                 position: "absolute",
-                top: nowOffset,
                 left: TIME_LABEL_WIDTH - 4,
                 right: 0,
                 zIndex: 3,
@@ -241,29 +263,33 @@ export default function MobileCalendar({
 
           {/* Appointment blocks */}
           {empAppointments.map((app: Appointment) => {
-            const start = dayjs(app.date + app.startTime);
-            const end = dayjs(app.date + app.endTime);
-            const topOffset = ((start.hour() - START_HOUR) + start.minute() / 60) * HOUR_HEIGHT;
-            const duration = end.diff(start, "minute");
+            const startMinutes = minutesFromMidnight(app.startsAt, orgTz);
+            const endMinutes = minutesFromMidnight(app.endsAt, orgTz);
+            const topOffset = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+            const duration = endMinutes - startMinutes;
             const height = (duration / 60) * HOUR_HEIGHT;
 
-            // Color priority: showedUp (grey) > service type 3 (black) > employee color
+            const isUnavailabilityService = unavailabilityServiceId
+              ? app.services.includes(unavailabilityServiceId)
+              : false;
             let blockColor = empColor;
-            const isServiceType3 = app.services.includes(3);
-            if (isServiceType3) blockColor = "#000000";
+            if (isUnavailabilityService) blockColor = UNAVAILABILITY_BG;
             if (app.showedUp) blockColor = "#666666";
-            const isSpecial = app.showedUp || isServiceType3;
+            const isSpecial = app.showedUp || isUnavailabilityService;
 
             return (
               <Box
                 key={app.id}
+                data-testid="mobile-appointment"
                 onClick={(e) => handleAppointmentTap(app, e)}
+                style={{
+                  top: `${topOffset + 1}px`,
+                  height: `${height - 2}px`,
+                }}
                 sx={{
                   position: "absolute",
-                  top: topOffset + 1,
                   left: TIME_LABEL_WIDTH + 4,
                   right: 8,
-                  height: height - 2,
                   bgcolor: isSpecial ? blockColor : `${blockColor}18`,
                   borderLeft: `3px solid ${blockColor}`,
                   borderRadius: "4px",
@@ -301,7 +327,7 @@ export default function MobileCalendar({
                     }}
                     noWrap
                   >
-                    {start.format("h:mm")} – {end.format("h:mm A")}
+                    {formatTime(app.startsAt, orgTz).replace(/\s[AP]M$/, "")} – {formatTime(app.endsAt, orgTz)}
                   </Typography>
                 )}
                 {height > 44 && (
@@ -345,11 +371,12 @@ export default function MobileCalendar({
         onClick={() => {
           const hour = Math.max(START_HOUR, Math.min(now.hour(), END_HOUR - 1));
           const minute = Math.floor(now.minute() / 15) * 15;
+          const startTime = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
+          const endTime = `${String(Math.min(hour + 1, END_HOUR)).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`;
           setCreateApp({
             ...createApp,
-            date: startDate.format("YYYY-MM-DD"),
-            startTime: `T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`,
-            endTime: `T${String(Math.min(hour + 1, END_HOUR)).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`,
+            startsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), startTime, orgTz),
+            endsAt: toIsoFromSalonInput(startDate.format("YYYY-MM-DD"), endTime, orgTz),
             employeeId: activeEmpId,
           });
           setIsCreateOpen(true);
@@ -399,7 +426,7 @@ export default function MobileCalendar({
               <Stack direction="row" spacing={1} alignItems="center">
                 <AccessTimeIcon sx={{ fontSize: 18, color: "text.secondary" }} />
                 <Typography variant="body2" color="text.secondary">
-                  {dayjs(detailApp.date + detailApp.startTime).format("h:mm A")} – {dayjs(detailApp.date + detailApp.endTime).format("h:mm A")}
+                  {formatTime(detailApp.startsAt, orgTz)} – {formatTime(detailApp.endsAt, orgTz)}
                 </Typography>
               </Stack>
               <Stack direction="row" spacing={1} alignItems="center">
@@ -411,7 +438,7 @@ export default function MobileCalendar({
             </Stack>
             <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mb: 2.5 }}>
               {detailApp.services.map((id) => {
-                const name = services?.find((s: Service) => s.id === id)?.name;
+                const name = services?.find((s: Service) => String(s.id) === id)?.name;
                 return name ? <Chip key={id} label={name} size="small" variant="outlined" /> : null;
               })}
             </Box>
@@ -437,7 +464,8 @@ export default function MobileCalendar({
                 }}
                 sx={{ px: 2 }}
               />
-              {detailApp && !detailApp.services.includes(3) && (
+              {detailApp &&
+                !detailApp.services.some((serviceId) => serviceId === unavailabilityServiceId) && (
                 <Chip
                   icon={checkLoading ? <CircularProgress size={14} /> : <CheckIcon />}
                   label={detailApp.showedUp ? "Check Out" : "Check In"}
@@ -490,6 +518,7 @@ export default function MobileCalendar({
           allEmployees={employees || []}
           allServices={services || []}
           clients={clients}
+          orgTz={orgTz}
         />
       )}
       {isEditOpen && selectedApp && (
@@ -502,6 +531,7 @@ export default function MobileCalendar({
           renderEvents={() => appRefetch()}
           allEmployees={employees || []}
           allServices={services || []}
+          orgTz={orgTz}
         />
       )}
       {isDeleteOpen && selectedApp && (
@@ -514,6 +544,7 @@ export default function MobileCalendar({
           renderEvents={() => appRefetch()}
           allEmployees={employees || []}
           allServices={services || []}
+          orgTz={orgTz}
         />
       )}
 

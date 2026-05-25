@@ -18,23 +18,14 @@ import { useSearchParams } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import CardList from "../../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../../constants/design";
-
-interface TempData {
-  id: number;
-  name: string;
-  phoneNumber: string;
-  startTime: string;
-  endTime: string;
-  date: string;
-  employeeId: string;
-  services: string[];
-}
+import { useMe } from "../../hooks/useMe";
+import { formatDate, formatTime } from "../../utils/datetime";
 
 export default function Search() {
   const [searchParams] = useSearchParams();
   const phoneNumberParam = searchParams.get("pn") || "";
   const [phoneNumber, setPhoneNumber] = useState(phoneNumberParam);
-  const [tempData, setTempData] = useState<TempData[]>();
+  const [tempData, setTempData] = useState<Appointment[]>();
   const [loading, setLoading] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -42,14 +33,15 @@ export default function Search() {
     id: "",
     name: "",
     phoneNumber: "",
-    startTime: "",
-    endTime: "",
-    date: "",
+    startsAt: "2026-01-01T14:00:00.000Z",
+    endsAt: "2026-01-01T15:00:00.000Z",
     employeeId: "",
     services: [],
     reminderSent: false,
     showedUp: false,
   });
+  const { data: me, isLoading: meLoading } = useMe();
+  const orgTz = me?.organization.timezone;
 
   const {
     data: employees,
@@ -120,8 +112,10 @@ export default function Search() {
   };
 
   const data = useMemo(() => {
-    if (!tempData || !employees) return [];
-    const sortedTempData = [...tempData].sort((a, b) => a.id - b.id);
+    if (!tempData || !employees || !services || !orgTz) return [];
+    const sortedTempData = [...tempData].sort((a, b) =>
+      a.startsAt.localeCompare(b.startsAt)
+    );
     return sortedTempData.map((row) => {
       const employee = employees.find(
         (employee: Employee) => employee.id == row.employeeId
@@ -130,13 +124,9 @@ export default function Search() {
         id: row.id,
         name: row.name,
         phoneNumber: row.phoneNumber,
-        startTime: new Date(row.date + row.startTime).toLocaleTimeString(
-          "en-US", { hour: "numeric", minute: "2-digit" }
-        ),
-        endTime: new Date(row.date + row.endTime).toLocaleTimeString(
-          "en-US", { hour: "numeric", minute: "2-digit" }
-        ),
-        date: row.date,
+        startTime: formatTime(row.startsAt, orgTz),
+        endTime: formatTime(row.endsAt, orgTz),
+        date: formatDate(row.startsAt, orgTz),
         employee: employee ? employee.name : "unknown",
         services: row.services.map((service) => {
           const serviceName = services.find(
@@ -147,9 +137,13 @@ export default function Search() {
         actions: row,
       };
     });
-  }, [tempData, employees, services]);
+  }, [tempData, employees, services, orgTz]);
 
-  if (employeesLoading || loading || servicesLoading) {
+  if (employeesLoading || loading || servicesLoading || meLoading) {
+    return <PageSkeleton />;
+  }
+
+  if (!orgTz) {
     return <PageSkeleton />;
   }
 
@@ -202,7 +196,7 @@ export default function Search() {
           renderPrimary={(item) => item.name}
           renderSecondary={(item) => (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
-              <span>{new Date(item.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}</span>
+              <span>{item.date}</span>
               <span>{item.startTime} – {item.endTime}</span>
               <span>with {item.employee}</span>
               <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap", mt: 0.5 }}>
@@ -234,6 +228,7 @@ export default function Search() {
             }
             allEmployees={employees}
             allServices={services}
+            orgTz={orgTz}
           />
         )}
         {isDeleteOpen && (
@@ -248,6 +243,7 @@ export default function Search() {
               setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
             }
             allEmployees={employees}
+            orgTz={orgTz}
           />
         )}
       </Paper>

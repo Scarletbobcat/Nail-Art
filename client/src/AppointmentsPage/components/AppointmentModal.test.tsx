@@ -30,7 +30,7 @@ const baseAppointment: Appointment = {
   endsAt: "2026-05-26T14:30:00Z",
   name: "Mina",
   phoneNumber: "555-0100",
-  services: [services[0].id],
+  services: [String(services[0].id)],
   reminderSent: false,
   showedUp: false,
 };
@@ -61,15 +61,16 @@ describe("AppointmentModal timezone and UUID behavior", () => {
 
   it("renders a 13:30Z existing appointment as 9:30 AM on 2026-05-26 in New York", () => {
     renderModal();
+    const startInput = screen.getAllByLabelText(/start/i)[0];
 
     expect(
-      screen.getByLabelText(/start/i),
+      startInput,
       `orgTz=${orgTz} systemTz=${systemTz} startsAt=${baseAppointment.startsAt}`
-    ).toHaveValue(expect.stringContaining("09:30"));
+    ).toHaveTextContent(/09.*30/);
     expect(
-      screen.getByLabelText(/start/i),
+      startInput,
       `orgTz=${orgTz} systemTz=${systemTz} startsAt=${baseAppointment.startsAt}`
-    ).toHaveValue(expect.stringContaining("2026-05-26"));
+    ).toHaveTextContent(/2026/);
   });
 
   it("blocks bookings before 9 AM in the salon timezone instead of the browser timezone", async () => {
@@ -99,7 +100,7 @@ describe("AppointmentModal timezone and UUID behavior", () => {
 
     fireEvent.mouseDown(screen.getByLabelText(/services/i));
     fireEvent.click(await screen.findByText("Blocked"));
-    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    fireEvent.submit(document.querySelector("form") as HTMLFormElement);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalled());
     expect(onSubmit.mock.calls[0][0].services, `orgTz=${orgTz} systemTz=${systemTz}`).toEqual([

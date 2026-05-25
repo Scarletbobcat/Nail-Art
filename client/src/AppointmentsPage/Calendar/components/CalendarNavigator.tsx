@@ -5,9 +5,11 @@ import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 import { Paper } from "@mui/material";
 
 export default function CalendarNavigator({
+  orgTz,
   startDate,
   setStartDate,
 }: {
+  orgTz: string;
   startDate: dayjs.Dayjs;
   setStartDate: (date: dayjs.Dayjs) => void;
 }) {
@@ -22,6 +24,7 @@ export default function CalendarNavigator({
     >
       <LocalizationProvider dateAdapter={AdapterDayjs} dateLibInstance={dayjs}>
         <DateCalendar
+          timezone={orgTz}
           value={dayjs(startDate)}
           onChange={(date) => {
             if (date) setStartDate(date);

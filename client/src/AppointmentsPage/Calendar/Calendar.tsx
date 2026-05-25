@@ -6,15 +6,20 @@ import dayjs from "dayjs";
 import MobileCalendar from "./components/MobileCalendar";
 import PageHeader from "../../components/PageHeader";
 import { SPACING, MAX_CONTENT_WIDTH, MOBILE_BREAKPOINT } from "../../constants/design";
+import { useMe } from "../../hooks/useMe";
 
 const CalendarClient = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
+  const { data: me } = useMe();
+  const orgTz = me?.organization.timezone;
   const [startDate, setStartDate] = useState(
     localStorage.getItem("startDate")
       ? dayjs(localStorage.getItem("startDate"))
       : dayjs()
   );
+
+  if (!orgTz) return null;
 
   const handleDateChange = (days: number) => {
     setStartDate(dayjs(startDate).add(days, "day"));
@@ -38,6 +43,7 @@ const CalendarClient = () => {
         />
         {isMobile ? (
           <MobileCalendar
+            orgTz={orgTz}
             startDate={startDate}
             onDateChange={handleDateChange}
             onDateSet={onDateSet}
@@ -45,11 +51,12 @@ const CalendarClient = () => {
         ) : (
           <>
             <CalendarHeader
+              orgTz={orgTz}
               startDate={startDate}
               onDateChange={handleDateChange}
               onDateSet={onDateSet}
             />
-            <AppointmentCalendar startDate={startDate} />
+            <AppointmentCalendar orgTz={orgTz} startDate={startDate} />
           </>
         )}
       </Paper>

@@ -28,11 +28,16 @@ import { DateTimeValidationError } from "@mui/x-date-pickers/models";
 import { TimeValidationError } from "@mui/x-date-pickers/models";
 import ResponsiveModal from "../../components/ResponsiveModal";
 import { MOBILE_BREAKPOINT } from "../../constants/design";
-
-const nineAM = dayjs().hour(9).minute(0).second(0);
-const ninePM = dayjs().hour(21).minute(0).second(0);
+import {
+  businessHoursMax,
+  businessHoursMin,
+  dateTimeInSalon,
+  nowInSalon,
+  toIsoFromSalonInput,
+} from "../../utils/datetime";
 
 export default function AppointmentModal({
+  orgTz,
   appointment,
   onClose,
   isOpen,
@@ -43,6 +48,7 @@ export default function AppointmentModal({
   type,
   clients,
 }: {
+  orgTz: string;
   appointment: Appointment;
   onClose: () => void;
   isOpen: boolean;
@@ -71,6 +77,50 @@ export default function AppointmentModal({
   const [endTimeCustomError, setEndTimeCustomError] = useState<string>("");
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
+  const minTime = businessHoursMin(orgTz);
+  const maxTime = businessHoursMax(orgTz);
+  const startValue = dateTimeInSalon(form.startsAt, orgTz);
+  const endValue = dateTimeInSalon(form.endsAt, orgTz);
+
+  const updateDate = (date: dayjs.Dayjs | null) => {
+    if (!date) return;
+    const nextDate = date.format("YYYY-MM-DD");
+    setForm({
+      ...form,
+      startsAt: toIsoFromSalonInput(nextDate, startValue.format("HH:mm:ss"), orgTz),
+      endsAt: toIsoFromSalonInput(nextDate, endValue.format("HH:mm:ss"), orgTz),
+    });
+  };
+
+  const updateStart = (date: dayjs.Dayjs | null) => {
+    if (!date) return;
+    setForm({
+      ...form,
+      startsAt: toIsoFromSalonInput(
+        date.format("YYYY-MM-DD"),
+        date.format("HH:mm:ss"),
+        orgTz
+      ),
+    });
+  };
+
+  const updateEnd = (date: dayjs.Dayjs | null) => {
+    if (!date) return;
+    const nextEnd = date;
+    if (nextEnd.isSame(startValue) || nextEnd.isBefore(startValue)) {
+      setEndTimeCustomError("End time must be after start time");
+    } else {
+      setEndTimeCustomError("");
+    }
+    setForm({
+      ...form,
+      endsAt: toIsoFromSalonInput(
+        nextEnd.format("YYYY-MM-DD"),
+        nextEnd.format("HH:mm:ss"),
+        orgTz
+      ),
+    });
+  };
 
   const errorMessage = useCallback((error: DateTimeValidationError | null) => {
     switch (error) {
@@ -205,20 +255,17 @@ export default function AppointmentModal({
                     <MobileDatePicker
                       label="Date"
                       disabled={type === "delete"}
-                      value={form ? dayjs(form.date + form.startTime) : dayjs()}
-                      onChange={(date) => {
-                        setForm({
-                          ...form,
-                          date: date ? date.format("YYYY-MM-DD") : form.date,
-                        });
-                      }}
+                      timezone={orgTz}
+                      value={form ? startValue : nowInSalon(orgTz)}
+                      onChange={updateDate}
                     />
                     <Stack direction="row" spacing={2}>
                       <MobileTimePicker
                         label="Start Time"
                         disabled={type === "delete"}
-                        minTime={nineAM}
-                        maxTime={ninePM}
+                        timezone={orgTz}
+                        minTime={minTime}
+                        maxTime={maxTime}
                         minutesStep={15}
                         onError={(newError: TimeValidationError) =>
                           setStartError(newError)
@@ -229,23 +276,23 @@ export default function AppointmentModal({
                             helperText: errorMessage(startError),
                           },
                         }}
-                        value={
-                          form ? dayjs(form.date + form.startTime) : dayjs()
-                        }
+                        value={form ? startValue : nowInSalon(orgTz)}
                         onChange={(time) => {
-                          setForm({
-                            ...form,
-                            startTime: time
-                              ? "T" + time.format("HH:mm:ss")
-                              : form.startTime,
-                          });
+                          if (!time) return;
+                          updateStart(
+                            time
+                              .year(startValue.year())
+                              .month(startValue.month())
+                              .date(startValue.date())
+                          );
                         }}
                       />
                       <MobileTimePicker
                         label="End Time"
                         disabled={type === "delete"}
-                        minTime={nineAM}
-                        maxTime={ninePM}
+                        timezone={orgTz}
+                        minTime={minTime}
+                        maxTime={maxTime}
                         minutesStep={15}
                         onError={(newError: TimeValidationError) =>
                           setEndError(newError)
@@ -257,37 +304,15 @@ export default function AppointmentModal({
                               endTimeCustomError || errorMessage(endError),
                           },
                         }}
-                        value={
-                          form ? dayjs(form.date + form.endTime) : dayjs()
-                        }
+                        value={form ? endValue : nowInSalon(orgTz)}
                         onChange={(time) => {
-                          if (time && form.startTime) {
-                            const startDateTime = dayjs(
-                              form.date + form.startTime
-                            );
-                            const endDateTime = time
-                              .year(startDateTime.year())
-                              .month(startDateTime.month())
-                              .date(startDateTime.date());
-                            if (
-                              endDateTime.isSame(startDateTime) ||
-                              endDateTime.isBefore(startDateTime)
-                            ) {
-                              setEndTimeCustomError(
-                                "End time must be after start time"
-                              );
-                            } else {
-                              setEndTimeCustomError("");
-                            }
-                          } else {
-                            setEndTimeCustomError("");
-                          }
-                          setForm({
-                            ...form,
-                            endTime: time
-                              ? "T" + time.format("HH:mm:ss")
-                              : form.endTime,
-                          });
+                          if (!time) return;
+                          updateEnd(
+                            time
+                              .year(startValue.year())
+                              .month(startValue.month())
+                              .date(startValue.date())
+                          );
                         }}
                       />
                     </Stack>
@@ -297,8 +322,9 @@ export default function AppointmentModal({
                     <DateTimePicker
                       label="Start"
                       disabled={type === "delete"}
-                      minTime={nineAM}
-                      maxTime={ninePM}
+                      timezone={orgTz}
+                      minTime={minTime}
+                      maxTime={maxTime}
                       minutesStep={15}
                       onError={(newError) => setStartError(newError)}
                       slotProps={{
@@ -306,29 +332,19 @@ export default function AppointmentModal({
                           helperText: errorMessage(startError),
                         },
                       }}
-                      value={
-                        form ? dayjs(form.date + form.startTime) : dayjs()
-                      }
-                      onChange={(date) => {
-                        setForm({
-                          ...form,
-                          date: date ? date.format("YYYY-MM-DD") : form.date,
-                          startTime: date
-                            ? "T" + date.format("HH:mm:ss")
-                            : form.startTime,
-                        });
-                      }}
+                      value={form ? startValue : nowInSalon(orgTz)}
+                      onChange={updateStart}
                     />
                     <DateTimePicker
-                      value={form ? dayjs(form.date + form.endTime) : dayjs()}
+                      value={form ? endValue : nowInSalon(orgTz)}
                       label="End"
-                      minTime={nineAM}
-                      maxTime={ninePM}
+                      timezone={orgTz}
+                      minTime={minTime}
+                      maxTime={maxTime}
                       minutesStep={15}
                       shouldDisableTime={(time, view) => {
-                        if (!form.startTime) return true;
                         const startDateTime = dayjs(
-                          form.date + form.startTime
+                          startValue
                         );
                         if (view === "minutes" || view === "hours") {
                           return (
@@ -347,30 +363,7 @@ export default function AppointmentModal({
                         },
                       }}
                       onChange={(date) => {
-                        if (date && form.startTime) {
-                          const startDateTime = dayjs(
-                            form.date + form.startTime
-                          );
-                          if (
-                            date.isSame(startDateTime) ||
-                            date.isBefore(startDateTime)
-                          ) {
-                            setEndTimeCustomError(
-                              "End time must be after start time"
-                            );
-                          } else {
-                            setEndTimeCustomError("");
-                          }
-                        } else {
-                          setEndTimeCustomError("");
-                        }
-                        setForm({
-                          ...form,
-                          date: date ? date.format("YYYY-MM-DD") : form.date,
-                          endTime: date
-                            ? "T" + date.format("HH:mm:ss")
-                            : form.endTime,
-                        });
+                        updateEnd(date);
                       }}
                     />
                   </Stack>
@@ -400,7 +393,7 @@ export default function AppointmentModal({
                 </FormControl>
                 <FormControl fullWidth>
                   <InputLabel id="service-label">Services</InputLabel>
-                  <Select<number[]>
+                  <Select<string[]>
                     labelId="service-label"
                     disabled={type === "delete"}
                     multiple
@@ -412,14 +405,14 @@ export default function AppointmentModal({
                       const value = e.target.value;
                       setForm({
                         ...form,
-                        services: (typeof value === "string" ? value.split(",").map(Number) : value),
+                        services: typeof value === "string" ? value.split(",") : value,
                       });
                     }}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                         {selected.map((value) => {
                           const serviceName = allServices.find(
-                            (s) => s.id === value
+                            (s) => String(s.id) === value
                           )?.name;
                           return <Chip key={value} label={serviceName} />;
                         })}
@@ -428,7 +421,7 @@ export default function AppointmentModal({
                     variant="outlined"
                   >
                     {allServices.map((service) => (
-                      <MenuItem key={service.id} value={service.id}>
+                      <MenuItem key={service.id} value={String(service.id)}>
                         {service.name}
                       </MenuItem>
                     ))}
