@@ -21,6 +21,10 @@ Hard-won context distilled from prior commits and incidents. Each entry names th
 - **Symptom**: `Client.appointmentIds` was maintained on every appointment write but never queried, costing extra writes for no value (`0257cf8`).
 - **Constraint**: Strip fields that nothing reads. Add them back when there is an actual query.
 
+### `@TenantId` does not make primary-key lookups safe
+- **Symptom**: During the PostgreSQL migration, `EntityManager.find(Employee.class, orgBEmployeeId)` returned another organization's row even with `TenantContext` set to org A.
+- **Constraint**: Tenant-owned repositories must use explicit scoped JPQL/derived lookup methods such as `findScopedById(UUID)` instead of default `JpaRepository.findById`/`EntityManager.find`. Derived and criteria queries are covered by `@TenantId`; primary-key lookups are not a tenant boundary in Hibernate 6.5.
+
 ## Appointments
 
 ### Time slot conflict checks live in `AppointmentService` create/edit only

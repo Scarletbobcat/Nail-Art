@@ -2,17 +2,21 @@ package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.repositories.EmployeeRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 @Service
 public class EmployeeService {
-    @Autowired
-    private EmployeeRepository employeeRepository;
-    @Autowired
-    private CounterService counterService;
+    private final EmployeeRepository employeeRepository;
+
+    public EmployeeService(EmployeeRepository employeeRepository) {
+        this.employeeRepository = employeeRepository;
+    }
 
     public Page<Employee> getAllEmployees(Pageable pageable) {
         return employeeRepository.findAll(pageable);
@@ -23,30 +27,27 @@ public class EmployeeService {
     }
 
     public Employee createEmployee(Employee employee) {
-        employee.setId(counterService.getNextSequence("Employees"));
         return employeeRepository.save(employee);
     }
 
-    public Employee editEmployee(Employee employee) {
-        Employee tempEmp = employeeRepository.findById(employee.getId()).orElse(null);
-        if (tempEmp == null) {
-            return null;
-        }
-        tempEmp.setColor(employee.getColor());
-        tempEmp.setName(employee.getName());
-        return employeeRepository.save(tempEmp);
+    public Optional<Employee> editEmployee(UUID id, Employee employee) {
+        return employeeRepository.findScopedById(id).map(existing -> {
+            existing.setColor(employee.getColor());
+            existing.setName(employee.getName());
+            return employeeRepository.save(existing);
+        });
     }
 
-    public Employee deleteEmployee(Employee employee) {
-        Employee tempEmp = employeeRepository.findById(employee.getId()).orElse(null);
-        if (tempEmp == null) {
-            return null;
-        }
-        employeeRepository.delete(tempEmp);
-        return tempEmp;
+    public boolean deleteEmployee(UUID id) {
+        return employeeRepository.findScopedById(id)
+                .map(employee -> {
+                    employeeRepository.delete(employee);
+                    return true;
+                })
+                .orElse(false);
     }
 
-    public Employee[] getEmployeeByName(String name) {
-        return employeeRepository.findAllByName(name);
+    public List<Employee> getEmployeeByName(String name) {
+        return employeeRepository.findByNameContainingIgnoreCase(name);
     }
 }

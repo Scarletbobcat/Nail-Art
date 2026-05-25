@@ -2,19 +2,30 @@ package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.services.EmployeeService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @RequestMapping("/employees")
 @RestController
 public class EmployeeController {
-    @Autowired
-    EmployeeService employeeService;
+    private final EmployeeService employeeService;
+
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
+    }
 
     @GetMapping("/")
     public ResponseEntity<Page<Employee>> getEmployees(
@@ -22,7 +33,7 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("name").ascending());
         if (name != null && !name.isBlank()) {
             return ResponseEntity.ok(employeeService.searchEmployees(name, pageable));
         }
@@ -30,22 +41,38 @@ public class EmployeeController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Employee> createEmployee(@RequestBody Employee employee) {
-        return ResponseEntity.ok(employeeService.createEmployee(employee));
+    public ResponseEntity<?> createEmployee(@Valid @RequestBody Employee employee, BindingResult result) {
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().body(fieldErrors(result));
+        }
+        return new ResponseEntity<>(employeeService.createEmployee(employee), HttpStatus.CREATED);
     }
 
-    @PutMapping("/edit")
-    public ResponseEntity<Employee> editEmployee(@RequestBody Employee employee) {
-        return ResponseEntity.ok(employeeService.editEmployee(employee));
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<Employee> editEmployee(@PathVariable UUID id, @Valid @RequestBody Employee employee) {
+        Optional<Employee> editedEmployee = employeeService.editEmployee(id, employee);
+        if (editedEmployee.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(editedEmployee.get());
     }
 
-    @DeleteMapping("/delete")
-    public ResponseEntity<Employee> deleteEmployee(@RequestBody Employee employee) {
-        return ResponseEntity.ok(employeeService.deleteEmployee(employee));
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteEmployee(@PathVariable UUID id) {
+        if (!employeeService.deleteEmployee(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/name/{name}")
-    public ResponseEntity<Employee[]> getEmployeeByName(@PathVariable String name) {
+    public ResponseEntity<List<Employee>> getEmployeeByName(@PathVariable String name) {
         return ResponseEntity.ok(employeeService.getEmployeeByName(name));
+    }
+
+    private Map<String, String> fieldErrors(BindingResult result) {
+        Map<String, String> errors = new HashMap<>();
+        result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+        return errors;
     }
 }

@@ -60,7 +60,7 @@ class EmployeeServiceTest {
         UUID targetEmployeeId = UUID.randomUUID();
         Employee patch = employee("Mallory", "#000000");
 
-        when(employeeRepository.findById(targetEmployeeId)).thenReturn(Optional.empty());
+        when(employeeRepository.findScopedById(targetEmployeeId)).thenReturn(Optional.empty());
 
         Optional<Employee> result = TenantContext.runAs(
                 attackerOrg,
