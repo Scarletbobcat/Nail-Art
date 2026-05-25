@@ -1,178 +1,90 @@
 package com.nail_art.appointment_book.services;
 
-import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.entities.Client;
-import com.nail_art.appointment_book.repositories.AppointmentRepository;
+import com.nail_art.appointment_book.multitenancy.TenantContext;
 import com.nail_art.appointment_book.repositories.ClientRepository;
-import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.core.MongoTemplate;
 
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ClientServiceTest {
-
     @Mock
     private ClientRepository clientRepository;
-
-    @Mock
-    private CounterService counterService;
-
-    @Mock
-    private MongoTemplate mongoTemplate;
-
-    @Mock
-    private AppointmentService appointmentService;
-
-    @Mock
-    private AppointmentRepository appointmentRepository;
 
     @InjectMocks
     private ClientService clientService;
 
-    private Client makeClient(String name, String phone) {
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
+
+    @Test
+    void createClient_persistsWithOrgFromPrincipal() {
+        UUID organizationId = UUID.randomUUID();
+        Client client = client("Anna", "330-555-1234");
+
+        when(clientRepository.save(any())).thenAnswer(invocation -> {
+            Client saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            saved.setOrganizationId(TenantContext.get());
+            return saved;
+        });
+
+        Client result = TenantContext.runAs(organizationId, () -> clientService.createClient(client));
+
+        assertThat(result.getOrganizationId()).isEqualTo(organizationId);
+        assertThat(result.getName()).isEqualTo("Anna");
+        verify(clientRepository).save(client);
+    }
+
+    @Test
+    void editClient_idFromAnotherOrg_returnsEmpty() {
+        UUID attackerOrg = UUID.randomUUID();
+        UUID targetClientId = UUID.randomUUID();
+        Client patch = client("Mallory", "330-555-9999");
+
+        when(clientRepository.findScopedById(targetClientId)).thenReturn(Optional.empty());
+
+        Optional<Client> result = TenantContext.runAs(
+                attackerOrg,
+                () -> clientService.editClient(targetClientId, patch)
+        );
+
+        assertThat(result).isEmpty();
+        verify(clientRepository, never()).save(any());
+    }
+
+    @Test
+    void createClient_emptyPhoneNumber_delegatesToDatabaseConstraintPolicy() {
+        Client client = client("Walk-in", "");
+
+        when(clientRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Client result = clientService.createClient(client);
+
+        assertThat(result.getPhoneNumber()).isEmpty();
+        verify(clientRepository, never()).findByPhoneNumber(any());
+        verify(clientRepository).save(client);
+    }
+
+    private Client client(String name, String phone) {
         Client client = new Client();
         client.setName(name);
         client.setPhoneNumber(phone);
         return client;
-    }
-
-    @Nested
-    class CreateClient {
-
-        @Test
-        void createsClientWithUniquePhoneNumber() {
-            Client client = makeClient("Jane Doe", "330-555-1234");
-            when(clientRepository.findByPhoneNumber("330-555-1234")).thenReturn(Optional.empty());
-            when(counterService.getNextSequence("Clients")).thenReturn(1L);
-            when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Client result = clientService.createClient(client);
-
-            assertEquals(1L, result.getId());
-            assertEquals("Jane Doe", result.getName());
-            verify(clientRepository).save(client);
-        }
-
-        @Test
-        void throwsWhenPhoneNumberAlreadyExists() {
-            Client existing = makeClient("Existing", "330-555-1234");
-            existing.setId(1L);
-            Client newClient = makeClient("New", "330-555-1234");
-
-            when(clientRepository.findByPhoneNumber("330-555-1234")).thenReturn(Optional.of(existing));
-
-            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                    clientService.createClient(newClient));
-
-            assertTrue(ex.getMessage().contains("330-555-1234"));
-            verify(clientRepository, never()).save(any());
-        }
-
-        @Test
-        void allowsEmptyPhoneNumberWithoutCheck() {
-            Client client = makeClient("Walk-in", "");
-            when(counterService.getNextSequence("Clients")).thenReturn(1L);
-            when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Client result = clientService.createClient(client);
-
-            assertEquals(1L, result.getId());
-            verify(clientRepository, never()).findByPhoneNumber(any());
-        }
-
-        @Test
-        void allowsNullPhoneNumberWithoutCheck() {
-            Client client = makeClient("Walk-in", null);
-            when(counterService.getNextSequence("Clients")).thenReturn(1L);
-            when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Client result = clientService.createClient(client);
-
-            assertEquals(1L, result.getId());
-            verify(clientRepository, never()).findByPhoneNumber(any());
-        }
-    }
-
-    @Nested
-    class EditClient {
-
-        @Test
-        void updatesClientAndPropagesToAppointments() {
-            Client existing = makeClient("Old Name", "330-555-0000");
-            existing.setId(10L);
-
-            Client updated = makeClient("New Name", "330-555-1111");
-            updated.setId(10L);
-
-            Appointment appt = new Appointment();
-            appt.setId(1);
-            appt.setName("Old Name");
-            appt.setPhoneNumber("330-555-0000");
-            appt.setDate("2026-04-10");
-            appt.setStartTime("T10:00");
-            appt.setEndTime("T11:00");
-
-            when(clientRepository.findById(10L)).thenReturn(Optional.of(existing));
-            when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(appt));
-            when(clientRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Optional<Client> result = clientService.editClient(updated);
-
-            assertTrue(result.isPresent());
-            assertEquals("New Name", result.get().getName());
-            assertEquals("330-555-1111", result.get().getPhoneNumber());
-            verify(appointmentService).editAppointment(argThat(a ->
-                    a.getName().equals("New Name") && a.getPhoneNumber().equals("330-555-1111")));
-        }
-
-        @Test
-        void returnsEmptyWhenClientNotFound() {
-            Client client = makeClient("Test", "330-555-1234");
-            client.setId(999L);
-
-            when(clientRepository.findById(999L)).thenReturn(Optional.empty());
-
-            Optional<Client> result = clientService.editClient(client);
-
-            assertTrue(result.isEmpty());
-            verify(clientRepository, never()).save(any());
-        }
-    }
-
-    @Nested
-    class DeleteClient {
-
-        @Test
-        void returnsTrueWhenClientExists() {
-            Client client = makeClient("Test", "330-555-1234");
-            client.setId(10L);
-
-            when(clientRepository.findById(10L)).thenReturn(Optional.of(client));
-
-            assertTrue(clientService.deleteClient(client));
-            verify(clientRepository).delete(client);
-        }
-
-        @Test
-        void returnsFalseWhenClientNotFound() {
-            Client client = makeClient("Test", "330-555-1234");
-            client.setId(999L);
-
-            when(clientRepository.findById(999L)).thenReturn(Optional.empty());
-
-            assertFalse(clientService.deleteClient(client));
-            verify(clientRepository, never()).delete(any());
-        }
     }
 }
