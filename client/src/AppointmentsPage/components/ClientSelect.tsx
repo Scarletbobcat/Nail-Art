@@ -67,7 +67,6 @@ export default function ClientSelect({
             onChange({
               name: value.name,
               phoneNumber: value.phoneNumber ? value.phoneNumber : "",
-              clientId: parseInt(value.id),
             });
           } else {
             onChange({ name: "", phoneNumber: "" });
