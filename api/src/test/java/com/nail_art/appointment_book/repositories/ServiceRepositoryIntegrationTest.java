@@ -81,7 +81,7 @@ class ServiceRepositoryIntegrationTest extends PostgresIntegrationTest {
         assertThat(names(page.getContent()))
                 .as("search=icure activeContext=%s seedOrgA=%s returnedNames=%s",
                         TenantContext.get(), orgA, names(page.getContent()))
-                .containsExactly("Classic Pedicure", "Gel Manicure");
+                .containsExactlyInAnyOrder("Classic Pedicure", "Gel Manicure");
     }
 
     @Test

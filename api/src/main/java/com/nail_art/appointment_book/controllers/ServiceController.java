@@ -2,19 +2,30 @@ package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Service;
 import com.nail_art.appointment_book.services.ServiceService;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @RequestMapping("/services")
 @RestController
 public class ServiceController {
-    @Autowired
-    private ServiceService serviceService;
+    private final ServiceService serviceService;
+
+    public ServiceController(ServiceService serviceService) {
+        this.serviceService = serviceService;
+    }
 
     @GetMapping("/")
     public ResponseEntity<Page<Service>> getServices(
@@ -22,7 +33,7 @@ public class ServiceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("id").ascending());
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("name").ascending());
         if (name != null && !name.isBlank()) {
             return ResponseEntity.ok(serviceService.searchServices(name, pageable));
         }
@@ -30,23 +41,38 @@ public class ServiceController {
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Service> createService(@RequestBody Service service) {
-        return ResponseEntity.ok(serviceService.createService(service));
+    public ResponseEntity<?> createService(@Valid @RequestBody Service service, BindingResult result) {
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().body(fieldErrors(result));
+        }
+        return new ResponseEntity<>(serviceService.createService(service), HttpStatus.CREATED);
     }
 
     @GetMapping("/name/{name}")
-    public ResponseEntity<Service[]> getServiceByName(@PathVariable String name) {
-        name = name.replace("%20", " ");
+    public ResponseEntity<List<Service>> getServiceByName(@PathVariable String name) {
         return ResponseEntity.ok(serviceService.getServiceByName(name));
     }
 
-    @PutMapping("/edit")
-    public ResponseEntity<Service> editService(@RequestBody Service service) {
-        return ResponseEntity.ok(serviceService.editService(service));
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<Service> editService(@PathVariable UUID id, @Valid @RequestBody Service service) {
+        Optional<Service> editedService = serviceService.editService(id, service);
+        if (editedService.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(editedService.get());
     }
 
-    @DeleteMapping("/delete")
-    public ResponseEntity<Service> deleteService(@RequestBody Service service) {
-        return ResponseEntity.ok(serviceService.deleteService(service));
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteService(@PathVariable UUID id) {
+        if (!serviceService.deleteService(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
+    }
+
+    private Map<String, String> fieldErrors(BindingResult result) {
+        Map<String, String> errors = new HashMap<>();
+        result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+        return errors;
     }
 }

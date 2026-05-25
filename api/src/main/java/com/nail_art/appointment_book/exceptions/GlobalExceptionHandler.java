@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -58,7 +59,7 @@ public class GlobalExceptionHandler {
             errorDetail.setProperty("description", "The JWT token has expired");
         }
 
-        if (exception instanceof DuplicateKeyException) {
+        if (exception instanceof DuplicateKeyException || exception instanceof DataIntegrityViolationException) {
             errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(409), exception.getMessage());
             errorDetail.setProperty("description", exception.getMessage());
         }
