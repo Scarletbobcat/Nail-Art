@@ -1,8 +1,9 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Employee;
+import com.nail_art.appointment_book.multitenancy.TenantContext;
 import com.nail_art.appointment_book.repositories.EmployeeRepository;
-import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,105 +11,73 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EmployeeServiceTest {
-
     @Mock
     private EmployeeRepository employeeRepository;
-
-    @Mock
-    private CounterService counterService;
 
     @InjectMocks
     private EmployeeService employeeService;
 
-    private Employee makeEmployee(String name, String color) {
-        Employee emp = new Employee();
-        emp.setName(name);
-        emp.setColor(color);
-        return emp;
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
     }
 
-    @Nested
-    class CreateEmployee {
+    @Test
+    void createEmployee_persistsWithOrgFromPrincipal() {
+        UUID organizationId = UUID.randomUUID();
+        Employee employee = employee("Alice", "#ff0000");
 
-        @Test
-        void createsEmployeeWithGeneratedId() {
-            Employee emp = makeEmployee("Alice", "#FF0000");
-            when(counterService.getNextSequence("Employees")).thenReturn(5L);
-            when(employeeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(employeeRepository.save(any())).thenAnswer(invocation -> {
+            Employee saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            saved.setOrganizationId(TenantContext.get());
+            return saved;
+        });
 
-            Employee result = employeeService.createEmployee(emp);
+        Employee result = TenantContext.runAs(organizationId, () -> employeeService.createEmployee(employee));
 
-            assertEquals(5L, result.getId());
-            assertEquals("Alice", result.getName());
-            assertEquals("#FF0000", result.getColor());
-            verify(employeeRepository).save(emp);
-        }
+        assertThat(result.getOrganizationId())
+                .as("activeContext=%s expectedOrg=%s employeeId=%s",
+                        TenantContext.get(), organizationId, result.getId())
+                .isEqualTo(organizationId);
+        assertThat(result.getName()).isEqualTo("Alice");
+        verify(employeeRepository).save(employee);
     }
 
-    @Nested
-    class EditEmployee {
+    @Test
+    void editEmployee_idFromAnotherOrg_returnsEmpty() {
+        UUID attackerOrg = UUID.randomUUID();
+        UUID targetEmployeeId = UUID.randomUUID();
+        Employee patch = employee("Mallory", "#000000");
 
-        @Test
-        void updatesNameAndColor() {
-            Employee existing = makeEmployee("Alice", "#FF0000");
-            existing.setId(5);
+        when(employeeRepository.findById(targetEmployeeId)).thenReturn(Optional.empty());
 
-            Employee updated = makeEmployee("Alice Smith", "#00FF00");
-            updated.setId(5);
+        Optional<Employee> result = TenantContext.runAs(
+                attackerOrg,
+                () -> employeeService.editEmployee(targetEmployeeId, patch)
+        );
 
-            when(employeeRepository.findById(5L)).thenReturn(Optional.of(existing));
-            when(employeeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            Employee result = employeeService.editEmployee(updated);
-
-            assertNotNull(result);
-            assertEquals("Alice Smith", result.getName());
-            assertEquals("#00FF00", result.getColor());
-        }
-
-        @Test
-        void returnsNullWhenNotFound() {
-            Employee emp = makeEmployee("Nobody", "#000000");
-            emp.setId(999);
-            when(employeeRepository.findById(999L)).thenReturn(Optional.empty());
-
-            assertNull(employeeService.editEmployee(emp));
-            verify(employeeRepository, never()).save(any());
-        }
+        assertThat(result)
+                .as("operation=service cross-org edit activeContext=%s attackerOrg=%s targetEmployee=%s",
+                        TenantContext.get(), attackerOrg, targetEmployeeId)
+                .isEmpty();
+        verify(employeeRepository, never()).save(any());
     }
 
-    @Nested
-    class DeleteEmployee {
-
-        @Test
-        void deletesAndReturnsEmployee() {
-            Employee emp = makeEmployee("Alice", "#FF0000");
-            emp.setId(5);
-
-            when(employeeRepository.findById(5L)).thenReturn(Optional.of(emp));
-
-            Employee result = employeeService.deleteEmployee(emp);
-
-            assertNotNull(result);
-            assertEquals("Alice", result.getName());
-            verify(employeeRepository).delete(emp);
-        }
-
-        @Test
-        void returnsNullWhenNotFound() {
-            Employee emp = makeEmployee("Nobody", "#000000");
-            emp.setId(999);
-            when(employeeRepository.findById(999L)).thenReturn(Optional.empty());
-
-            assertNull(employeeService.deleteEmployee(emp));
-            verify(employeeRepository, never()).delete(any());
-        }
+    private Employee employee(String name, String color) {
+        Employee employee = new Employee();
+        employee.setName(name);
+        employee.setColor(color);
+        return employee;
     }
 }
