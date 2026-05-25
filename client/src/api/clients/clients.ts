@@ -35,18 +35,28 @@ export const getClientsPaginated = async (form: {
 };
 
 export const createClient = async (form: Client) => {
-  const response = await api.post("/clients/create", form);
+  const response = await api.post("/clients/create", {
+    name: form.name,
+    phoneNumber: form.phoneNumber,
+  });
   return response.data;
 };
 
 export const editClient = async (form: Client) => {
-  const response = await api.put(`/clients/edit`, form);
+  if (!form.id) {
+    throw new Error("Client id is required to edit a client");
+  }
+  const response = await api.put(`/clients/edit/${form.id}`, {
+    name: form.name,
+    phoneNumber: form.phoneNumber,
+  });
   return response.data;
 };
 
 export const deleteClient = async (form: Client) => {
-  const response = await api.delete(`/clients/delete`, {
-    data: form,
-  });
+  if (!form.id) {
+    throw new Error("Client id is required to delete a client");
+  }
+  const response = await api.delete(`/clients/delete/${form.id}`);
   return response.data;
 };

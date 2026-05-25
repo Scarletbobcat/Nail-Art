@@ -1,203 +1,212 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Appointment;
+import com.nail_art.appointment_book.entities.AppointmentServiceLink;
 import com.nail_art.appointment_book.entities.Client;
+import com.nail_art.appointment_book.multitenancy.TenantContext;
 import com.nail_art.appointment_book.repositories.AppointmentRepository;
+import com.nail_art.appointment_book.repositories.AppointmentServiceLinkRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AppointmentService {
-    @Autowired
-    AppointmentRepository appointmentRepository;
-    @Autowired
-    private CounterService counterService;
-    @Autowired
-    private ClientRepository clientRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final ClientRepository clientRepository;
+    private final OrganizationRepository organizationRepository;
+    private final AppointmentServiceLinkRepository appointmentServiceLinkRepository;
 
-    // Helper to ensure time is formatted like "THH:mm" with zero-padded hour
-    private String normalizeTime(String time) {
-        if (time == null || time.isBlank()) {
-            throw new IllegalArgumentException("Time must not be null or empty");
-        }
-        String t = time.startsWith("T") ? time.substring(1) : time;
-        String[] parts = t.split(":");
-        if (parts.length < 2) {
-            throw new IllegalArgumentException("Invalid time format, expected H:mm or THH:mm");
-        }
-        int hour = Integer.parseInt(parts[0].trim());
-        int minute = Integer.parseInt(parts[1].trim());
-        return String.format("T%02d:%02d", hour, minute);
-    }
-
-    private void checkForConflicts(String date, long employeeId, String startTime, String endTime, long excludeId) {
-        List<Appointment> existing = appointmentRepository.findByDateAndEmployeeId(date, employeeId);
-        LocalDateTime newStart = LocalDateTime.parse(date + startTime);
-        LocalDateTime newEnd = LocalDateTime.parse(date + endTime);
-        for (Appointment appt : existing) {
-            if (appt.getId() == excludeId) {
-                continue;
-            }
-            LocalDateTime existStart = LocalDateTime.parse(appt.getDate() + appt.getStartTime());
-            LocalDateTime existEnd = LocalDateTime.parse(appt.getDate() + appt.getEndTime());
-            if (newStart.isBefore(existEnd) && newEnd.isAfter(existStart)) {
-                throw new IllegalArgumentException("Time slot conflicts with an existing appointment");
-            }
-        }
+    public AppointmentService(
+            AppointmentRepository appointmentRepository,
+            ClientRepository clientRepository,
+            OrganizationRepository organizationRepository,
+            AppointmentServiceLinkRepository appointmentServiceLinkRepository
+    ) {
+        this.appointmentRepository = appointmentRepository;
+        this.clientRepository = clientRepository;
+        this.organizationRepository = organizationRepository;
+        this.appointmentServiceLinkRepository = appointmentServiceLinkRepository;
     }
 
     public List<Appointment> getAllAppointments() {
-        return appointmentRepository.findAll();
+        OffsetDateTime now = OffsetDateTime.now();
+        return appointmentRepository.findByStartsAtGreaterThanEqualAndStartsAtLessThan(now.minusYears(10), now.plusYears(10));
     }
 
-    public Optional<Appointment> getAppointmentById(long id) {
-        return appointmentRepository.findById(id);
+    public Optional<Appointment> getAppointmentById(UUID id) {
+        return appointmentRepository.findScopedById(id).map(this::attachServiceIds);
     }
 
     public List<Appointment> getAppointmentsByDate(String date) {
-        return appointmentRepository.findByDate(date);
+        return getAppointmentsByDate(LocalDate.parse(date));
     }
 
-    public Appointment createAppointment(Appointment appointment) {
-        // normalize times so parsing is consistent (expected format: date + THH:mm)
-        appointment.setStartTime(normalizeTime(appointment.getStartTime()));
-        appointment.setEndTime(normalizeTime(appointment.getEndTime()));
+    public List<Appointment> getAppointmentsByDate(LocalDate date) {
+        ZoneId salonZone = ZoneId.of(currentTimezone());
+        OffsetDateTime start = date.atStartOfDay(salonZone).toOffsetDateTime();
+        OffsetDateTime end = date.plusDays(1).atStartOfDay(salonZone).toOffsetDateTime();
+        return appointmentRepository.findByStartsAtGreaterThanEqualAndStartsAtLessThan(start, end)
+                .stream()
+                .map(this::attachServiceIds)
+                .toList();
+    }
 
-        LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
-        LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
-        if (startDate.compareTo(endDate) > -1)
-            throw new IllegalArgumentException("End time must be after start time"); {
+    @Transactional
+    public Appointment createAppointment(Appointment appointment) {
+        checkForConflicts(appointment, null);
+        linkClient(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        replaceServiceLinks(saved);
+        return attachServiceIds(saved);
+    }
+
+    @Transactional
+    public Optional<Appointment> editAppointment(UUID id, Appointment appointment) {
+        Optional<Appointment> existing = appointmentRepository.findScopedById(id);
+        if (existing.isEmpty()) {
+            return Optional.empty();
         }
-        checkForConflicts(appointment.getDate(), appointment.getEmployeeId(),
-                appointment.getStartTime(), appointment.getEndTime(), -1);
-        long id = counterService.getNextSequence("Appointments");
-        appointment.setId(id);
-        appointment.setReminderSent(false);
-        if (appointment.getClientId() == null && !appointment.getPhoneNumber().isEmpty()) {
-            Client tempClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber()).orElse(null);
-            if (tempClient == null) {
-                Client client = new Client();
-                client.setName(appointment.getName());
-                client.setPhoneNumber(appointment.getPhoneNumber());
-                long clientId = counterService.getNextSequence("Clients");
-                client.setId(clientId);
-                appointment.setClientId(clientId);
-                clientRepository.save(client);
-            } else {
-                appointment.setClientId(tempClient.getId());
-                appointment.setName(tempClient.getName());
-            }
-        }
-        return appointmentRepository.save(appointment);
+
+        checkForConflicts(appointment, id);
+        Appointment target = existing.get();
+        target.setCustomerName(appointment.getCustomerName());
+        target.setPhoneNumber(appointment.getPhoneNumber());
+        target.setEmployeeId(appointment.getEmployeeId());
+        target.setStartsAt(appointment.getStartsAt());
+        target.setEndsAt(appointment.getEndsAt());
+        target.setShowedUp(Boolean.TRUE.equals(appointment.getShowedUp()));
+        target.setServiceIds(appointment.getServiceIds());
+        target.setReminderSentAt(appointment.getReminderSentAt());
+        target.setArchivedAt(appointment.getArchivedAt());
+        target.setClientId(appointment.getClientId());
+        linkClient(target);
+
+        Appointment saved = appointmentRepository.save(target);
+        replaceServiceLinks(saved);
+        return Optional.of(attachServiceIds(saved));
     }
 
     public Optional<Appointment> editAppointment(Appointment appointment) {
-        // normalize times before validation and saving
-        appointment.setStartTime(normalizeTime(appointment.getStartTime()));
-        appointment.setEndTime(normalizeTime(appointment.getEndTime()));
-
-        LocalDateTime startDate = LocalDateTime.parse(appointment.getDate() + appointment.getStartTime());
-        LocalDateTime endDate = LocalDateTime.parse(appointment.getDate() + appointment.getEndTime());
-        if (startDate.compareTo(endDate) > -1)
-            throw new IllegalArgumentException("End time must be after start time"); {
-        }
-        checkForConflicts(appointment.getDate(), appointment.getEmployeeId(),
-                appointment.getStartTime(), appointment.getEndTime(), appointment.getId());
-        Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
-        if (tempAppointment.isPresent()) {
-            if (!appointment.getStartTime().equals(tempAppointment.get().getStartTime()) || !appointment.getDate().equals(tempAppointment.get().getDate())) {
-                appointment.setReminderSent(false);
-            }
-            tempAppointment.get().setReminderSent(appointment.getReminderSent());
-            tempAppointment.get().setServices(appointment.getServices());
-            tempAppointment.get().setDate(appointment.getDate());
-            tempAppointment.get().setName(appointment.getName());
-            tempAppointment.get().setEmployeeId(appointment.getEmployeeId());
-            tempAppointment.get().setStartTime(appointment.getStartTime());
-            tempAppointment.get().setEndTime(appointment.getEndTime());
-            tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
-            tempAppointment.get().setShowedUp(appointment.getShowedUp());
-
-            // link client if appointment has a phone number but no clientId
-            Long clientId = appointment.getClientId();
-            if (clientId == null && appointment.getPhoneNumber() != null && !appointment.getPhoneNumber().isEmpty()) {
-                Client matchedClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber()).orElse(null);
-                if (matchedClient != null) {
-                    clientId = matchedClient.getId();
-                    tempAppointment.get().setClientId(clientId);
-                }
-            }
-            if (clientId == null) {
-                return Optional.of(appointmentRepository.save(tempAppointment.get()));
-            }
-            Client client = clientRepository.findById(clientId).orElse(null);
-            if (client != null) {
-                client.setName(appointment.getName());
-                client.setPhoneNumber(appointment.getPhoneNumber());
-                // updating all appointments with the same client id
-                List<Appointment> tempAppointments = appointmentRepository.findByClientId(client.getId());
-                for (Appointment clientAppointment : tempAppointments) {
-                    if (clientAppointment.getId() == appointment.getId()) {
-                        continue;
-                    }
-                    clientAppointment.setName(client.getName());
-                    clientAppointment.setPhoneNumber(client.getPhoneNumber());
-                    basicEdit(clientAppointment);
-                }
-                clientRepository.save(client);
-            }
-            return Optional.of(appointmentRepository.save(tempAppointment.get()));
-        }
-        return Optional.empty();
+        return editAppointment(appointment.getId(), appointment);
     }
 
-    public void markReminderSent(long appointmentId) {
-        Optional<Appointment> appointment = getAppointmentById(appointmentId);
-        if (appointment.isPresent()) {
-            appointment.get().setReminderSent(true);
-            appointmentRepository.save(appointment.get());
-        }
+    @Transactional
+    public void markReminderSent(UUID appointmentId) {
+        Appointment appointment = appointmentRepository.findScopedById(appointmentId).orElseThrow();
+        appointment.setReminderSentAt(OffsetDateTime.now());
+        appointmentRepository.save(appointment);
     }
 
-    private void basicEdit(Appointment appointment) {
-        Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
-        if (tempAppointment.isPresent()) {
-            tempAppointment.get().setServices(appointment.getServices());
-            tempAppointment.get().setDate(appointment.getDate());
-            tempAppointment.get().setName(appointment.getName());
-            tempAppointment.get().setEmployeeId(appointment.getEmployeeId());
-            // ensure times are normalized when applying edits
-            tempAppointment.get().setStartTime(normalizeTime(appointment.getStartTime()));
-            tempAppointment.get().setEndTime(normalizeTime(appointment.getEndTime()));
-            tempAppointment.get().setPhoneNumber(appointment.getPhoneNumber());
-            tempAppointment.get().setReminderSent(appointment.getReminderSent());
-            tempAppointment.get().setShowedUp(appointment.getShowedUp());
-            appointmentRepository.save(tempAppointment.get());
+    @Transactional
+    public boolean deleteAppointment(UUID appointmentId) {
+        Optional<Appointment> appointment = appointmentRepository.findScopedById(appointmentId);
+        if (appointment.isEmpty()) {
+            return false;
         }
+        appointment.get().setArchivedAt(OffsetDateTime.now());
+        appointmentRepository.save(appointment.get());
+        return true;
     }
 
     public Boolean deleteAppointment(Appointment appointment) {
-        Optional<Appointment> tempAppointment = getAppointmentById(appointment.getId());
-        if (tempAppointment.isPresent()) {
-            appointmentRepository.delete(tempAppointment.get());
-            return true;
-        }
-        return false;
+        return deleteAppointment(appointment.getId());
     }
 
     public List<Appointment> getAppointmentsByPhoneNumber(String phoneNumber) {
-        return appointmentRepository.findByPhoneNumberContaining(phoneNumber);
+        return appointmentRepository.findByPhoneNumberContaining(phoneNumber)
+                .stream()
+                .map(this::attachServiceIds)
+                .toList();
     }
 
     public List<Appointment> getAppointmentsForTomorrow() {
-        String date = LocalDate.now(ZoneId.of("America/New_York")).plusDays(1).toString();
-        return appointmentRepository.findByDate(date);
+        ZoneId salonZone = ZoneId.of(currentTimezone());
+        return getAppointmentsByDate(LocalDate.now(salonZone).plusDays(1));
+    }
+
+    private void checkForConflicts(Appointment candidate, UUID excludeId) {
+        List<Appointment> conflicts = appointmentRepository.findByEmployeeIdAndStartsAtBeforeAndEndsAtAfter(
+                candidate.getEmployeeId(),
+                candidate.getEndsAt(),
+                candidate.getStartsAt()
+        );
+        boolean hasConflict = conflicts.stream()
+                .anyMatch(existing -> excludeId == null || !excludeId.equals(existing.getId()));
+        if (hasConflict) {
+            throw new IllegalArgumentException("Time slot conflicts with an existing appointment");
+        }
+    }
+
+    private void linkClient(Appointment appointment) {
+        if (appointment.getClientId() != null || appointment.getPhoneNumber() == null || appointment.getPhoneNumber().isBlank()) {
+            return;
+        }
+
+        Optional<Client> existingClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber());
+        Client client = existingClient == null
+                ? null
+                : existingClient.orElseGet(() -> {
+                    Client newClient = new Client();
+                    newClient.setName(appointment.getName());
+                    newClient.setPhoneNumber(appointment.getPhoneNumber());
+                    return clientRepository.save(newClient);
+                });
+        if (client == null) {
+            return;
+        }
+        appointment.setClientId(client.getId());
+        appointment.setName(client.getName());
+    }
+
+    private Appointment attachServiceIds(Appointment appointment) {
+        normalizeForResponse(appointment);
+        if (appointment.getId() == null || appointmentServiceLinkRepository == null) {
+            return appointment;
+        }
+        appointment.setServiceIds(
+                appointmentServiceLinkRepository.findByIdAppointmentId(appointment.getId())
+                        .stream()
+                        .map(AppointmentServiceLink::getServiceId)
+                        .toList()
+        );
+        return appointment;
+    }
+
+    private void normalizeForResponse(Appointment appointment) {
+        ZoneId salonZone = ZoneId.of(currentTimezone());
+        if (appointment.getStartsAt() != null) {
+            appointment.setStartsAt(appointment.getStartsAt().atZoneSameInstant(salonZone).toOffsetDateTime());
+        }
+        if (appointment.getEndsAt() != null) {
+            appointment.setEndsAt(appointment.getEndsAt().atZoneSameInstant(salonZone).toOffsetDateTime());
+        }
+    }
+
+    private void replaceServiceLinks(Appointment appointment) {
+        UUID organizationId = TenantContext.get();
+        if (appointment.getId() == null || organizationId == null || appointmentServiceLinkRepository == null) {
+            return;
+        }
+        appointmentServiceLinkRepository.deleteByIdAppointmentId(appointment.getId());
+        appointmentServiceLinkRepository.saveAll(
+                appointment.getServiceIds()
+                        .stream()
+                        .map(serviceId -> new AppointmentServiceLink(organizationId, appointment.getId(), serviceId))
+                        .toList()
+        );
+    }
+
+    private String currentTimezone() {
+        String timezone = organizationRepository.currentTimezone();
+        return timezone == null || timezone.isBlank() ? "America/New_York" : timezone;
     }
 }

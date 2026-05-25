@@ -1,161 +1,97 @@
 package com.nail_art.appointment_book.services;
 
+import com.nail_art.appointment_book.PostgresIntegrationTest;
 import com.nail_art.appointment_book.dtos.LoginUserDto;
-import com.nail_art.appointment_book.dtos.RegisterUserDto;
 import com.nail_art.appointment_book.entities.User;
-import com.nail_art.appointment_book.repositories.UserRepository;
-import org.junit.jupiter.api.Nested;
+import com.nail_art.appointment_book.support.PostgresIdentityTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.util.Optional;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-class AuthenticationServiceTest {
-
-    @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
-    private AuthenticationManager authenticationManager;
-
-    @Mock
-    private JwtService jwtService;
-
-    @InjectMocks
+class AuthenticationServiceTest extends PostgresIntegrationTest {
+    @Autowired
     private AuthenticationService authenticationService;
 
-    @Nested
-    class Signup {
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
-        @Test
-        void createsNewUser() {
-            RegisterUserDto dto = new RegisterUserDto();
-            dto.setUsername("admin");
-            dto.setPassword("pass123");
-            dto.setEmail("admin@test.com");
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
-            when(userRepository.findByUsernameIgnoreCase("admin")).thenReturn(Optional.empty());
-            when(passwordEncoder.encode("pass123")).thenReturn("encoded_pass");
-            when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+    @Value("${security.jwt.secret-key}")
+    private String secretKey;
 
-            User result = authenticationService.signup(dto);
+    private PostgresIdentityTestSupport identitySupport;
 
-            assertEquals("admin", result.getUsername());
-            assertEquals("encoded_pass", result.getPassword());
-            assertEquals("admin@test.com", result.getEmail());
-        }
-
-        @Test
-        void throwsWhenUsernameAlreadyExists() {
-            RegisterUserDto dto = new RegisterUserDto();
-            dto.setUsername("admin");
-            dto.setPassword("pass123");
-
-            User existing = new User();
-            existing.setUsername("admin");
-            when(userRepository.findByUsernameIgnoreCase("admin")).thenReturn(Optional.of(existing));
-
-            RuntimeException ex = assertThrows(RuntimeException.class, () ->
-                    authenticationService.signup(dto));
-
-            assertTrue(ex.getMessage().contains("admin"));
-            verify(userRepository, never()).save(any());
-        }
-
-        @Test
-        void encodesPasswordBeforeSaving() {
-            RegisterUserDto dto = new RegisterUserDto();
-            dto.setUsername("user");
-            dto.setPassword("plaintext");
-
-            when(userRepository.findByUsernameIgnoreCase("user")).thenReturn(Optional.empty());
-            when(passwordEncoder.encode("plaintext")).thenReturn("$2a$hashed");
-            when(userRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-            User result = authenticationService.signup(dto);
-
-            assertEquals("$2a$hashed", result.getPassword());
-            verify(passwordEncoder).encode("plaintext");
-        }
+    @BeforeEach
+    void setUpIdentity() {
+        identitySupport = new PostgresIdentityTestSupport(jdbcTemplate, passwordEncoder, null, secretKey);
+        identitySupport.resetIdentityTables();
     }
 
-    @Nested
-    class Authenticate {
+    @Test
+    void authenticate_validCredentials_readsPostgresIdentity() {
+        var identity = identitySupport.seedIdentity("NailArt", "owner");
 
-        @Test
-        void returnsUserOnValidCredentials() {
-            LoginUserDto dto = new LoginUserDto();
-            dto.setUsername("admin");
-            dto.setPassword("pass123");
+        User result = authenticationService.authenticate(loginDto("NailArt", PostgresIdentityTestSupport.TEST_PASSWORD));
 
-            User user = new User();
-            user.setUsername("admin");
-
-            when(userRepository.findByUsernameIgnoreCase("admin")).thenReturn(Optional.of(user));
-
-            User result = authenticationService.authenticate(dto);
-
-            assertEquals("admin", result.getUsername());
-            verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        }
-
-        @Test
-        void throwsOnInvalidCredentials() {
-            LoginUserDto dto = new LoginUserDto();
-            dto.setUsername("admin");
-            dto.setPassword("wrong");
-
-            when(authenticationManager.authenticate(any()))
-                    .thenThrow(new BadCredentialsException("Bad credentials"));
-
-            assertThrows(BadCredentialsException.class, () ->
-                    authenticationService.authenticate(dto));
-        }
+        assertEquals("NailArt", result.getUsername());
+        assertNull(result.getPassword(), "auth service must not expose password hashes to controller responses");
+        assertEquals(identity.organizationId().toString(), identitySupport.currentOrganizationIdFor("NailArt").toString());
     }
 
-    @Nested
-    class RefreshTokens {
+    @Test
+    void authenticate_caseDifferentUsername_succeedsThroughCitext() {
+        identitySupport.seedIdentity("NailArt", "owner");
 
-        @Test
-        void delegatesGenerateToJwtService() {
-            User user = new User();
-            user.setUsername("admin");
+        User result = authenticationService.authenticate(loginDto("nailart", PostgresIdentityTestSupport.TEST_PASSWORD));
 
-            when(jwtService.generateRefreshToken(user)).thenReturn("refresh_token_123");
+        assertEquals("NailArt", result.getUsername());
+    }
 
-            String token = authenticationService.generateRefreshToken(user);
+    @Test
+    void authenticate_wrongPassword_throwsBadCredentials() {
+        identitySupport.seedIdentity("NailArt", "owner");
 
-            assertEquals("refresh_token_123", token);
-            verify(jwtService).generateRefreshToken(user);
-        }
+        assertThrows(
+                BadCredentialsException.class,
+                () -> authenticationService.authenticate(loginDto("NailArt", "wrong-pass"))
+        );
+    }
 
-        @Test
-        void delegatesValidateToJwtService() {
-            when(jwtService.validateRefreshToken("some_token")).thenReturn(true);
+    @Test
+    void generateRefreshToken_persistsTokenForPostgresUserId() {
+        identitySupport.seedIdentity("NailArt", "owner");
+        User user = authenticationService.authenticate(loginDto("NailArt", PostgresIdentityTestSupport.TEST_PASSWORD));
 
-            assertTrue(authenticationService.validateRefreshToken("some_token"));
-        }
+        String token = authenticationService.generateRefreshToken(user);
 
-        @Test
-        void delegatesDeleteToJwtService() {
-            authenticationService.deleteRefreshToken("some_token");
+        Integer savedTokens = jdbcTemplate.queryForObject(
+                """
+                        select count(*)
+                        from refresh_tokens rt
+                        join users u on u.id = rt.user_id
+                        where u.username = ? and rt.token = ?
+                        """,
+                Integer.class,
+                "NailArt",
+                token
+        );
+        assertEquals(1, savedTokens);
+    }
 
-            verify(jwtService).deleteRefreshToken("some_token");
-        }
+    private LoginUserDto loginDto(String username, String password) {
+        LoginUserDto dto = new LoginUserDto();
+        dto.setUsername(username);
+        dto.setPassword(password);
+        return dto;
     }
 }

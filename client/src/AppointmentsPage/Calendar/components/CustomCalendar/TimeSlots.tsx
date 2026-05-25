@@ -3,6 +3,8 @@ import { Employee, Appointment, Service } from "../../../../types";
 import { useCallback, useState } from "react";
 import dayjs from "dayjs";
 import CustomAppointment from "./Appointment";
+import { minutesFromMidnight } from "../../../../utils/datetime";
+import { UNAVAILABILITY_BG } from "../../../../utils/colors";
 
 interface TimeSlotGridProps {
   employee: Employee;
@@ -17,6 +19,7 @@ interface TimeSlotGridProps {
     e: Appointment;
   }) => void;
   services: Service[];
+  orgTz: string;
 }
 
 interface TimeRangeEvent {
@@ -34,6 +37,7 @@ const TimeSlotGrid = ({
   businessEnd = 21,
   hourHeight = 64,
   services,
+  orgTz,
 }: TimeSlotGridProps) => {
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
@@ -54,16 +58,15 @@ const TimeSlotGrid = ({
       if (!appointments) return false;
       return appointments.some((app) => {
         if (app.employeeId !== employee.id) return false;
-        const arbitraryDate = "2024-12-13";
-        const slotDateTime = dayjs(`${arbitraryDate} ${slotTime}`);
-        const appStart = dayjs(
-          `${arbitraryDate} ${app.startTime.split("T")[1]}`
+        const [hour, minute] = slotTime.split(":").map(Number);
+        const slotMinute = hour * 60 + minute;
+        return (
+          slotMinute > minutesFromMidnight(app.startsAt, orgTz) &&
+          slotMinute < minutesFromMidnight(app.endsAt, orgTz)
         );
-        const appEnd = dayjs(`${arbitraryDate} ${app.endTime.split("T")[1]}`);
-        return slotDateTime.isAfter(appStart) && slotDateTime.isBefore(appEnd);
       });
     },
-    [appointments, employee.id]
+    [appointments, employee.id, orgTz]
   );
 
   const handleMouseDown = useCallback((index: number) => {
@@ -84,10 +87,8 @@ const TimeSlotGrid = ({
     [isSelecting, selectionStart]
   );
 
-  const getPositionFromTime = (time: string) => {
-    time = time.split("T")[1];
-    const [hour, minutes] = time.split(":").map(Number);
-    const totalMinutes = (hour - businessStart) * 60 + minutes;
+  const getPositionFromIso = (iso: string) => {
+    const totalMinutes = minutesFromMidnight(iso, orgTz) - businessStart * 60;
     return (totalMinutes / 60) * hourHeight;
   };
 
@@ -180,12 +181,15 @@ const TimeSlotGrid = ({
         appointments
           .filter((app: Appointment) => app.employeeId === employee.id)
           .map((appointment: Appointment) => {
-            const isServiceType3 = appointment.services.includes(3);
+            const unavailabilityService = services.find((service) => service.isUnavailabilityMarker);
+            const isUnavailabilityService = unavailabilityService?.id
+              ? appointment.services.includes(String(unavailabilityService.id))
+              : false;
             const isShowedUp = appointment.showedUp;
-            const isSpecial = isServiceType3 || isShowedUp;
+            const isSpecial = isUnavailabilityService || isShowedUp;
 
             let blockColor = employee.color || "#3b82f6";
-            if (isServiceType3) blockColor = "#000000";
+            if (isUnavailabilityService) blockColor = UNAVAILABILITY_BG;
             if (isShowedUp) blockColor = "#666666";
 
             return (
@@ -195,10 +199,10 @@ const TimeSlotGrid = ({
                   position: "absolute",
                   left: 4,
                   right: 4,
-                  top: getPositionFromTime(appointment.startTime),
+                  top: getPositionFromIso(appointment.startsAt),
                   height:
-                    getPositionFromTime(appointment.endTime) -
-                    getPositionFromTime(appointment.startTime) -
+                    getPositionFromIso(appointment.endsAt) -
+                    getPositionFromIso(appointment.startsAt) -
                     1,
                   bgcolor: isSpecial ? blockColor : `${blockColor}14`,
                   borderLeft: `3px solid ${blockColor}`,
@@ -222,6 +226,8 @@ const TimeSlotGrid = ({
                   onEventClick={onEventClick}
                   isSpecial={isSpecial}
                   services={services}
+                  orgTz={orgTz}
+                  bgcolor={isSpecial ? blockColor : undefined}
                 />
               </Box>
             );

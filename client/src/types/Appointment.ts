@@ -1,13 +1,15 @@
 export interface Appointment {
   id: string;
   employeeId: string;
-  date: string;
-  startTime: string;
-  endTime: string;
+  startsAt: string;
+  endsAt: string;
+  customerName?: string | null;
   name: string | null;
-  services: number[];
+  services: string[];
   phoneNumber?: string;
-  reminderSent: boolean;
+  reminderSent?: boolean;
+  reminderSentAt?: string | null;
+  archivedAt?: string | null;
   showedUp: boolean;
-  clientId?: number;
+  clientId?: string | null;
 }

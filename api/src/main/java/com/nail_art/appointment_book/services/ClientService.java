@@ -1,98 +1,67 @@
 package com.nail_art.appointment_book.services;
 
-import com.nail_art.appointment_book.entities.Appointment;
 import com.nail_art.appointment_book.entities.Client;
-import com.nail_art.appointment_book.repositories.AppointmentRepository;
 import com.nail_art.appointment_book.repositories.ClientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class ClientService {
-    @Autowired
-    private ClientRepository clientRepository;
+    private final ClientRepository clientRepository;
 
-    @Autowired
-    private CounterService counterService;
-
-    @Autowired
-    private MongoTemplate mongoTemplate;
-
-    @Autowired
-    private AppointmentService appointmentService;
-
-    @Autowired
-    private AppointmentRepository appointmentRepository;
+    public ClientService(ClientRepository clientRepository) {
+        this.clientRepository = clientRepository;
+    }
 
     public Page<Client> getAllClients(Pageable pageable) {
         return clientRepository.findAll(pageable);
     }
 
-    public Client getClientById(long id) {
-        return clientRepository.findById(id).orElse(null);
+    public Optional<Client> getClientById(UUID id) {
+        return clientRepository.findScopedById(id);
     }
 
     public Client createClient(Client client) {
-        if (client.getPhoneNumber() != null && !client.getPhoneNumber().isEmpty()) {
-            clientRepository.findByPhoneNumber(client.getPhoneNumber()).ifPresent(existing -> {
-                throw new IllegalArgumentException("A client with phone number " + client.getPhoneNumber() + " already exists");
-            });
-        }
-        long id = counterService.getNextSequence("Clients");
-        client.setId(id);
         return clientRepository.save(client);
     }
 
-    public Optional<Client> editClient(Client client) {
-        Client tempClient = this.getClientById(client.getId());
-        if (tempClient != null) {
-            tempClient.setName(client.getName());
-            tempClient.setPhoneNumber(client.getPhoneNumber());
-            List<Appointment> tempAppointments = appointmentRepository.findByClientId(tempClient.getId());
-            for (Appointment appointment : tempAppointments) {
-                appointment.setName(client.getName());
-                appointment.setPhoneNumber(client.getPhoneNumber());
-                appointmentService.editAppointment(appointment);
-            }
-            return Optional.of(clientRepository.save(tempClient));
-        }
-        return Optional.empty();
+    public Optional<Client> editClient(UUID id, Client client) {
+        return clientRepository.findScopedById(id).map(existing -> {
+            existing.setName(client.getName());
+            existing.setPhoneNumber(client.getPhoneNumber());
+            return clientRepository.save(existing);
+        });
     }
 
-    public Boolean deleteClient(Client client) {
-        Client tempClient = getClientById(client.getId());
-        if (tempClient != null) {
-            clientRepository.delete(tempClient);
-            return true;
-        }
-        return false;
+    public Boolean deleteClient(UUID id) {
+        return clientRepository.findScopedById(id)
+                .map(client -> {
+                    clientRepository.delete(client);
+                    return true;
+                })
+                .orElse(false);
     }
 
     public Page<Client> searchClients(Client client, Pageable pageable) {
-        Query query = new Query();
-        List<Criteria> criteria = new ArrayList<>();
-        if (client.getName() != null && !client.getName().isBlank()) {
-            criteria.add(Criteria.where("name").regex(client.getName(), "i"));
+        boolean hasName = client.getName() != null && !client.getName().isBlank();
+        boolean hasPhone = client.getPhoneNumber() != null && !client.getPhoneNumber().isBlank();
+        if (hasName && hasPhone) {
+            return clientRepository.findByNameContainingIgnoreCaseAndPhoneNumberContainingIgnoreCase(
+                    client.getName(),
+                    client.getPhoneNumber(),
+                    pageable
+            );
         }
-        if (client.getPhoneNumber() != null && !client.getPhoneNumber().isBlank()) {
-            criteria.add(Criteria.where("phoneNumber").regex(client.getPhoneNumber(), "i"));
+        if (hasName) {
+            return clientRepository.findByNameContainingIgnoreCase(client.getName(), pageable);
         }
-        if (!criteria.isEmpty()) {
-            query.addCriteria(new Criteria().andOperator(criteria.toArray(new Criteria[0])));
+        if (hasPhone) {
+            return clientRepository.findByPhoneNumberContainingIgnoreCase(client.getPhoneNumber(), pageable);
         }
-        long total = mongoTemplate.count(query, Client.class);
-        query.with(pageable);
-        List<Client> clients = mongoTemplate.find(query, Client.class);
-        return PageableExecutionUtils.getPage(clients, pageable, () -> total);
+        return getAllClients(pageable);
     }
 }

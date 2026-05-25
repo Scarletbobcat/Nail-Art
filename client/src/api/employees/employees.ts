@@ -22,16 +22,31 @@ export const getEmployeesPaginated = async (name?: string, page?: number, size?:
 };
 
 export const editEmployee = async (employee: Employee) => {
-  const response = await api.put(`/employees/edit`, employee);
+  const response = await api.put(`/employees/edit/${employee.id}`, {
+    name: employee.name,
+    color: employee.color,
+    displayOrder: employee.displayOrder,
+  });
   return response.data;
 };
 
 export const deleteEmployee = async (employee: Employee) => {
-  const response = await api.delete("/employees/delete", { data: employee });
+  const response = await api.delete(`/employees/delete/${employee.id}`);
   return response.data;
 };
 
 export const createEmployee = async (employee: Employee) => {
-  const response = await api.post("/employees/create", employee);
+  const response = await api.post("/employees/create", {
+    name: employee.name,
+    color: employee.color,
+    displayOrder: employee.displayOrder,
+  });
+  return response.data;
+};
+
+export const reorderEmployees = async (
+  items: { id: string; displayOrder: number }[],
+) => {
+  const response = await api.post("/employees/reorder", { items });
   return response.data;
 };

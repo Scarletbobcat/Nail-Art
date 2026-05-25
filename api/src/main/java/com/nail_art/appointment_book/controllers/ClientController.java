@@ -1,50 +1,61 @@
 package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Client;
+import com.nail_art.appointment_book.services.ClientService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
-import com.nail_art.appointment_book.services.ClientService;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/clients")
 public class ClientController {
-    @Autowired
-    ClientService clientService;
+    private final ClientService clientService;
+
+    public ClientController(ClientService clientService) {
+        this.clientService = clientService;
+    }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Client> getClient(@PathVariable int id) {
-        return ResponseEntity.ok(clientService.getClientById(id));
+    public ResponseEntity<Client> getClient(@PathVariable UUID id) {
+        Optional<Client> client = clientService.getClientById(id);
+        if (client.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(client.get());
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Client> createClient(@Valid @RequestBody Client client, BindingResult result) {
+    public ResponseEntity<?> createClient(@Valid @RequestBody Client client, BindingResult result) {
         if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body(client);
+            return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
-        return ResponseEntity.ok(clientService.createClient(client));
+        return new ResponseEntity<>(clientService.createClient(client), HttpStatus.CREATED);
     }
 
-    @PutMapping("/edit")
-    public ResponseEntity<Client> editClient(@RequestBody Client client) {
-        Optional<Client> editedClient = clientService.editClient(client);
+    @PutMapping("/edit/{id}")
+    public ResponseEntity<Client> editClient(@PathVariable UUID id, @Valid @RequestBody Client client) {
+        Optional<Client> editedClient = clientService.editClient(id, client);
         if (editedClient.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(editedClient.get());
     }
 
-    @DeleteMapping("/delete")
-    public ResponseEntity<Boolean> deleteClient(@RequestBody Client client) {
-        return ResponseEntity.ok(clientService.deleteClient(client));
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<Void> deleteClient(@PathVariable UUID id) {
+        if (!clientService.deleteClient(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/")

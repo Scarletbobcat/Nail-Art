@@ -11,13 +11,14 @@ This directory is the canonical map of the Nail Art & Spa appointment book. Root
 ## Modules
 
 - [Client (Vite + React + MUI)](modules/client.md)
-- [API (Spring Boot + MongoDB)](modules/api.md)
+- [API (Spring Boot + PostgreSQL)](modules/api.md)
 - [Cron (Python maintenance scripts)](modules/cron.md)
 
 ## Operations
 
 - [Local development](reference/local-development.md) — how to run the stack and what each port serves.
 - [Docker / deployment notes](reference/deployment.md) — published images and runtime expectations.
+- [PostgreSQL cutover runbook](operations/postgres-cutover-runbook.md) — cutover-day checklist, rollback path, and post-cutover cleanup.
 
 ## Changelog
 

@@ -1,20 +1,45 @@
 package com.nail_art.appointment_book.entities;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.UUID;
 
-@Document(collection = "RefreshToken")
+@Entity
+@Table(name = "refresh_tokens")
 public class RefreshToken {
     @Id
-    private String _id;
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
+    @Column(name = "token", nullable = false, unique = true)
     private String token;
-    private String username;
-    private Instant expiryDate;
 
-    // Manually added getters and setters
+    @Column(name = "expires_at", nullable = false)
+    private OffsetDateTime expiresAt;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Transient
+    private String username;
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
+
     public String getToken() {
         return token;
     }
@@ -23,12 +48,28 @@ public class RefreshToken {
         this.token = token;
     }
 
+    public OffsetDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(OffsetDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
     public Instant getExpiryDate() {
-        return expiryDate;
+        return expiresAt == null ? null : expiresAt.toInstant();
     }
 
     public void setExpiryDate(Instant expiryDate) {
-        this.expiryDate = expiryDate;
+        this.expiresAt = expiryDate == null ? null : expiryDate.atOffset(ZoneOffset.UTC);
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 
     public String getUsername() {

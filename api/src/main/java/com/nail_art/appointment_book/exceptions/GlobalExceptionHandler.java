@@ -5,12 +5,14 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.security.SignatureException;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -25,6 +27,13 @@ public class GlobalExceptionHandler {
         if (exception instanceof BadCredentialsException) {
             errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(401), exception.getMessage());
             errorDetail.setProperty("description", "The username or password is incorrect");
+
+            return errorDetail;
+        }
+
+        if (exception instanceof NoHandlerFoundException || exception instanceof NoResourceFoundException) {
+            errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(404), exception.getMessage());
+            errorDetail.setProperty("description", "Resource not found");
 
             return errorDetail;
         }
@@ -49,9 +58,9 @@ public class GlobalExceptionHandler {
             errorDetail.setProperty("description", "The JWT token has expired");
         }
 
-        if (exception instanceof DuplicateKeyException) {
+        if (exception instanceof DataIntegrityViolationException) {
             errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(409), exception.getMessage());
-            errorDetail.setProperty("description", "A client with this phone number already exists");
+            errorDetail.setProperty("description", exception.getMessage());
         }
 
         if (exception instanceof IllegalArgumentException) {

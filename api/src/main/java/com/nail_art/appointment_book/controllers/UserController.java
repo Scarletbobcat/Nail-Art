@@ -1,16 +1,21 @@
 package com.nail_art.appointment_book.controllers;
 
-import com.nail_art.appointment_book.entities.User;
+import com.nail_art.appointment_book.dtos.CreateUserRequest;
+import com.nail_art.appointment_book.responses.MeResponse;
+import com.nail_art.appointment_book.responses.UserCreateResponse;
+import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
 import com.nail_art.appointment_book.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
 
 @RequestMapping("/users")
 @RestController
@@ -22,22 +27,24 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> authenticatedUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        User currentUser = (User) authentication.getPrincipal();
-
-        return ResponseEntity.ok(currentUser);
+    public ResponseEntity<MeResponse> authenticatedUser() {
+        return ResponseEntity.ok(userService.getMe(currentPrincipal()));
     }
 
-    @GetMapping("/")
-    public ResponseEntity<List<User>> allUsers() {
-        List <User> users = userService.allUsers();
+    @PostMapping
+    @PreAuthorize("hasAuthority('OWNER')")
+    public ResponseEntity<UserCreateResponse> createUser(@RequestBody CreateUserRequest request) {
+        MeResponse.UserSummary user = userService.createUser(request, currentPrincipal());
 
-        return ResponseEntity.ok(users);
+        return ResponseEntity.status(HttpStatus.CREATED).body(new UserCreateResponse(user));
+    }
+
+    private AuthenticatedPrincipal currentPrincipal() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedPrincipal principal)) {
+            throw new BadCredentialsException("User is not authenticated");
+        }
+        return principal;
     }
 }

@@ -23,7 +23,7 @@ jobs:
           cache: maven
 
       - name: Run tests
-        run: ./mvnw test -Dtest="com.nail_art.appointment_book.services.**" -q
+        run: ./mvnw test -Dtest="com.nail_art.appointment_book.**" -q
 
   frontend-lint:
     name: Frontend Lint & Typecheck
@@ -48,3 +48,24 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+  frontend-tests:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test

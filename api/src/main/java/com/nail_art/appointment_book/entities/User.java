@@ -1,31 +1,54 @@
 package com.nail_art.appointment_book.entities;
 
-import lombok.Data;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
-@Data
-@Document(collection="Users")
+@Entity
+@Table(name = "users")
 public class User implements UserDetails {
     @Id
-    private String _id;
+    @GeneratedValue
+    @Column(name = "id", nullable = false)
+    private UUID id;
 
-    private int id;
+    @Column(name = "username", nullable = false, columnDefinition = "citext")
+    private String username;
 
-    @Indexed(unique = true)
-    public String username;
+    @Column(name = "email", columnDefinition = "citext")
+    private String email;
 
-    public String password;
+    @JsonIgnore
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
-    public String email;
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private OffsetDateTime createdAt;
 
-    public User() {}
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
+    private OffsetDateTime updatedAt;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
     public String getUsername() {
         return username;
@@ -35,28 +58,45 @@ public class User implements UserDetails {
         this.username = username;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
     public String getEmail() {
         return email;
     }
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    @Override
+    public String getPassword() {
+        return passwordHash;
+    }
+
+    public void setPassword(String password) {
+        this.passwordHash = password;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     @Override

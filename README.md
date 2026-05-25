@@ -50,15 +50,15 @@ Searchable client directory. Clients are linked to their appointments by phone n
 ## Tech stack
 
 - **Frontend** (`client/`): [Vite](https://vite.dev) + React 18 + TypeScript, [Material UI](https://mui.com/material-ui/) v7 (`@mui/material`, `@mui/x-data-grid`, `@mui/x-date-pickers`), [TanStack Query](https://tanstack.com/query), `react-router-dom` v6.
-- **Backend** (`api/`): [Spring Boot 3](https://spring.io) on Java 21, Spring Security with JWT + refresh-cookie auth, Spring Data MongoDB. SMS reminders via [Twilio](https://www.twilio.com).
-- **Database**: [MongoDB Atlas](https://www.mongodb.com).
-- **Cron** (`cron/`): Python 3.14 scripts (managed with [`uv`](https://github.com/astral-sh/uv)) for archive sweeping and ad-hoc data hygiene.
+- **Backend** (`api/`): [Spring Boot 3](https://spring.io) on Java 21, Spring Security with JWT + refresh-cookie auth, Spring Data JPA, and Flyway. SMS reminders via [Twilio](https://www.twilio.com).
+- **Database**: PostgreSQL 16.
+- **Cron** (`cron/`): Python 3.14 scripts (managed with [`uv`](https://github.com/astral-sh/uv)) for PostgreSQL maintenance.
 
 A high-level architecture sketch lives in [`docs/reference/architecture.md`](./docs/reference/architecture.md).
 
 ## Quick start
 
-Prerequisites: Node.js 20+, JDK 21, a MongoDB Atlas connection string, and (optional) Twilio credentials.
+Prerequisites: Node.js 20+, JDK 21, Docker for local PostgreSQL, and optional Twilio credentials.
 
 See [`docs/reference/local-development.md`](./docs/reference/local-development.md) for the full env-var list.
 
@@ -69,7 +69,7 @@ just dev                              # runs `just web` + `just api` in parallel
 
 The frontend serves at `http://localhost:5173`, the API at `http://localhost:8080`.
 
-There is no public signup. Bootstrap the first user via `POST /auth/register`.
+There is no public signup. Bootstrap the first organization and owner with `scripts/create_organization.py` and `scripts/bootstrap_organization_owner.py`.
 
 For the published Docker stack:
 
@@ -82,7 +82,7 @@ For the published Docker stack:
 ```
 client/   Vite + React + MUI single-page app
 api/      Spring Boot 3 REST API + JWT auth + Twilio SMS
-cron/     Python maintenance scripts (archive, dedupe, sanity)
+cron/     Python maintenance scripts
 docs/     Canonical documentation (start at docs/INDEX.md)
 images/   README screenshots
 ```
@@ -93,7 +93,7 @@ images/   README screenshots
 - [`AGENTS.md`](./AGENTS.md) — short router for contributors and AI agents.
 - [`docs/reference/architecture.md`](./docs/reference/architecture.md) — system shape, request flow, deployment.
 - [`docs/reference/conventions.md`](./docs/reference/conventions.md) — naming and patterns to follow.
-- [`docs/reference/lessons.md`](./docs/reference/lessons.md) — gotchas distilled from prior incidents (auth, counters, reminders, pagination).
+- [`docs/reference/lessons.md`](./docs/reference/lessons.md) — gotchas distilled from prior incidents (auth, tenancy, reminders, pagination).
 - [`docs/modules/`](./docs/modules) — per-module deep dives: [client](./docs/modules/client.md), [api](./docs/modules/api.md), [cron](./docs/modules/cron.md).
 
 ## CI
@@ -103,7 +103,7 @@ images/   README screenshots
 - Backend: `./mvnw test -Dtest="com.nail_art.appointment_book.services.**"`
 - Frontend: `npx tsc -b --noEmit` and `npm run lint`
 
-Run `cd client && npm run build` locally before committing frontend changes — it catches the type-project drift that breaks the Render build.
+Run `cd client && npx tsc -b --noEmit` locally before committing frontend changes.
 
 ## License
 

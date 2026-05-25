@@ -6,6 +6,8 @@ date: 2026-04-07
 deepened: 2026-04-07
 ---
 
+> Historical note: this is a pre-PostgreSQL-cutover plan. MongoDB references below describe the old production stack and are retained for incident history, not current implementation guidance.
+
 # fix: Prevent and resolve duplicate Client records by phone number
 
 ## Overview
