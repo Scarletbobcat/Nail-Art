@@ -1,45 +1,71 @@
-import pymongo
-import datetime
 import os
+import sys
+from uuid import UUID
+
+import psycopg
 from dotenv import load_dotenv
 
-load_dotenv()
 
-connection_string = os.getenv("MONGO_URI")
+ARCHIVE_CUTOFF_DAYS = 30
 
-client = pymongo.MongoClient(connection_string)
 
-db = client["Nail-Art"]
+class ArchiveAppointmentsError(Exception):
+    pass
 
-appointments = db["Appointments"]
-archived_appointments = db["ArchivedAppointments"]
 
-today = datetime.date.today()
+def postgres_url() -> str:
+    load_dotenv()
+    url = os.getenv("POSTGRES_URL")
+    if not url:
+        raise ArchiveAppointmentsError("POSTGRES_URL is required")
+    if url.startswith("jdbc:postgresql://"):
+        return url.removeprefix("jdbc:")
+    return url
 
-two_weeks_ago = today - datetime.timedelta(days=14)
 
-past_appointments = appointments.find({"date": {"$lt": str(two_weeks_ago)}}).to_list()
+def organization_ids(conn: psycopg.Connection) -> list[UUID]:
+    with conn.cursor() as cur:
+        cur.execute("select id from organizations order by id")
+        return [row[0] for row in cur.fetchall()]
 
-month_ago = today - datetime.timedelta(days=30)
 
-appoinments_greater_than_month = archived_appointments.find(
-    {"date": {"$lt": str(month_ago)}}
-).to_list()
+def archive_org_appointments(conn: psycopg.Connection, org_id: UUID) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            update appointments
+            set archived_at = now(),
+                updated_at = now()
+            where organization_id = %s
+              and archived_at is null
+              and ends_at < now() - (%s * interval '1 day')
+            """,
+            (org_id, ARCHIVE_CUTOFF_DAYS),
+        )
+        return cur.rowcount
 
-if past_appointments:
-    print("Archiving appointments...")
-    # inserting into archive collection
-    archived_appointments.insert_many(past_appointments)
-    # removing from appointments collection
-    appointments.delete_many({"date": {"$lt": str(today)}})
-    print("Archived appointments successfully!")
-else:
-    print("No appointments to archive.")
 
-if appoinments_greater_than_month:
-    print("Removing appointments older than a month...")
-    archived_appointments.delete_many({"date": {"$lt": str(month_ago)}})
-    print("Removed appointments older than a month successfully!")
-else:
-    print("No archived appointments to remove.")
+def archive_appointments(db_url: str) -> int:
+    total_archived = 0
+    with psycopg.connect(db_url) as conn:
+        with conn.transaction():
+            for org_id in organization_ids(conn):
+                archived_count = archive_org_appointments(conn, org_id)
+                total_archived += archived_count
+                print(f"org_id={org_id} archived={archived_count}")
+    return total_archived
 
+
+def main() -> int:
+    try:
+        total_archived = archive_appointments(postgres_url())
+    except (ArchiveAppointmentsError, psycopg.Error) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    print(f"total_archived={total_archived}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

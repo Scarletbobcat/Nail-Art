@@ -1,9 +1,23 @@
-# Cron Job
+# Cron Jobs
 
-This repo contains a list of cron jobs that run. The following sections briefly
- describe what they do.
+This directory contains the maintenance job that runs outside the Spring API.
 
 ## ArchiveAppointments
 
-This cron job is set to run once a week on Sunday. It will take all of the
- appointments from prior to this day and move them to the archived collection.
+`ArchiveAppointments.py` is scheduled weekly on Sunday. It reads `POSTGRES_URL`
+from the environment, loads a sibling `.env` via `python-dotenv`, loops over
+every organization, and soft-archives appointments whose `ends_at` timestamp is
+older than 30 days by setting `archived_at`.
+
+Run it from this directory:
+
+```sh
+uv run python ArchiveAppointments.py
+```
+
+The old MongoDB maintenance scripts were removed during the Postgres cutover:
+
+- `AppointmentsSameStartEndTime.py`: replaced by the `appointments` table check
+  constraint requiring `ends_at > starts_at`.
+- `MergeDuplicateClients.py`: replaced by the per-organization unique phone
+  index on `clients`.

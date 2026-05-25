@@ -1,9 +1,9 @@
 import os
 import subprocess
 import sys
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -28,7 +28,6 @@ def psycopg_url(db_url: str) -> str:
 
 def run_archive_appointments(db_url: str | None) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
-    env.pop("MONGO_URI", None)
     if db_url is None:
         env.pop("POSTGRES_URL", None)
     else:
@@ -36,9 +35,9 @@ def run_archive_appointments(db_url: str | None) -> subprocess.CompletedProcess[
     return subprocess.run([sys.executable, str(SCRIPT)], check=False, text=True, capture_output=True, env=env)
 
 
-def insert_org_employee(cur) -> tuple[str, str]:
-    org_id = str(uuid.uuid4())
-    employee_id = str(uuid.uuid4())
+def insert_org_employee(cur) -> tuple[UUID, UUID]:
+    org_id = uuid4()
+    employee_id = uuid4()
     cur.execute(
         "insert into organizations (id, name) values (%s, %s)",
         (org_id, f"archive-test-{org_id}"),
@@ -53,8 +52,8 @@ def insert_org_employee(cur) -> tuple[str, str]:
     return org_id, employee_id
 
 
-def insert_appointment(cur, org_id: str, employee_id: str, ends_at: datetime, archived_at: datetime | None = None) -> str:
-    appointment_id = str(uuid.uuid4())
+def insert_appointment(cur, org_id: UUID, employee_id: UUID, ends_at: datetime, archived_at: datetime | None = None) -> UUID:
+    appointment_id = uuid4()
     starts_at = ends_at - timedelta(hours=1)
     cur.execute(
         """
@@ -74,7 +73,7 @@ def insert_appointment(cur, org_id: str, employee_id: str, ends_at: datetime, ar
     return appointment_id
 
 
-def fetch_archived_at(db_url: str, appointment_id: str) -> datetime | None:
+def fetch_archived_at(db_url: str, appointment_id: UUID) -> datetime | None:
     with psycopg.connect(psycopg_url(db_url)) as conn:
         with conn.cursor() as cur:
             cur.execute("select archived_at from appointments where id = %s", (appointment_id,))
@@ -84,7 +83,7 @@ def fetch_archived_at(db_url: str, appointment_id: str) -> datetime | None:
 
 @pytest.fixture
 def cleanup_orgs(db_url: str):
-    org_ids: list[str] = []
+    org_ids: list[UUID] = []
     yield org_ids
     if not org_ids:
         return
@@ -97,11 +96,11 @@ def cleanup_orgs(db_url: str):
 
 def seed_appointment(
     db_url: str,
-    cleanup_orgs: list[str],
+    cleanup_orgs: list[UUID],
     *,
     days_old: int,
     archived_at: datetime | None = None,
-) -> tuple[str, str]:
+) -> tuple[UUID, UUID]:
     ends_at = datetime.now(timezone.utc) - timedelta(days=days_old)
     with psycopg.connect(psycopg_url(db_url)) as conn:
         with conn.cursor() as cur:
@@ -111,7 +110,7 @@ def seed_appointment(
             return org_id, appointment_id
 
 
-def test_happyPath_archives30DayOldAppointment(db_url: str, cleanup_orgs: list[str]) -> None:
+def test_happyPath_archives30DayOldAppointment(db_url: str, cleanup_orgs: list[UUID]) -> None:
     _org_id, appointment_id = seed_appointment(db_url, cleanup_orgs, days_old=31)
 
     result = run_archive_appointments(db_url)
@@ -122,7 +121,7 @@ def test_happyPath_archives30DayOldAppointment(db_url: str, cleanup_orgs: list[s
     assert datetime.now(timezone.utc) - archived_at < timedelta(minutes=1)
 
 
-def test_29DayOldAppointment_notArchived(db_url: str, cleanup_orgs: list[str]) -> None:
+def test_29DayOldAppointment_notArchived(db_url: str, cleanup_orgs: list[UUID]) -> None:
     _org_id, appointment_id = seed_appointment(db_url, cleanup_orgs, days_old=29)
 
     result = run_archive_appointments(db_url)
@@ -131,7 +130,7 @@ def test_29DayOldAppointment_notArchived(db_url: str, cleanup_orgs: list[str]) -
     assert fetch_archived_at(db_url, appointment_id) is None
 
 
-def test_alreadyArchived_idempotent(db_url: str, cleanup_orgs: list[str]) -> None:
+def test_alreadyArchived_idempotent(db_url: str, cleanup_orgs: list[UUID]) -> None:
     original_archived_at = datetime.now(timezone.utc) - timedelta(days=7)
     _org_id, appointment_id = seed_appointment(db_url, cleanup_orgs, days_old=31, archived_at=original_archived_at)
 
@@ -141,7 +140,7 @@ def test_alreadyArchived_idempotent(db_url: str, cleanup_orgs: list[str]) -> Non
     assert fetch_archived_at(db_url, appointment_id) == original_archived_at
 
 
-def test_loopsAcrossOrgs(db_url: str, cleanup_orgs: list[str]) -> None:
+def test_loopsAcrossOrgs(db_url: str, cleanup_orgs: list[UUID]) -> None:
     _org_a, appointment_a = seed_appointment(db_url, cleanup_orgs, days_old=31)
     _org_b, appointment_b = seed_appointment(db_url, cleanup_orgs, days_old=31)
 
