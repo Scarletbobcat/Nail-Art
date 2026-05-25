@@ -1,4 +1,5 @@
 export interface Service {
-  id?: number;
+  id?: string | number;
   name: string;
+  isUnavailabilityMarker: boolean;
 }

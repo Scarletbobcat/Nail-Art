@@ -5,7 +5,7 @@ import {
   editService,
   getServicesPaginated,
 } from "../api/services";
-import { Stack, TextField, Button, TablePagination } from "@mui/material";
+import { Stack, TextField, Button, TablePagination, Chip } from "@mui/material";
 import PageSkeleton from "../components/PageSkeleton";
 import AnimatedPage from "../components/AnimatedPage";
 import { useMemo, useState } from "react";
@@ -17,6 +17,7 @@ import PlusIcon from "@mui/icons-material/Add";
 import PageHeader from "../components/PageHeader";
 import CardList from "../components/CardList";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
+import { UNAVAILABILITY_BG, UNAVAILABILITY_FG } from "../utils/colors";
 
 export default function Services() {
   const queryClient = useQueryClient();
@@ -30,6 +31,7 @@ export default function Services() {
   const [selectedService, setSelectedService] = useState<Service>({
     id: undefined,
     name: "",
+    isUnavailabilityMarker: false,
   });
 
   const {
@@ -61,8 +63,9 @@ export default function Services() {
   const data = useMemo(() => {
     if (!servicesData?.content) return [];
     return servicesData.content.map((row: Service) => ({
-      id: row.id ?? 0,
+      id: row.id ?? "",
       name: row.name,
+      isUnavailabilityMarker: row.isUnavailabilityMarker,
       _raw: row,
     }));
   }, [servicesData]);
@@ -135,7 +138,34 @@ export default function Services() {
         <CardList
           data={data}
           emptyMessage="No services found"
-          renderPrimary={(item) => item.name}
+          renderPrimary={(item) => (
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ minWidth: 0, flexWrap: "wrap", rowGap: 0.75 }}
+            >
+              <Box component="span" sx={{ overflowWrap: "anywhere" }}>
+                {item.name}
+              </Box>
+              {item.isUnavailabilityMarker && (
+                <Chip
+                  label="Unavailable"
+                  size="small"
+                  sx={{
+                    height: 22,
+                    borderRadius: "6px",
+                    bgcolor: UNAVAILABILITY_BG,
+                    color: UNAVAILABILITY_FG,
+                    fontSize: "0.72rem",
+                    fontWeight: 700,
+                    letterSpacing: 0,
+                    "& .MuiChip-label": { px: 1 },
+                  }}
+                />
+              )}
+            </Stack>
+          )}
           onEdit={(item) => {
             setSelectedService(item._raw);
             setIsEditOpen(true);
