@@ -15,9 +15,6 @@ Create `api/.env` (loaded via `spring.config.import=optional:classpath:.env[.pro
 
 ```
 DEV_MONGO_URI=...
-POSTGRES_URL=jdbc:postgresql://localhost:5432/nail_art
-POSTGRES_USER=nail_art
-POSTGRES_PASSWORD=nail_art_password
 DEV_FRONTEND_URL=http://localhost:5173
 PROD_MONGO_URI=...
 PROD_FRONTEND_URL=...
@@ -72,7 +69,7 @@ The Compose stack includes a local PostgreSQL 16 container for the upcoming pers
 docker compose up -d postgres
 ```
 
-The default JDBC URL for the API is `jdbc:postgresql://localhost:5432/nail_art`, with username `nail_art` and password `nail_art_password`. Spring Boot runs Flyway migrations against this database during API startup. The request path still uses MongoDB until the backend repositories are migrated to JPA.
+The dev profile hardcodes the JDBC URL to `jdbc:postgresql://localhost:5432/nail_art` with username `nail_art` and password `nail_art_password` (see `application-dev.properties`), so no extra env vars are needed in `api/.env`. Spring Boot runs Flyway migrations against this database during API startup. The request path still uses MongoDB until the backend repositories are migrated to JPA.
 
 ## Auth bootstrap
 
