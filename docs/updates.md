@@ -2,6 +2,10 @@
 
 Accretive log of significant documentation changes. Append to the top.
 
+## 2026-05-25 — Local PostgreSQL migration groundwork
+
+- Documented the local PostgreSQL Compose service and API datasource env vars for the upcoming MongoDB-to-Postgres migration.
+
 ## 2026-05-24 — Initial docs suite
 
 - Added `docs/INDEX.md`, `docs/reference/` (architecture, conventions, lessons, local-development, deployment), `docs/modules/` (client, api, cron).

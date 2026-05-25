@@ -24,6 +24,8 @@ Both images are `linux/arm64` (see `docker-compose.yaml`). Rebuild for `linux/am
 
 The API is configured entirely through environment variables (see `docs/reference/local-development.md` for the list). The `prod` profile reads `PROD_MONGO_URI` and `PROD_FRONTEND_URL`.
 
+PostgreSQL migration groundwork is enabled in the API runtime. Set `POSTGRES_URL`, `POSTGRES_USER`, and `POSTGRES_PASSWORD` in Render; Spring Boot runs Flyway migrations during API startup and fails the deploy if a migration fails. The request path still uses MongoDB until the repositories are migrated to JPA.
+
 CORS allows exactly one origin (`frontend.url`). Changing the deployed frontend URL requires updating the env var and restarting the API.
 
 ## Hosting notes
