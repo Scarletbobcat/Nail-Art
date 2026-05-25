@@ -64,26 +64,23 @@ class AppointmentServiceTest {
             Appointment appt = makeAppointment("Jane Doe", "330-555-1234", "2026-04-10", "T10:00", "T11:00");
             when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
-            when(counterService.getNextSequence("Clients")).thenReturn(50L);
             when(clientRepository.findByPhoneNumber("330-555-1234")).thenReturn(Optional.empty());
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             Appointment result = appointmentService.createAppointment(appt);
 
-            assertEquals(50L, result.getClientId());
+            assertNull(result.getClientId());
             ArgumentCaptor<Client> clientCaptor = ArgumentCaptor.forClass(Client.class);
             verify(clientRepository).save(clientCaptor.capture());
             Client savedClient = clientCaptor.getValue();
             assertEquals("Jane Doe", savedClient.getName());
             assertEquals("330-555-1234", savedClient.getPhoneNumber());
-            assertEquals(50L, savedClient.getId());
         }
 
         @Test
         void linksExistingClientWhenPhoneMatches() {
             Appointment appt = makeAppointment("Jane", "330-555-1234", "2026-04-10", "T10:00", "T11:00");
             Client existing = new Client();
-            existing.setId(25L);
             existing.setName("Jane Doe");
             existing.setPhoneNumber("330-555-1234");
 
@@ -94,7 +91,7 @@ class AppointmentServiceTest {
 
             Appointment result = appointmentService.createAppointment(appt);
 
-            assertEquals(25L, result.getClientId());
+            assertNull(result.getClientId());
             assertEquals("Jane Doe", result.getName());
             verify(clientRepository, never()).save(any());
         }
@@ -163,20 +160,20 @@ class AppointmentServiceTest {
         }
 
         @Test
-        void usesClientsCounterNotAppointmentsForNewClient() {
+        void doesNotUseClientsCounterForPostgresClientCreation() {
             Appointment appt = makeAppointment("New Person", "555-123-4567", "2026-04-10", "T10:00", "T11:00");
             when(appointmentRepository.findByDateAndEmployeeId("2026-04-10", 1)).thenReturn(List.of());
             when(counterService.getNextSequence("Appointments")).thenReturn(100L);
-            when(counterService.getNextSequence("Clients")).thenReturn(50L);
             when(clientRepository.findByPhoneNumber("555-123-4567")).thenReturn(Optional.empty());
             when(appointmentRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
             appointmentService.createAppointment(appt);
 
-            // Called once for "Appointments" (appt id) and once for "Clients" (client id)
+            // Appointments still use Mongo counters until the appointments slice;
+            // PostgreSQL clients get their UUID from the database.
             verify(counterService).getNextSequence("Appointments");
-            verify(counterService).getNextSequence("Clients");
-            verify(counterService, times(2)).getNextSequence(anyString());
+            verify(counterService, never()).getNextSequence("Clients");
+            verify(counterService, times(1)).getNextSequence(anyString());
         }
 
         @Test
@@ -297,7 +294,6 @@ class AppointmentServiceTest {
             edited.setReminderSent(false);
 
             Client client = new Client();
-            client.setId(25L);
             client.setName("Test");
             client.setPhoneNumber("330-555-9999");
 
@@ -308,7 +304,8 @@ class AppointmentServiceTest {
             Optional<Appointment> result = appointmentService.editAppointment(edited);
 
             assertTrue(result.isPresent());
-            assertEquals(25L, result.get().getClientId());
+            assertNull(result.get().getClientId());
+            assertEquals("Test", result.get().getName());
         }
 
         @Test

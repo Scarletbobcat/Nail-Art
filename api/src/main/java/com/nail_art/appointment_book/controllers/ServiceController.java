@@ -12,9 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,7 +41,7 @@ public class ServiceController {
     @PostMapping("/create")
     public ResponseEntity<?> createService(@Valid @RequestBody Service service, BindingResult result) {
         if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body(fieldErrors(result));
+            return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
         return new ResponseEntity<>(serviceService.createService(service), HttpStatus.CREATED);
     }
@@ -68,11 +66,5 @@ public class ServiceController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok().build();
-    }
-
-    private Map<String, String> fieldErrors(BindingResult result) {
-        Map<String, String> errors = new HashMap<>();
-        result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-        return errors;
     }
 }

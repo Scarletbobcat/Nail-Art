@@ -9,9 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RequestMapping("/appointments")
@@ -38,9 +36,7 @@ public class AppointmentController {
     @PostMapping("/create")
     public ResponseEntity<?> createAppointment(@Valid @RequestBody Appointment appointment, BindingResult result) {
         if (result.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-            return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(ControllerValidation.fieldErrors(result), HttpStatus.BAD_REQUEST);
         }
         Appointment appt = appointmentService.createAppointment(appointment);
 

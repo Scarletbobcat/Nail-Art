@@ -86,12 +86,8 @@ public class AppointmentService {
                 Client client = new Client();
                 client.setName(appointment.getName());
                 client.setPhoneNumber(appointment.getPhoneNumber());
-                long clientId = counterService.getNextSequence("Clients");
-                client.setId(clientId);
-                appointment.setClientId(clientId);
                 clientRepository.save(client);
             } else {
-                appointment.setClientId(tempClient.getId());
                 appointment.setName(tempClient.getName());
             }
         }
@@ -130,28 +126,8 @@ public class AppointmentService {
             if (clientId == null && appointment.getPhoneNumber() != null && !appointment.getPhoneNumber().isEmpty()) {
                 Client matchedClient = clientRepository.findByPhoneNumber(appointment.getPhoneNumber()).orElse(null);
                 if (matchedClient != null) {
-                    clientId = matchedClient.getId();
-                    tempAppointment.get().setClientId(clientId);
+                    tempAppointment.get().setName(matchedClient.getName());
                 }
-            }
-            if (clientId == null) {
-                return Optional.of(appointmentRepository.save(tempAppointment.get()));
-            }
-            Client client = clientRepository.findById(clientId).orElse(null);
-            if (client != null) {
-                client.setName(appointment.getName());
-                client.setPhoneNumber(appointment.getPhoneNumber());
-                // updating all appointments with the same client id
-                List<Appointment> tempAppointments = appointmentRepository.findByClientId(client.getId());
-                for (Appointment clientAppointment : tempAppointments) {
-                    if (clientAppointment.getId() == appointment.getId()) {
-                        continue;
-                    }
-                    clientAppointment.setName(client.getName());
-                    clientAppointment.setPhoneNumber(client.getPhoneNumber());
-                    basicEdit(clientAppointment);
-                }
-                clientRepository.save(client);
             }
             return Optional.of(appointmentRepository.save(tempAppointment.get()));
         }

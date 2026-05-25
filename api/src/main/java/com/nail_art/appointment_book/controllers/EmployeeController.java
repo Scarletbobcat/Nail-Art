@@ -12,9 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,7 +41,7 @@ public class EmployeeController {
     @PostMapping("/create")
     public ResponseEntity<?> createEmployee(@Valid @RequestBody Employee employee, BindingResult result) {
         if (result.hasErrors()) {
-            return ResponseEntity.badRequest().body(fieldErrors(result));
+            return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
         return new ResponseEntity<>(employeeService.createEmployee(employee), HttpStatus.CREATED);
     }
@@ -68,11 +66,5 @@ public class EmployeeController {
     @GetMapping("/name/{name}")
     public ResponseEntity<List<Employee>> getEmployeeByName(@PathVariable String name) {
         return ResponseEntity.ok(employeeService.getEmployeeByName(name));
-    }
-
-    private Map<String, String> fieldErrors(BindingResult result) {
-        Map<String, String> errors = new HashMap<>();
-        result.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-        return errors;
     }
 }
