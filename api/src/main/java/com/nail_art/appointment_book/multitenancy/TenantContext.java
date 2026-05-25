@@ -17,18 +17,13 @@ public final class TenantContext {
         CURRENT.remove();
     }
 
-    public static <T> T runAs(UUID organizationId, Supplier<T> body) {
-        UUID prior = CURRENT.get();
-        CURRENT.set(organizationId);
+    public static Scope openScope(UUID organizationId) {
+        return new Scope(organizationId);
+    }
 
-        try {
+    public static <T> T runAs(UUID organizationId, Supplier<T> body) {
+        try (Scope ignored = openScope(organizationId)) {
             return body.get();
-        } finally {
-            if (prior == null) {
-                CURRENT.remove();
-            } else {
-                CURRENT.set(prior);
-            }
         }
     }
 
@@ -37,5 +32,23 @@ public final class TenantContext {
             body.run();
             return null;
         });
+    }
+
+    public static final class Scope implements AutoCloseable {
+        private final UUID prior;
+
+        private Scope(UUID organizationId) {
+            this.prior = CURRENT.get();
+            CURRENT.set(organizationId);
+        }
+
+        @Override
+        public void close() {
+            if (prior == null) {
+                CURRENT.remove();
+            } else {
+                CURRENT.set(prior);
+            }
+        }
     }
 }
