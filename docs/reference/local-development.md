@@ -6,6 +6,7 @@
 - **JDK 21** for the API (CI uses Temurin 21).
 - **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the cron scripts.
 - **MongoDB Atlas** connection string. There is no local Mongo by default.
+- **Docker** if you want the local PostgreSQL container for migration work.
 - **Twilio credentials** if you want reminders to actually send. Otherwise leave the env vars empty and skip the scheduled job.
 
 ## Environment variables
@@ -14,6 +15,9 @@ Create `api/.env` (loaded via `spring.config.import=optional:classpath:.env[.pro
 
 ```
 DEV_MONGO_URI=...
+POSTGRES_URL=jdbc:postgresql://localhost:5432/nail_art
+POSTGRES_USER=nail_art
+POSTGRES_PASSWORD=nail_art_password
 DEV_FRONTEND_URL=http://localhost:5173
 PROD_MONGO_URI=...
 PROD_FRONTEND_URL=...
@@ -36,6 +40,15 @@ For cron scripts, create `cron/.env`:
 MONGO_URI=...
 ```
 
+For Docker Compose, copy the root `.env.example` to `.env` if you want to override the local PostgreSQL defaults:
+
+```
+POSTGRES_PORT=5432
+POSTGRES_DB=nail_art
+POSTGRES_USER=nail_art
+POSTGRES_PASSWORD=nail_art_password
+```
+
 ## Run both services
 
 The repo ships a `justfile`:
@@ -50,6 +63,16 @@ just web-install # cd client && npm install
 Without `just`, run the two commands directly in separate terminals.
 
 The default Spring profile is `dev`. To run against prod settings locally, set `SPRING_PROFILES_ACTIVE=prod` before starting the API.
+
+## Local PostgreSQL
+
+The Compose stack includes a local PostgreSQL 16 container for the upcoming persistence migration:
+
+```sh
+docker compose up -d postgres
+```
+
+The default JDBC URL for the API is `jdbc:postgresql://localhost:5432/nail_art`, with username `nail_art` and password `nail_art_password`. Spring Boot runs Flyway migrations against this database during API startup. The request path still uses MongoDB until the backend repositories are migrated to JPA.
 
 ## Auth bootstrap
 
