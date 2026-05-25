@@ -2,9 +2,13 @@
 
 Accretive log of significant documentation changes. Append to the top.
 
+## 2026-05-25 — PostgreSQL cutover documentation refresh
+
+- Updated module and reference docs for the PostgreSQL-only runtime: JPA/Flyway, UUID IDs, tenant context, `useMe()`/`orgTz`, psycopg cron, and cutover-era auth/bootstrap guidance.
+
 ## 2026-05-25 — Local PostgreSQL migration groundwork
 
-- Documented the local PostgreSQL Compose service and API datasource env vars for the upcoming MongoDB-to-Postgres migration.
+- Documented the local PostgreSQL Compose service and API datasource env vars during the migration groundwork.
 
 ## 2026-05-24 — Initial docs suite
 

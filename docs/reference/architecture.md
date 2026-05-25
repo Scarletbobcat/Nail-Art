@@ -6,8 +6,8 @@ Three independently deployable pieces sit behind a single business workflow.
 
 ```
 +----------------+        HTTPS / JWT         +----------------------+        +-------------------+
-|  client/       |  -----------------------> |  api/                |  --->  |  MongoDB Atlas    |
-|  Vite + React  |                            |  Spring Boot (Java)  |        |  "Nail-Art" db    |
+|  client/       |  -----------------------> |  api/                |  --->  |  PostgreSQL       |
+|  Vite + React  |                            |  Spring Boot (Java)  |        |  multi-org data   |
 |  MUI, TS       |  <- refreshToken cookie -- |                      |        +-------------------+
 +----------------+                            +----------------------+
                                                        |
@@ -19,61 +19,68 @@ Three independently deployable pieces sit behind a single business workflow.
                                               +----------------------+
 
 +------------------+        +-------------------+
-|  cron/           |  --->  |  MongoDB Atlas    |
-|  Python scripts  |        |  archive cleanup  |
+|  cron/           |  --->  |  PostgreSQL       |
+|  Python scripts  |        |  maintenance      |
 +------------------+        +-------------------+
 ```
 
 ## Components
 
 - **`client/`** — Vite + React 18 + TypeScript single-page app. Uses Material UI (`@mui/material`, `@mui/x-data-grid`, `@mui/x-date-pickers`), TanStack Query for server state, and `react-router-dom` v6 for routing. Bundles to `client/dist/` and is served via `serve` in production.
-- **`api/`** — Spring Boot 3.3 (Java 21) REST API. Spring Security with JWT access tokens (`Authorization: Bearer …`) and an HttpOnly `refreshToken` cookie. Persists to MongoDB through Spring Data MongoDB. Sends Twilio SMS reminders on a scheduled cron.
-- **`cron/`** — Python 3.14 maintenance scripts that talk directly to MongoDB for archive sweeping and ad‑hoc data hygiene. Not part of the request path.
+- **`api/`** — Spring Boot 3.3 (Java 21) REST API. Spring Security with JWT access tokens (`Authorization: Bearer ...`) and an HttpOnly `refreshToken` cookie. Persists to PostgreSQL through Spring Data JPA and Flyway. Sends Twilio SMS reminders on a scheduled cron.
+- **`cron/`** — Python 3.14 maintenance scripts that talk directly to PostgreSQL for operational chores outside the request path.
 
-## Request flow (typical authenticated call)
+## Request flow
 
 1. User loads the SPA from `client/dist` (served on port `5173`).
 2. `client/src/api/api.ts` creates an `axios` instance with `withCredentials: true`. It attaches `Authorization: Bearer <token>` from `localStorage`.
-3. On `401`, the response interceptor calls `POST /auth/refresh` (using the HttpOnly refresh cookie), swaps in the new access token, and retries the original request. If refresh fails, the user is redirected to `/login`.
-4. `api/` validates the JWT through `JwtAuthenticationFilter` and routes through controllers under `com.nail_art.appointment_book.controllers` to services and Spring Data repositories.
-5. CORS in `SecurityConfiguration` allows only the configured `frontend.url` and exposes `Set-Cookie` so the refresh cookie can roundtrip.
+3. On `401`, the response interceptor calls `POST /auth/refresh` using the HttpOnly refresh cookie, swaps in the new access token, and retries the original request. If refresh fails, the user is redirected to `/login`.
+4. `api/` validates the JWT through `JwtAuthenticationFilter`, checks that the token's `sub` user belongs to the token's `org`, then routes through controllers to services and JPA repositories.
+5. `TenantContextWebFilter` opens a `TenantContext` scope from the authenticated principal. Hibernate's `CurrentTenantResolver` reads that scope for `@TenantId` discriminator-based multi-tenancy.
+6. CORS in `SecurityConfiguration` allows only the configured `frontend.url` and exposes `Set-Cookie` so the refresh cookie can roundtrip.
+
+There is no PostgreSQL RLS layer in this branch. Tenant isolation is enforced in the application layer with Hibernate `@TenantId`, scoped repository lookups, composite foreign keys, and cross-org integration tests.
 
 ## Authentication model
 
-- `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout` are the only unauthenticated routes.
-- Access token lives in `localStorage` under `token`. Refresh token is an HttpOnly, `SameSite=None`, `Secure` cookie with a 30‑day TTL. Both are issued by `JwtService`.
-- Refresh tokens are tracked server-side via the `RefreshToken` entity so logout can revoke them.
+- `POST /auth/login`, `POST /auth/refresh`, and `POST /auth/logout` are the only unauthenticated routes.
+- `POST /auth/register` is removed. First-owner bootstrap for a new organization is handled by scripts; routine staff creation uses owner-gated `POST /users`.
+- Access token lives in `localStorage` under `token`. Refresh token is an HttpOnly, `SameSite=None`, `Secure` cookie with a 30-day TTL. Both are issued by `JwtService`.
+- JWTs carry `sub` (user UUID), `org` (organization UUID), and `role`.
+- Refresh tokens are tracked server-side by user id in `refresh_tokens` so logout can revoke them.
 
 ## Persistence
 
-- MongoDB collections: `Appointments`, `ArchivedAppointments`, `Clients`, `Employees`, `Services`, `Users`, `RefreshToken`, plus a `Counter` document used as a sequence generator for numeric IDs.
-- Numeric `id` fields (e.g. `Appointment.id`, `Client.id`) are app-managed sequences distinct from Mongo's `_id`. `CounterService` increments them.
-- `spring.data.mongodb.auto-index-creation=true` so index annotations on entities are applied at startup.
+- PostgreSQL is the only runtime datastore for the API.
+- Flyway migrations in `api/src/main/resources/db/migration/` own schema creation. `V1__init_multi_org_schema.sql` creates the multi-org base schema; `V3__add_unavailability_marker.sql` adds the per-org unavailable-service marker.
+- Domain IDs are UUIDs generated by PostgreSQL. Application code does not manage numeric sequences.
+- Tenant-owned rows carry `organization_id`. JPA entities for clients, employees, services, appointments, and appointment-service links use Hibernate `@TenantId`.
+- `users`, `organizations`, `organization_users`, `organization_settings`, and `refresh_tokens` are bootstrap/auth tables and are not `@TenantId` entities. Access is constrained through authentication, explicit repository methods, or script-only operational paths.
 
 ## Scheduled work
 
-- `SmsService#sendReminders` runs at `0 0 15 * * *` America/New_York. It loads tomorrow's appointments, sends Twilio messages with retry/backoff (`MAX_ATTEMPTS=3`, 5s backoff), respects Twilio code `21610` (unsubscribed), and marks `reminderSent=true` on success.
-- `cron/ArchiveAppointments.py` is intended to run weekly. It moves appointments older than 14 days into `ArchivedAppointments` and purges archives older than 30 days.
+- `SmsService#sendReminders` runs at `0 0 15 * * *` America/New_York. It loops organizations, wraps each org in `TenantContext.runAs`, sends Twilio messages with retry/backoff (`MAX_ATTEMPTS=3`, 5s backoff), respects Twilio code `21610` (unsubscribed), and marks `reminderSent` through the dedicated non-conflict path.
+- `cron/ArchiveAppointments.py` is intended to run weekly. It sets `archived_at` on appointments older than 30 days by looping organizations directly in PostgreSQL.
 
 ## Configuration & secrets
 
 API reads environment-driven properties (see `api/src/main/resources/application*.properties`):
 
-- `JWT_SECRET_KEY`, `JWT_EXPIRATION`
+- `POSTGRES_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
+- `JWT_SECRET_KEY`, `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION`
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
-- `DEV_MONGO_URI` / `PROD_MONGO_URI`
 - `DEV_FRONTEND_URL` / `PROD_FRONTEND_URL`
 
-Client reads `VITE_API_URL` at build/runtime via `import.meta.env`.
+Client reads `VITE_API_URL` through `import.meta.env`.
 
 The active Spring profile is `dev` by default and `prod` in the Docker images.
 
 ## Deployment
 
-- Published Docker images: `scarletbobcat/nail-art:client` (serves the Vite build via `serve` on `5173`) and `scarletbobcat/nail-art:api` (runs the Spring Boot fat jar on `8080`). `docker-compose.yaml` wires them together.
+- Published Docker images: `scarletbobcat/nail-art:client` (serves the Vite build via `serve` on `5173`) and `scarletbobcat/nail-art:api` (runs the Spring Boot fat jar on `8080`). `docker-compose.yaml` wires both to PostgreSQL.
 - `start-app.sh` pulls the latest images, brings the stack up, waits for both `5173` and `8080` to respond, and opens the browser.
-- CI (`.github/workflows`) runs backend tests (`./mvnw test -Dtest="com.nail_art.appointment_book.services.**"`) and frontend `tsc -b --noEmit` + `npm run lint` on every push and PR to `main`.
+- CI (`.github/workflows`) runs backend tests and frontend `tsc -b --noEmit` + `npm run lint` on every push and PR to `main`.
 
 ## Maintenance & Accretion
 
-Update this document when: a new top-level component is added or retired, the auth model changes, scheduled jobs are added/moved, or the deployment topology shifts. Record changes briefly in `docs/updates.md`.
+Update this document when: a new top-level component is added or retired, the auth model changes, scheduled jobs are added/moved, persistence topology changes, or deployment topology shifts. Record changes briefly in `docs/updates.md`.

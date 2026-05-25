@@ -4,25 +4,31 @@
 
 - **Node.js 20+** for the client (CI pins Node 20).
 - **JDK 21** for the API (CI uses Temurin 21).
-- **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the cron scripts.
-- **MongoDB Atlas** connection string. There is no local Mongo by default.
-- **Docker** if you want the local PostgreSQL container for migration work.
+- **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the cron or bootstrap scripts.
+- **Docker** for the local PostgreSQL container.
 - **Twilio credentials** if you want reminders to actually send. Otherwise leave the env vars empty and skip the scheduled job.
 
 ## Environment variables
 
-Create `api/.env` (loaded via `spring.config.import=optional:classpath:.env[.properties]`) with:
+Create `api/src/main/resources/.env` or export equivalent shell env vars for local API work:
 
 ```
-DEV_MONGO_URI=...
 DEV_FRONTEND_URL=http://localhost:5173
-PROD_MONGO_URI=...
-PROD_FRONTEND_URL=...
+PROD_FRONTEND_URL=
 JWT_SECRET_KEY=<random base64-encoded secret>
 JWT_EXPIRATION=3600000
-TWILIO_ACCOUNT_SID=...
-TWILIO_AUTH_TOKEN=...
-TWILIO_PHONE_NUMBER=...
+JWT_REFRESH_EXPIRATION=2592000000
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_PHONE_NUMBER=
+```
+
+The `dev` profile points at the local Compose database:
+
+```
+POSTGRES_URL=jdbc:postgresql://localhost:5432/nail_art
+POSTGRES_USER=nail_art
+POSTGRES_PASSWORD=nail_art_password
 ```
 
 Create `client/.env`:
@@ -31,10 +37,10 @@ Create `client/.env`:
 VITE_API_URL=http://localhost:8080
 ```
 
-For cron scripts, create `cron/.env`:
+For cron and bootstrap scripts, create `cron/.env` or export:
 
 ```
-MONGO_URI=...
+POSTGRES_URL=postgresql://nail_art:nail_art_password@localhost:5432/nail_art
 ```
 
 For Docker Compose, copy the root `.env.example` to `.env` if you want to override the local PostgreSQL defaults:
@@ -63,22 +69,28 @@ The default Spring profile is `dev`. To run against prod settings locally, set `
 
 ## Local PostgreSQL
 
-The Compose stack includes a local PostgreSQL 16 container for the upcoming persistence migration:
+Start PostgreSQL 16:
 
 ```sh
 docker compose up -d postgres
 ```
 
-The dev profile hardcodes the JDBC URL to `jdbc:postgresql://localhost:5432/nail_art` with username `nail_art` and password `nail_art_password` (see `application-dev.properties`), so no extra env vars are needed in `api/.env`. Spring Boot runs Flyway migrations against this database during API startup. The request path still uses MongoDB until the backend repositories are migrated to JPA.
+Spring Boot runs Flyway migrations against this database during API startup. The local defaults match `application-dev.properties`.
 
 ## Auth bootstrap
 
-There is no public signup UI. Create the first user with:
+There is no public signup route. For a fresh local database:
 
 ```sh
-curl -X POST http://localhost:8080/auth/register \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"admin","password":"<strong-password>","fullName":"Admin"}'
+python scripts/create_organization.py \
+  --db-url postgresql://nail_art:nail_art_password@localhost:5432/nail_art \
+  --name "Nail Art & Spa"
+
+python scripts/bootstrap_organization_owner.py \
+  --db-url postgresql://nail_art:nail_art_password@localhost:5432/nail_art \
+  --org-name "Nail Art & Spa" \
+  --username admin \
+  --password "<strong-password>"
 ```
 
 Subsequent logins go through the UI at `http://localhost:5173/Login`.
@@ -87,8 +99,8 @@ Subsequent logins go through the UI at `http://localhost:5173/Login`.
 
 - Client typecheck: `cd client && npx tsc -b --noEmit`
 - Client lint: `cd client && npm run lint`
-- Client build: `cd client && npm run build`
 - Backend service tests: `cd api && ./mvnw test -Dtest="com.nail_art.appointment_book.services.**"`
+- PostgreSQL smoke test: `cd api && ./mvnw test -Dtest=PostgresIntegrationSmokeTest`
 
 ## Docker stack
 
