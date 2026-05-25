@@ -13,4 +13,16 @@ public interface OrganizationUserRepository extends JpaRepository<OrganizationUs
     Optional<OrganizationUser> findFirstByIdUserIdOrderByCreatedAtAsc(UUID userId);
 
     Optional<OrganizationUser> findByIdUserIdAndIdOrganizationId(UUID userId, UUID organizationId);
+
+    default boolean existsByUserIdAndOrganizationId(UUID userId, UUID organizationId) {
+        return existsByIdUserIdAndIdOrganizationId(userId, organizationId);
+    }
+
+    default Optional<OrganizationUser> findFirstByUserId(UUID userId) {
+        return findFirstByIdUserIdOrderByCreatedAtAsc(userId);
+    }
+
+    default Optional<OrganizationUser> findByUserIdAndOrganizationId(UUID userId, UUID organizationId) {
+        return findByIdUserIdAndIdOrganizationId(userId, organizationId);
+    }
 }

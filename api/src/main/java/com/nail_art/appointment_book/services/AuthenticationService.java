@@ -1,58 +1,74 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.dtos.LoginUserDto;
-import com.nail_art.appointment_book.dtos.RegisterUserDto;
+import com.nail_art.appointment_book.entities.OrganizationUser;
 import com.nail_art.appointment_book.entities.User;
+import com.nail_art.appointment_book.repositories.OrganizationUserRepository;
 import com.nail_art.appointment_book.repositories.UserRepository;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class AuthenticationService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final OrganizationUserRepository organizationUserRepository;
 
     public AuthenticationService(
             UserRepository userRepository,
-            AuthenticationManager authenticationManager,
-            PasswordEncoder passwordEncoder, JwtService jwtService) {
-        this.authenticationManager = authenticationManager;
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService,
+            OrganizationUserRepository organizationUserRepository
+    ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
-    }
-
-    public User signup(RegisterUserDto input) {
-        if (userRepository.findByUsernameIgnoreCase(input.getUsername()).isPresent()) {
-            throw new RuntimeException("User with username '" + input.getUsername() + "' already exists.");
-        }
-        User user = new User();
-        user.setUsername(input.getUsername());
-        user.setPassword(passwordEncoder.encode(input.getPassword()));
-        user.setEmail(input.getEmail());
-
-        return userRepository.save(user);
+        this.organizationUserRepository = organizationUserRepository;
     }
 
     public User authenticate(LoginUserDto input) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        input.getUsername(),
-                        input.getPassword()
-                )
-        );
+        User user = userRepository.findByUsername(input.getUsername())
+                .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
 
-        return userRepository.findByUsernameIgnoreCase(input.getUsername())
-                .orElseThrow();
+        if (!passwordEncoder.matches(input.getPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Bad credentials");
+        }
+
+        return withoutPasswordHash(user);
     }
 
-    public String generateRefreshToken(UserDetails userDetails) {
-        return jwtService.generateRefreshToken(userDetails);
+    public OrganizationUser getPrimaryMembership(User user) {
+        return organizationUserRepository.findFirstByUserId(user.getId())
+                .orElseThrow(() -> new BadCredentialsException("No organization membership found"));
+    }
+
+    public String generateAccessToken(User user) {
+        OrganizationUser membership = getPrimaryMembership(user);
+        return jwtService.generateToken(user, membership.getOrganizationId(), membership.getRole());
+    }
+
+    public String generateRefreshToken(User user) {
+        OrganizationUser membership = getPrimaryMembership(user);
+        return jwtService.generateRefreshToken(user, membership.getOrganizationId(), membership.getRole());
+    }
+
+    public String refreshAccessToken(String refreshToken) {
+        if (!jwtService.validateRefreshToken(refreshToken)) {
+            throw new BadCredentialsException("Invalid or expired refresh token");
+        }
+
+        UUID userId = jwtService.extractUserId(refreshToken);
+        UUID organizationId = jwtService.extractOrganizationId(refreshToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+        OrganizationUser membership = organizationUserRepository.findByUserIdAndOrganizationId(userId, organizationId)
+                .orElseThrow(() -> new BadCredentialsException("Organization membership not found"));
+
+        return jwtService.generateToken(user, organizationId, membership.getRole());
     }
 
     public boolean validateRefreshToken(String token) {
@@ -61,5 +77,15 @@ public class AuthenticationService {
 
     public void deleteRefreshToken(String token) {
         jwtService.deleteRefreshToken(token);
+    }
+
+    private User withoutPasswordHash(User user) {
+        User sanitized = new User();
+        sanitized.setId(user.getId());
+        sanitized.setUsername(user.getUsername());
+        sanitized.setEmail(user.getEmail());
+        sanitized.setCreatedAt(user.getCreatedAt());
+        sanitized.setUpdatedAt(user.getUpdatedAt());
+        return sanitized;
     }
 }

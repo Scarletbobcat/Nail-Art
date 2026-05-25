@@ -1,6 +1,7 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.RefreshToken;
+import com.nail_art.appointment_book.entities.User;
 import com.nail_art.appointment_book.repositories.RefreshTokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
 
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -40,6 +42,18 @@ public class JwtService {
         return extractClaim(token, Claims::getSubject);
     }
 
+    public UUID extractUserId(String token) {
+        return UUID.fromString(extractClaim(token, Claims::getSubject));
+    }
+
+    public UUID extractOrganizationId(String token) {
+        return UUID.fromString(extractClaim(token, claims -> claims.get("org", String.class)));
+    }
+
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -47,6 +61,13 @@ public class JwtService {
 
     public String generateToken(UserDetails userDetails) {
         return generateToken(new HashMap<>(), userDetails);
+    }
+
+    public String generateToken(User user, UUID organizationId, String role) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("org", organizationId.toString());
+        claims.put("role", role);
+        return buildToken(claims, user.getId().toString(), jwtExpiration);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
@@ -57,17 +78,39 @@ public class JwtService {
         return jwtExpiration;
     }
 
+    @Transactional
     public String generateRefreshToken(UserDetails userDetails) {
         RefreshToken refreshToken = new RefreshToken();
         Map<String, Object> claims = new HashMap<>();
         claims.put("jti", UUID.randomUUID().toString()); // Add a unique identifier to the claims
 
-        // removes all previous refresh tokens
-        refreshTokenRepository.deleteRefreshTokensByUsername(userDetails.getUsername());
+        if (userDetails instanceof User user && user.getId() != null) {
+            refreshTokenRepository.deleteByUserId(user.getId());
+            refreshToken.setUserId(user.getId());
+        } else {
+            refreshTokenRepository.deleteRefreshTokensByUsername(userDetails.getUsername());
+        }
 
         refreshToken.setToken(buildToken(claims, userDetails, refreshExpiration));
         refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
         refreshToken.setUsername(userDetails.getUsername());
+        refreshTokenRepository.save(refreshToken);
+        return refreshToken.getToken();
+    }
+
+    @Transactional
+    public String generateRefreshToken(User user, UUID organizationId, String role) {
+        refreshTokenRepository.deleteByUserId(user.getId());
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("org", organizationId.toString());
+        claims.put("role", role);
+        claims.put("jti", UUID.randomUUID().toString());
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUserId(user.getId());
+        refreshToken.setToken(buildToken(claims, user.getId().toString(), refreshExpiration));
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
         refreshTokenRepository.save(refreshToken);
         return refreshToken.getToken();
     }
@@ -78,6 +121,7 @@ public class JwtService {
                 .orElse(false);
     }
 
+    @Transactional
     public void deleteRefreshToken(String token) {
         refreshTokenRepository.findByToken(token).ifPresent(refreshTokenRepository::delete);
     }
@@ -92,6 +136,21 @@ public class JwtService {
                 .builder()
                 .setClaims(extraClaims)
                 .setSubject(userDetails.getUsername())
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSignInKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private String buildToken(
+            Map<String, Object> extraClaims,
+            String subject,
+            long expiration
+    ) {
+        return Jwts
+                .builder()
+                .setClaims(extraClaims)
+                .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSignInKey(), SignatureAlgorithm.HS256)
