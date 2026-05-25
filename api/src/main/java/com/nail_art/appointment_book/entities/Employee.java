@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.TenantId;
@@ -31,6 +32,10 @@ public class Employee {
 
     @Column(name = "color")
     private String color;
+
+    @Min(value = 0, message = "Display order must be zero or greater")
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder;
 
     @Column(name = "active", nullable = false)
     private boolean active = true;
@@ -73,6 +78,14 @@ public class Employee {
 
     public void setColor(String color) {
         this.color = color;
+    }
+
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 
     public boolean isActive() {

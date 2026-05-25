@@ -191,11 +191,11 @@ def main():
                 (org_id, owner_user_id, "owner"),
             )
 
-            for e in employees:
+            for display_order, e in enumerate(employees):
                 cur.execute(
-                    """INSERT INTO employees (id, organization_id, name, color, active)
-                       VALUES (%s, %s, %s, %s, %s)""",
-                    (emp_map[e["id"]], org_id, e["name"], e.get("color"), True),
+                    """INSERT INTO employees (id, organization_id, name, color, active, display_order)
+                       VALUES (%s, %s, %s, %s, %s, %s)""",
+                    (emp_map[e["id"]], org_id, e["name"], e.get("color"), True, display_order),
                 )
 
             for service_row in service_rows_for_insert(

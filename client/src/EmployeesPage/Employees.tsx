@@ -3,7 +3,9 @@ import {
   createEmployee,
   deleteEmployee,
   editEmployee,
+  getAllEmployees,
   getEmployeesPaginated,
+  reorderEmployees,
 } from "../api/employees";
 import { Stack, TextField, Button, TablePagination } from "@mui/material";
 import PageSkeleton from "../components/PageSkeleton";
@@ -21,6 +23,7 @@ import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
 export default function Employees() {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [busyIndex, setBusyIndex] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -31,6 +34,7 @@ export default function Employees() {
     id: "",
     name: "",
     color: "",
+    displayOrder: undefined,
   });
 
   const {
@@ -51,6 +55,58 @@ export default function Employees() {
     setIsLoading(false);
   };
 
+  const applyReorder = async (visibleIndex: number, targetAbsolutePosition: number) => {
+    const all: Employee[] = await getAllEmployees();
+    const sorted = [...all].sort((a, b) => {
+      const ao = a.displayOrder ?? Number.MAX_SAFE_INTEGER;
+      const bo = b.displayOrder ?? Number.MAX_SAFE_INTEGER;
+      if (ao !== bo) return ao - bo;
+      return a.name.localeCompare(b.name);
+    });
+
+    const visibleEmp = employeesData?.content?.[visibleIndex];
+    if (!visibleEmp) return;
+    const fromIndex = sorted.findIndex((e) => e.id === visibleEmp.id);
+    if (fromIndex === -1) return;
+
+    const targetIndex = Math.max(0, Math.min(sorted.length - 1, targetAbsolutePosition - 1));
+    if (fromIndex === targetIndex) return;
+
+    const [moved] = sorted.splice(fromIndex, 1);
+    sorted.splice(targetIndex, 0, moved);
+
+    const updates = sorted
+      .map((employee, index) => ({ id: employee.id, displayOrder: index, previous: employee.displayOrder }))
+      .filter(({ displayOrder, previous }) => previous !== displayOrder)
+      .map(({ id, displayOrder }) => ({ id, displayOrder }));
+
+    if (updates.length === 0) return;
+
+    try {
+      setBusyIndex(visibleIndex);
+      await reorderEmployees(updates);
+      await queryClient.invalidateQueries({ queryKey: ["employees"] });
+      await refetch();
+    } finally {
+      setBusyIndex(null);
+    }
+  };
+
+  const moveUp = (index: number) => {
+    const absolute = page * rowsPerPage + index + 1;
+    if (absolute <= 1) return;
+    void applyReorder(index, absolute - 1);
+  };
+
+  const moveDown = (index: number) => {
+    const absolute = page * rowsPerPage + index + 1;
+    void applyReorder(index, absolute + 1);
+  };
+
+  const moveTo = (index: number, newPosition: number) => {
+    void applyReorder(index, newPosition);
+  };
+
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
       refreshEmps();
@@ -65,6 +121,7 @@ export default function Employees() {
       id: row.id,
       name: row.name,
       color: row.color,
+      displayOrder: row.displayOrder,
       _raw: row,
     }));
   }, [employeesData]);
@@ -159,6 +216,18 @@ export default function Employees() {
               <span>{item.color}</span>
             </Stack>
           )}
+          ordering={
+            name.trim()
+              ? undefined
+              : {
+                  positionOffset: page * rowsPerPage,
+                  totalCount: totalElements,
+                  onMoveUp: moveUp,
+                  onMoveDown: moveDown,
+                  onMoveTo: moveTo,
+                  busyIndex,
+                }
+          }
           onEdit={(item) => {
             setSelectedEmp(item._raw);
             setIsEditOpen(true);
@@ -206,7 +275,7 @@ export default function Employees() {
       )}
       {isCreateOpen && (
         <EmployeeModal
-          employee={{ id: "", name: "", color: "#000000" }}
+          employee={{ id: "", name: "", color: "#000000", displayOrder: undefined }}
           onSubmit={createEmployee}
           type={"create"}
           renderEmps={refreshEmps}

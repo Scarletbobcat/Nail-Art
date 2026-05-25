@@ -19,4 +19,7 @@ public interface EmployeeRepository extends JpaRepository<Employee, UUID> {
     List<Employee> findByNameContainingIgnoreCase(String name);
 
     Page<Employee> findByNameContainingIgnoreCase(String name, Pageable pageable);
+
+    @Query("select coalesce(max(e.displayOrder), -1) from Employee e")
+    int findMaxDisplayOrder();
 }

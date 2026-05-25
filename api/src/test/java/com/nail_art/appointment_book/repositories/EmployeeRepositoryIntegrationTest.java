@@ -12,6 +12,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     @Autowired
@@ -55,7 +57,7 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void save_andFindById_roundTrip() {
-        Employee saved = TenantContext.runAs(orgA, () -> employeeRepository.save(employee("Alice", "#ff0000")));
+        Employee saved = TenantContext.runAs(orgA, () -> employeeRepository.save(employee("Alice", "#ff0000", 0)));
 
         Employee actual = TenantContext.runAs(orgA, () -> employeeRepository.findScopedById(saved.getId()).orElseThrow());
 
@@ -70,9 +72,9 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     @Test
     void findByNameContainingIgnoreCase_matchesAnnaAndJoanne() {
         TenantContext.runAs(orgA, () -> {
-            employeeRepository.save(employee("Anna", "#111111"));
-            employeeRepository.save(employee("Joanne", "#222222"));
-            employeeRepository.save(employee("Mia", "#333333"));
+            employeeRepository.save(employee("Anna", "#111111", 0));
+            employeeRepository.save(employee("Joanne", "#222222", 1));
+            employeeRepository.save(employee("Mia", "#333333", 2));
         });
 
         Page<Employee> page = TenantContext.runAs(
@@ -89,9 +91,9 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     @Test
     void pageable_respectsSizeLimit() {
         TenantContext.runAs(orgA, () -> {
-            employeeRepository.save(employee("Alice", "#111111"));
-            employeeRepository.save(employee("Bea", "#222222"));
-            employeeRepository.save(employee("Cora", "#333333"));
+            employeeRepository.save(employee("Alice", "#111111", 0));
+            employeeRepository.save(employee("Bea", "#222222", 1));
+            employeeRepository.save(employee("Cora", "#333333", 2));
         });
 
         Page<Employee> page = TenantContext.runAs(orgA, () -> employeeRepository.findAll(PageRequest.of(0, 2)));
@@ -106,8 +108,22 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void findMaxDisplayOrder_isTenantScoped() {
+        insertEmployee(orgA, "Anna", "#111111", 2);
+        insertEmployee(orgA, "Bea", "#222222", 7);
+        insertEmployee(orgB, "Cora", "#333333", 99);
+
+        int maxDisplayOrder = TenantContext.runAs(orgA, () -> employeeRepository.findMaxDisplayOrder());
+
+        assertThat(maxDisplayOrder)
+                .as("operation=max display order activeContext=%s seedOrgA=%s seedOrgB=%s",
+                        TenantContext.get(), orgA, orgB)
+                .isEqualTo(7);
+    }
+
+    @Test
     void tenantId_insertAutoPopulates() {
-        Employee saved = TenantContext.runAs(orgA, () -> employeeRepository.save(employee("Alice", "#ff0000")));
+        Employee saved = TenantContext.runAs(orgA, () -> employeeRepository.save(employee("Alice", "#ff0000", 0)));
 
         UUID storedOrganizationId = jdbcTemplate.queryForObject(
                 "select organization_id from employees where id = ?",
@@ -207,6 +223,44 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
                 .isEmpty();
     }
 
+    @Test
+    void uniqueConstraint_rejectsDuplicateOrderInSameOrg() {
+        insertEmployee(orgA, "Anna", "#111111", 0);
+
+        assertThatThrownBy(() -> insertEmployee(orgA, "Bea", "#222222", 0))
+                .as("operation=duplicate (org, display_order) in same tenant should violate unique constraint orgA=%s",
+                        orgA)
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void uniqueConstraint_allowsSameOrderInDifferentOrgs() {
+        UUID orgAEmpId = insertEmployee(orgA, "Anna", "#111111", 0);
+        UUID orgBEmpId = insertEmployee(orgB, "Bea", "#222222", 0);
+
+        assertThat(orgAEmpId)
+                .as("operation=same display_order across orgs should be allowed orgA=%s orgB=%s",
+                        orgA, orgB)
+                .isNotNull();
+        assertThat(orgBEmpId).isNotNull();
+    }
+
+    @Test
+    void findMaxDisplayOrder_afterDelete_returnsGappedMaxNotResequenced() {
+        insertEmployee(orgA, "Anna", "#111111", 0);
+        UUID middle = insertEmployee(orgA, "Bea", "#222222", 1);
+        insertEmployee(orgA, "Cora", "#333333", 2);
+
+        jdbcTemplate.update("delete from employees where id = ?", middle);
+
+        int maxDisplayOrder = TenantContext.runAs(orgA, () -> employeeRepository.findMaxDisplayOrder());
+
+        assertThat(maxDisplayOrder)
+                .as("delete should leave gap; subsequent create still appends after max not into gap orgA=%s",
+                        orgA)
+                .isEqualTo(2);
+    }
+
     private UUID insertOrganization(String name) {
         return jdbcTemplate.queryForObject(
                 "insert into organizations (name, business_phone, timezone) values (?, '+15555550101', 'America/New_York') returning id",
@@ -216,19 +270,25 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     }
 
     private UUID insertEmployee(UUID organizationId, String name, String color) {
+        return insertEmployee(organizationId, name, color, 0);
+    }
+
+    private UUID insertEmployee(UUID organizationId, String name, String color, int displayOrder) {
         return jdbcTemplate.queryForObject(
-                "insert into employees (organization_id, name, color) values (?, ?, ?) returning id",
+                "insert into employees (organization_id, name, color, display_order) values (?, ?, ?, ?) returning id",
                 UUID.class,
                 organizationId,
                 name,
-                color
+                color,
+                displayOrder
         );
     }
 
-    private Employee employee(String name, String color) {
+    private Employee employee(String name, String color, int displayOrder) {
         Employee employee = new Employee();
         employee.setName(name);
         employee.setColor(color);
+        employee.setDisplayOrder(displayOrder);
         return employee;
     }
 

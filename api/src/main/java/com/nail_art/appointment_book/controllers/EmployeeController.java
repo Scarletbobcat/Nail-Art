@@ -1,5 +1,6 @@
 package com.nail_art.appointment_book.controllers;
 
+import com.nail_art.appointment_book.dtos.EmployeeReorderRequest;
 import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.services.EmployeeService;
 import jakarta.validation.Valid;
@@ -13,12 +14,19 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 @RequestMapping("/employees")
 @RestController
 public class EmployeeController {
+    private static final Sort EMPLOYEE_DISPLAY_SORT = Sort.by(
+            Sort.Order.asc("displayOrder"),
+            Sort.Order.asc("name"),
+            Sort.Order.asc("id")
+    );
+
     private final EmployeeService employeeService;
 
     public EmployeeController(EmployeeService employeeService) {
@@ -31,7 +39,7 @@ public class EmployeeController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("name").ascending());
+        Pageable pageable = PageRequest.of(page, Math.min(size, 100), EMPLOYEE_DISPLAY_SORT);
         if (name != null && !name.isBlank()) {
             return ResponseEntity.ok(employeeService.searchEmployees(name, pageable));
         }
@@ -66,5 +74,17 @@ public class EmployeeController {
     @GetMapping("/name/{name}")
     public ResponseEntity<List<Employee>> getEmployeeByName(@PathVariable String name) {
         return ResponseEntity.ok(employeeService.getEmployeeByName(name));
+    }
+
+    @PostMapping("/reorder")
+    public ResponseEntity<?> reorder(@Valid @RequestBody EmployeeReorderRequest request, BindingResult result) {
+        if (result.hasErrors()) {
+            return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
+        }
+        try {
+            return ResponseEntity.ok(employeeService.reorder(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

@@ -25,6 +25,7 @@ export const editEmployee = async (employee: Employee) => {
   const response = await api.put(`/employees/edit/${employee.id}`, {
     name: employee.name,
     color: employee.color,
+    displayOrder: employee.displayOrder,
   });
   return response.data;
 };
@@ -38,6 +39,14 @@ export const createEmployee = async (employee: Employee) => {
   const response = await api.post("/employees/create", {
     name: employee.name,
     color: employee.color,
+    displayOrder: employee.displayOrder,
   });
+  return response.data;
+};
+
+export const reorderEmployees = async (
+  items: { id: string; displayOrder: number }[],
+) => {
+  const response = await api.post("/employees/reorder", { items });
   return response.data;
 };

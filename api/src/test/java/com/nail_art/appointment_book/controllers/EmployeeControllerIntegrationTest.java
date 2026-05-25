@@ -65,12 +65,14 @@ class EmployeeControllerIntegrationTest extends PostgresIntegrationTest {
                         .content("""
                                 {
                                   "name": "Alice",
-                                  "color": "#ff0000"
+                                  "color": "#ff0000",
+                                  "displayOrder": 4
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isString())
-                .andExpect(jsonPath("$.name").value("Alice"));
+                .andExpect(jsonPath("$.name").value("Alice"))
+                .andExpect(jsonPath("$.displayOrder").value(4));
     }
 
     @Test
@@ -89,6 +91,20 @@ class EmployeeControllerIntegrationTest extends PostgresIntegrationTest {
                 .as("operation=controller search activeOrg=%s seedOrgA=%s seedOrgB=%s orgAEmployee=%s orgBEmployee=%s",
                         ownerA.organizationId(), ownerA.organizationId(), ownerB.organizationId(), orgAEmployeeId, orgBEmployeeId)
                 .isNotEqualTo(orgAEmployeeId);
+    }
+
+    @Test
+    void getEmployees_ordersByDisplayOrderBeforeName() throws Exception {
+        UUID zara = insertEmployee(ownerA.organizationId(), "Zara", "#111111", 0);
+        UUID alice = insertEmployee(ownerA.organizationId(), "Alice", "#222222", 1);
+        UUID bea = insertEmployee(ownerA.organizationId(), "Bea", "#333333", 2);
+
+        mockMvc.perform(get("/employees/")
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(zara.toString()))
+                .andExpect(jsonPath("$.content[1].id").value(alice.toString()))
+                .andExpect(jsonPath("$.content[2].id").value(bea.toString()));
     }
 
     @Test
@@ -169,11 +185,13 @@ class EmployeeControllerIntegrationTest extends PostgresIntegrationTest {
                         .content("""
                                 {
                                   "name": "Alice Smith",
-                                  "color": "#00ff00"
+                                  "color": "#00ff00",
+                                  "displayOrder": 2
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Alice Smith"));
+                .andExpect(jsonPath("$.name").value("Alice Smith"))
+                .andExpect(jsonPath("$.displayOrder").value(2));
 
         mockMvc.perform(delete("/employees/delete/{id}", employeeId)
                         .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA)))
@@ -184,13 +202,124 @@ class EmployeeControllerIntegrationTest extends PostgresIntegrationTest {
                 .isFalse();
     }
 
-    private UUID insertEmployee(UUID organizationId, String name, String color) {
+    @Test
+    void postReorder_fullRotation_succeedsViaDeferredConstraint() throws Exception {
+        UUID a = insertEmployee(ownerA.organizationId(), "Anna", "#111", 0);
+        UUID b = insertEmployee(ownerA.organizationId(), "Bea", "#222", 1);
+        UUID c = insertEmployee(ownerA.organizationId(), "Cora", "#333", 2);
+
+        String payload = """
+                {
+                  "items": [
+                    { "id": "%s", "displayOrder": 2 },
+                    { "id": "%s", "displayOrder": 0 },
+                    { "id": "%s", "displayOrder": 1 }
+                  ]
+                }
+                """.formatted(a, b, c);
+
+        mockMvc.perform(post("/employees/reorder")
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3))
+                .andExpect(jsonPath("$[0].id").value(b.toString()))
+                .andExpect(jsonPath("$[1].id").value(c.toString()))
+                .andExpect(jsonPath("$[2].id").value(a.toString()));
+
+        assertThat(displayOrderOf(a))
+                .as("post-reorder display_order on full rotation orgA=%s", ownerA.organizationId())
+                .isEqualTo(2);
+        assertThat(displayOrderOf(b)).isEqualTo(0);
+        assertThat(displayOrderOf(c)).isEqualTo(1);
+    }
+
+    @Test
+    void postReorder_crossTenantId_returns400AndLeavesDataUnchanged() throws Exception {
+        UUID a = insertEmployee(ownerA.organizationId(), "Anna", "#111", 0);
+        UUID foreign = insertEmployee(ownerB.organizationId(), "Bea", "#222", 0);
+
+        String payload = """
+                {
+                  "items": [
+                    { "id": "%s", "displayOrder": 1 },
+                    { "id": "%s", "displayOrder": 0 }
+                  ]
+                }
+                """.formatted(a, foreign);
+
+        mockMvc.perform(post("/employees/reorder")
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isBadRequest());
+
+        assertThat(displayOrderOf(a))
+                .as("cross-tenant reorder must roll back; attackerOrg=%s targetOrg=%s",
+                        ownerA.organizationId(), ownerB.organizationId())
+                .isEqualTo(0);
+        assertThat(displayOrderOf(foreign)).isEqualTo(0);
+    }
+
+    @Test
+    void postReorder_emptyItems_returns400() throws Exception {
+        mockMvc.perform(post("/employees/reorder")
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"items\": []}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void postCreate_afterDelete_doesNotReuseGap() throws Exception {
+        UUID a = insertEmployee(ownerA.organizationId(), "Anna", "#111", 0);
+        insertEmployee(ownerA.organizationId(), "Bea", "#222", 1);
+        insertEmployee(ownerA.organizationId(), "Cora", "#333", 2);
+
+        mockMvc.perform(delete("/employees/delete/{id}", a)
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA)))
+                .andExpect(status().isOk());
+
+        String createResponse = mockMvc.perform(post("/employees/create")
+                        .header(HttpHeaders.AUTHORIZATION, identitySupport.bearer(ownerA))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "name": "Dan", "color": "#abcdef" }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.displayOrder").value(3))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        UUID danId = UUID.fromString(objectMapper.readTree(createResponse).get("id").asText());
+        assertThat(displayOrderOf(danId))
+                .as("delete leaves a gap; new create still appends past max not into the gap orgA=%s",
+                        ownerA.organizationId())
+                .isEqualTo(3);
+    }
+
+    private Integer displayOrderOf(UUID employeeId) {
         return jdbcTemplate.queryForObject(
-                "insert into employees (organization_id, name, color) values (?, ?, ?) returning id",
+                "select display_order from employees where id = ?",
+                Integer.class,
+                employeeId
+        );
+    }
+
+    private UUID insertEmployee(UUID organizationId, String name, String color) {
+        return insertEmployee(organizationId, name, color, 0);
+    }
+
+    private UUID insertEmployee(UUID organizationId, String name, String color, int displayOrder) {
+        return jdbcTemplate.queryForObject(
+                "insert into employees (organization_id, name, color, display_order) values (?, ?, ?, ?) returning id",
                 UUID.class,
                 organizationId,
                 name,
-                color
+                color,
+                displayOrder
         );
     }
 
