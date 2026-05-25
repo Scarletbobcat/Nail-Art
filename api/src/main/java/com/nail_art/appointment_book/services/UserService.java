@@ -10,7 +10,7 @@ import com.nail_art.appointment_book.repositories.OrganizationUserRepository;
 import com.nail_art.appointment_book.repositories.UserRepository;
 import com.nail_art.appointment_book.responses.MeResponse;
 import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
-import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -65,7 +65,7 @@ public class UserService {
         String role = normalizedRole(request.role());
 
         userRepository.findByUsername(username).ifPresent(existing -> {
-            throw new DuplicateKeyException("username already exists: " + username);
+            throw new DataIntegrityViolationException("username already exists: " + username);
         });
 
         User user = new User();

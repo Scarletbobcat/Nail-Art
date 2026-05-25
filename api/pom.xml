@@ -14,7 +14,6 @@
     <description>Replaces paper appointment book</description>
     <properties>
         <java.version>21</java.version>
-        <mongodb.version>5.2.1</mongodb.version>
         <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
     <dependencies>
@@ -69,16 +68,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-        </dependency>
-        <!-- Force latest MongoDB driver to fix SSL issues on Render -->
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-            <version>${mongodb.version}</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

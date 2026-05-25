@@ -5,8 +5,8 @@ Router for AI agents and contributors working on the Nail Art & Spa appointment 
 ## What this repo is
 
 - `client/` — Vite + React + TypeScript + MUI SPA. Served on `5173` in dev, `5173` in the published Docker image.
-- `api/` — Spring Boot 3 (Java 21) + MongoDB. JWT + refresh-cookie auth. Twilio SMS reminders on a daily schedule.
-- `cron/` — Python 3.14 maintenance scripts (archive, dedupe, sanity checks).
+- `api/` — Spring Boot 3 (Java 21) + PostgreSQL. JWT + refresh-cookie auth. Twilio SMS reminders on a daily schedule.
+- `cron/` — Python 3.14 maintenance scripts that operate directly on PostgreSQL.
 
 Read [`docs/INDEX.md`](docs/INDEX.md) for the full map. Architecture lives in [`docs/reference/architecture.md`](docs/reference/architecture.md).
 
@@ -17,10 +17,9 @@ just dev                # client + api in parallel (5173 + 8080)
 just web                # client only
 just api                # api only
 
-cd client && npm run build     # tsc -b && vite build  (run before committing FE changes)
 cd client && npm run lint
 cd client && npm test
-cd client && npx tsc -b --noEmit
+cd client && npx tsc -b --noEmit  # run before committing FE changes
 
 cd api && ./mvnw test -Dtest="com.nail_art.appointment_book.services.**"
 cd api && ./mvnw test -Dtest="PostgresIntegrationSmokeTest"
@@ -32,13 +31,15 @@ cd api && ./mvnw spring-boot:run
 ## Do
 
 - Read [`docs/reference/conventions.md`](docs/reference/conventions.md) before adding files. Page directories are PascalCase; shared primitives go in `client/src/components/`.
-- Read [`docs/reference/lessons.md`](docs/reference/lessons.md) before touching auth, counters, search, reminders, or pagination caps. There is real history there.
+- Read [`docs/reference/lessons.md`](docs/reference/lessons.md) before touching auth, tenancy, search, reminders, or pagination caps. There is real history there.
 - Go through the shared `axios` instance (`client/src/api/api.ts`) for HTTP. Per-resource API modules live in `client/src/api/<resource>/`.
-- Use `CounterService.getNextSequence("<collection>")` for numeric IDs on the backend. Match the counter name to the collection.
+- Backend domain rows use UUIDs. Do not add numeric sequence counters.
 - Add service-layer tests under `com.nail_art.appointment_book.services` for new backend behavior — CI runs that package.
 - Integration tests against real Postgres extend `com.nail_art.appointment_book.PostgresIntegrationTest`; the base manages a shared Testcontainers Postgres 16 container and applied Flyway migrations.
+- Every tenant-scoped domain entity carries Hibernate `@TenantId`; web requests populate `TenantContext` through the auth filter, and scheduled jobs use `TenantContext.runAs`.
+- Frontend code reads organization timezone from `useMe()` (`orgTz`); do not fall back to the browser timezone for business dates.
 - Frontend tests use Vitest; run them with `cd client && npm test`.
-- Run `cd client && npm run build` before committing frontend changes.
+- `POST /auth/register` is removed. Seed the owner organization through migrations or admin-only backend operations, not public registration.
 - Keep brainstorm / requirements drafts in `docs/brainstorms/` and out of feature commits.
 
 ## Don't
@@ -49,7 +50,7 @@ cd api && ./mvnw spring-boot:run
 - Don't reintroduce exact-match searches; everything user-facing is partial/case-insensitive.
 - Don't loosen CORS or the JWT auth path. Only `/auth/**` is anonymous.
 - Don't change the frontend pagination cap without changing the backend cap (currently `2000` on `/clients`).
-- Don't remove `mongodb-driver-sync` version pin in `api/pom.xml` or `client/.npmrc`'s `min-release-age`.
+- Don't remove `client/.npmrc`'s `min-release-age`.
 
 ## Where to look next
 
