@@ -14,14 +14,14 @@ Python 3.14 managed with [`uv`](https://github.com/astral-sh/uv). The cron job:
 
 Scripts are intended to be run by an external scheduler (cron, Render Job, etc.). The repo doesn't ship the scheduler itself.
 
-## Scripts
+Only one script remains.
 
-### `ArchiveAppointments.py`
+## `ArchiveAppointments.py`
 - **Schedule**: weekly (Sundays, per `README`).
-- **Behavior**: sets `archived_at = now()` for each organization's appointments where `ends_at < now() - 30 days` and `archived_at IS NULL`.
+- **Behavior**: opens a `psycopg` connection and sets `archived_at = now()` for each organization's appointments where `ends_at < now() - 30 days` and `archived_at IS NULL`.
 - **Safety**: idempotent — already archived rows are left untouched.
 
-Retired Mongo-era scripts:
+Retired scripts:
 
 - `AppointmentsSameStartEndTime.py`: replaced by the `appointments` table check constraint requiring `ends_at > starts_at`.
 - `MergeDuplicateClients.py`: replaced by the per-organization unique phone index on `clients`.

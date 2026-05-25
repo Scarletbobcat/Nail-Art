@@ -6,16 +6,17 @@ Spring Boot REST API for the appointment book. Handles CRUD over appointments, c
 
 ## How it works
 
-Spring Boot 3.3 on Java 21, packaged as a fat jar by the Maven wrapper (`./mvnw`). Persistence is MongoDB through Spring Data. Security is JWT-based with a long-lived refresh-token cookie.
+Spring Boot 3.3 on Java 21, packaged as a fat jar by the Maven wrapper (`./mvnw`). Persistence is PostgreSQL through Spring Data JPA and Flyway. Security is JWT-based with a long-lived refresh-token cookie.
 
 Top-level package: `com.nail_art.appointment_book` with these subpackages:
 
 - `controllers/` — REST endpoints, one per resource.
 - `services/` — business logic.
-- `repositories/` — `MongoRepository` interfaces.
-- `entities/` — Mongo documents (`@Document`).
-- `dtos/` — request/response shapes that diverge from entities (`LoginUserDto`, `RegisterUserDto`, `TokenDto`).
-- `configs/` — Spring beans (security, JWT filter, application config, Mongo index verification).
+- `repositories/` — `JpaRepository` interfaces, with scoped UUID lookups for tenant-owned rows.
+- `entities/` — JPA entities mapped to the Flyway schema.
+- `dtos/` — request/response shapes that diverge from entities (`LoginUserDto`, `CreateUserRequest`, `TokenDto`).
+- `multitenancy/` — `TenantContext` and Hibernate's current-tenant resolver.
+- `configs/` — Spring beans (security, JWT filter, tenant context filter, application config).
 - `exceptions/` — `GlobalExceptionHandler` and friends.
 - `responses/` — `LoginResponse` and other small response wrappers.
 
@@ -23,57 +24,64 @@ Top-level package: `com.nail_art.appointment_book` with these subpackages:
 
 | Method | Path | Auth | Notes |
 | --- | --- | --- | --- |
-| `POST` | `/auth/register` | none | Bootstraps users. |
 | `POST` | `/auth/login` | none | Returns access token + sets `refreshToken` cookie. |
 | `POST` | `/auth/refresh` | none (cookie) | Rotates access token. |
 | `POST` | `/auth/logout` | none (cookie) | Revokes server-side refresh token, clears cookie. |
-| `GET` | `/users/me` | JWT | Current user. |
-| `GET` | `/users/` | JWT | All users. |
+| `GET` | `/users/me` | JWT | Current user plus organization `{ user, organization }`. |
+| `POST` | `/users` | JWT owner | Creates a user in the caller's organization. |
 | `GET` | `/appointments/` | JWT | All appointments. |
-| `GET` | `/appointments/{id}` | JWT | By numeric id. |
+| `GET` | `/appointments/{id}` | JWT | By UUID. |
 | `GET` | `/appointments/date/{date}` | JWT | All appointments for a date (`YYYY-MM-DD`). |
 | `GET` | `/appointments/search/{phoneNumber}` | JWT | Partial, case-insensitive phone match. |
-| `POST` | `/appointments/create` | JWT | Validates body; runs per-employee time-slot conflict check. |
-| `PUT` | `/appointments/edit` | JWT | Validates and conflict-checks; relinks client by phone if `clientId` is missing. |
-| `DELETE` | `/appointments/delete` | JWT | Returns 404 if not found. |
-| `GET` | `/clients/` | JWT | Paginated search (`name`, `phoneNumber` regex). |
-| `GET` | `/clients/{id}` | JWT | By numeric id. |
+| `POST` | `/appointments/create` | JWT | Body uses `{startsAt, endsAt}` ISO strings; validates and checks per-employee overlap. |
+| `PUT` | `/appointments/edit/{id}` | JWT | UUID path param; validates and conflict-checks. |
+| `PUT` | `/appointments/edit` | JWT | Legacy body-id wrapper around `/edit/{id}`. |
+| `DELETE` | `/appointments/delete/{id}` | JWT | UUID path param; returns 404 if not found. |
+| `DELETE` | `/appointments/delete` | JWT | Legacy body-id wrapper around `/delete/{id}`. |
+| `GET` | `/clients/` | JWT | Paginated partial search (`name`, `phoneNumber`). |
+| `GET` | `/clients/{id}` | JWT | By UUID. |
 | `POST` | `/clients/create` | JWT | Enforces unique `phoneNumber`. |
-| `PUT` | `/clients/edit` | JWT | |
-| `DELETE` | `/clients/delete` | JWT | |
+| `PUT` | `/clients/edit/{id}` | JWT | UUID path param. |
+| `DELETE` | `/clients/delete/{id}` | JWT | UUID path param. |
 | `GET` | `/employees/` | JWT | Paginated. |
 | `GET` | `/employees/name/{name}` | JWT | `ContainingIgnoreCase`. |
 | `POST` | `/employees/create` | JWT | |
-| `PUT` | `/employees/edit` | JWT | |
-| `DELETE` | `/employees/delete` | JWT | |
+| `PUT` | `/employees/edit/{id}` | JWT | UUID path param. |
+| `DELETE` | `/employees/delete/{id}` | JWT | UUID path param. |
 | `GET` | `/services/` | JWT | Paginated. |
 | `GET` | `/services/name/{name}` | JWT | `ContainingIgnoreCase`. |
 | `POST` | `/services/create` | JWT | |
-| `PUT` | `/services/edit` | JWT | |
-| `DELETE` | `/services/delete` | JWT | |
+| `PUT` | `/services/edit/{id}` | JWT | UUID path param. |
+| `DELETE` | `/services/delete/{id}` | JWT | UUID path param. |
 
-Validation errors return `400` with `{ field: message }` (collected from `BindingResult`). `DuplicateKeyException` maps to `409`, `IllegalArgumentException` to `400`.
+Validation errors return `400` with `{ field: message }` (collected from `BindingResult`). `DataIntegrityViolationException` maps to `409`, `IllegalArgumentException` to `400`.
 
 ## Persistence
 
-Collections (and their entities): `Appointments` (`Appointment`), `ArchivedAppointments` (used by `cron/`), `Clients` (`Client`), `Employees` (`Employee`), `Services` (`Service`), `Users` (`User`), `RefreshToken`, and a `Counter` document used as a numeric sequence generator.
+Flyway is authoritative for schema creation. `V1__init_multi_org_schema.sql` creates UUID-keyed `organizations`, `users`, `organization_users`, `organization_settings`, `clients`, `employees`, `services`, `appointments`, `appointment_services`, and `refresh_tokens`. `V3__add_unavailability_marker.sql` adds the per-organization service marker used for employee time-off.
 
-`spring.data.mongodb.auto-index-creation=true` is set, so entity index annotations are applied at startup. `MongoConfig` additionally verifies the `Clients.phoneNumber` unique partial index on boot.
+Tenant-owned tables carry `organization_id`; JPA entities use Hibernate `@TenantId` discriminator-based multi-tenancy. The database also carries structural constraints: composite foreign keys prevent cross-org appointment links, `appointments` checks `ends_at > starts_at`, clients have a per-org unique phone index, and services have a per-org unique name index.
+
+IDs are UUIDs generated by PostgreSQL (`gen_random_uuid()`). There is no application-level sequence generator.
+
+`TenantContext` is the thread-local source of the active organization. `TenantContextWebFilter` opens the scope for authenticated web requests from the authenticated principal. `CurrentTenantResolver` exposes that value to Hibernate and falls back to an unset sentinel when no tenant is active. The migration plan explains the tradeoffs in more depth: [`docs/plans/2026-05-24-001-feat-postgres-cutover-plan.md`](../plans/2026-05-24-001-feat-postgres-cutover-plan.md).
 
 ## Authentication
 
 - `SecurityConfiguration` permits only `/auth/**` anonymously; everything else requires authentication via `JwtAuthenticationFilter`.
-- `JwtService` issues access tokens (short-lived, `JWT_EXPIRATION`) and refresh tokens (30 days). Refresh tokens are also stored in the `RefreshToken` collection so logout can revoke them.
+- `JwtService` issues access tokens (short-lived, `JWT_EXPIRATION`) with `userId`, `organizationId`, and `role` claims. Refresh tokens last 30 days and are stored in `refresh_tokens` so logout can revoke them.
 - Access tokens travel as `Authorization: Bearer …`. Refresh tokens travel as the `refreshToken` cookie (`HttpOnly`, `SameSite=None`, `Secure`).
 - CORS is locked to `frontend.url`; `Set-Cookie` is exposed so the SPA can complete the refresh roundtrip.
-- Username lookup is `findByUsernameIgnoreCase` end-to-end.
+- Username lookup is case-insensitive through PostgreSQL `citext`.
+- `JwtAuthenticationFilter` cross-checks every bearer token against `organization_users`. Missing/invalid membership is `401`; repository/data-source failure during that check is `503` so auth infrastructure outages are not mistaken for bad credentials.
+- `POST /auth/register` is gone. First-owner bootstrap for a new organization is handled by script; routine staff creation goes through owner-gated `POST /users`.
 
 ## SMS reminders
 
 `SmsService` is the single Twilio integration point:
 
 - `@Scheduled(cron = "0 0 15 * * *", zone = "America/New_York")` — fires daily at 3 PM ET.
-- Loads tomorrow's appointments via `AppointmentService#getAppointmentsForTomorrow`, skips ones already marked `reminderSent` or missing a phone number, and sends a templated message.
+- Loops organizations explicitly, wraps each run in `TenantContext.runAs`, loads tomorrow's appointments via `AppointmentService#getAppointmentsForTomorrow`, skips ones already marked `reminderSent` or missing a phone number, and sends a templated message.
 - Retries on `5xx`/`429` up to `MAX_ATTEMPTS=3` with a 5-second backoff.
 - Treats Twilio error code `21610` (unsubscribed) as a terminal skip.
 - Marks success with `AppointmentService#markReminderSent` — a targeted update that does **not** re-run conflict checks. See `docs/reference/lessons.md`.
@@ -82,26 +90,29 @@ Collections (and their entities): `Appointments` (`Appointment`), `ArchivedAppoi
 
 Properties files under `api/src/main/resources/`:
 
-- `application.properties` — common (app name, Mongo auto-index, JWT and Twilio env-var wiring).
-- `application-dev.properties` — `DEV_MONGO_URI`, `DEV_FRONTEND_URL`.
-- `application-prod.properties` — `PROD_MONGO_URI`, `PROD_FRONTEND_URL`.
+- `application.properties` — common (app name, PostgreSQL datasource, JPA/Flyway, tenant resolver, JWT, and Twilio env-var wiring).
+- `application-dev.properties` — `DEV_FRONTEND_URL`.
+- `application-prod.properties` — `PROD_FRONTEND_URL`.
 
-Secrets come from env vars (`JWT_SECRET_KEY`, `JWT_EXPIRATION`, `TWILIO_*`). The active profile defaults to `dev`; production images set `SPRING_PROFILES_ACTIVE=prod`.
+Secrets and connection details come from env vars (`POSTGRES_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `JWT_SECRET_KEY`, `JWT_EXPIRATION`, `TWILIO_*`). The active profile defaults to `dev`; production images set `SPRING_PROFILES_ACTIVE=prod`.
 
 ## Patterns and conventions
 
 - One controller per resource, base path `/<resource>`; CRUD operations on `/create`, `/edit`, `/delete` plus REST-ish lookups.
-- Request body is the entity itself with Lombok `@Data`. For login/register use the DTOs.
-- Numeric IDs go through `CounterService#getNextSequence("<collection>")` — never invent IDs in callers, and never reuse a counter name across collections.
+- Request body is the entity itself with Lombok `@Data` for CRUD endpoints. Auth and user creation use DTOs.
+- UUIDs are generated by the database. Callers should not invent IDs for new rows.
+- Tenant-owned repositories must expose scoped lookup methods such as `findScopedById(UUID)`; do not use default `findById` as a tenant boundary.
+- Scheduled jobs and tests that query tenant-owned data must wrap work with `TenantContext.runAs`.
 - New service-layer behavior gets a unit test under `com.nail_art.appointment_book.services` (CI runs this package).
 - Don't talk to Twilio outside `SmsService`. Don't route admin-only field updates through `editAppointment`.
 
 ## Examples and gotchas
 
-- **Pin the MongoDB driver.** `mongodb-driver-sync` is set to `${mongodb.version}` to avoid SSL handshake failures on Render (`0efe8ac`). Don't drop the pin.
+- **Appointment JSON uses timestamps.** The API contract is `{startsAt, endsAt}` ISO 8601 strings, not `{date, startTime, endTime}`.
+- **Tenant scope is explicit outside web requests.** `TenantContextWebFilter` covers authenticated HTTP. Schedulers, bootstrap scripts, and repository tests must set the context themselves.
 - **Refresh token cookie has a 30-day `maxAge`.** Removing it logs everyone out on browser close.
 - **Don't loosen CORS.** Only the configured `frontend.url` is allowed, and `allowCredentials=true`.
-- **Search uses `Containing` / regex.** Don't reintroduce exact-match searches; client- and employee-facing flows depend on partial matching.
+- **Search stays partial and case-insensitive.** Don't reintroduce exact-match searches; client- and employee-facing flows depend on partial matching.
 
 ## Maintenance & Accretion
 
