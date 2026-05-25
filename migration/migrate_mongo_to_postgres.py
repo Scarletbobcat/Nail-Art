@@ -74,6 +74,24 @@ def insert_appointment(cur, mongo_appt, org_id, emp_map, svc_map, client_map, tz
         )
 
 
+def service_rows_for_insert(services, svc_map, org_id, unavailability_service_mongo_id):
+    if unavailability_service_mongo_id is not None and unavailability_service_mongo_id not in svc_map:
+        raise ValueError(
+            f"unavailability service Mongo id not found: {unavailability_service_mongo_id}"
+        )
+
+    return [
+        (
+            svc_map[s["id"]],
+            org_id,
+            s["name"],
+            True,
+            s["id"] == unavailability_service_mongo_id,
+        )
+        for s in services
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--org-name", required=True,
@@ -91,6 +109,9 @@ def main():
                              "If omitted, prompted interactively to keep it out of shell history.")
     parser.add_argument("--dry-run", action="store_true",
                         help="run inside a transaction then rollback")
+    parser.add_argument("--unavailability-service-mongo-id", type=int, default=None,
+                        help="Mongo service id of the existing 'Unavailable' service; "
+                             "flagged as the per-org unavailability marker in Postgres")
     args = parser.parse_args()
 
     mongo_uri = require_env("MONGO_URI")
@@ -177,11 +198,17 @@ def main():
                     (emp_map[e["id"]], org_id, e["name"], e.get("color"), True),
                 )
 
-            for s in services:
+            for service_row in service_rows_for_insert(
+                    services,
+                    svc_map,
+                    org_id,
+                    args.unavailability_service_mongo_id,
+            ):
                 cur.execute(
-                    """INSERT INTO services (id, organization_id, name, active)
-                       VALUES (%s, %s, %s, %s)""",
-                    (svc_map[s["id"]], org_id, s["name"], True),
+                    """INSERT INTO services
+                       (id, organization_id, name, active, is_unavailability_marker)
+                       VALUES (%s, %s, %s, %s, %s)""",
+                    service_row,
                 )
 
             for c in clients:
