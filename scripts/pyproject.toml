@@ -1,0 +1,15 @@
+[project]
+name = "scripts"
+version = "0.1.0"
+description = "Operator scripts for the Nail Art appointment book (org bootstrap, manual SMS reminder runs)."
+requires-python = ">=3.14"
+dependencies = [
+    "bcrypt>=4.2.0",
+    "psycopg[binary]>=3.2.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+]
