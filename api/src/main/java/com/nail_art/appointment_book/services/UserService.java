@@ -14,9 +14,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -73,22 +75,35 @@ public class UserService {
         String password = requireText(request.password(), "password");
         String role = normalizedRole(request.role());
 
+        User savedUser = createUserInOrganization(principal.organizationId(), username, request.email(), password, role);
+        return new MeResponse.UserSummary(savedUser.getId(), savedUser.getUsername(), role, false);
+    }
+
+    /**
+     * Create a user and its membership in a given org. Shared by the owner-facing
+     * createUser (scoped to the caller's org) and the platform-admin create-salon
+     * flow (provisioning a brand-new org's first owner). Inputs are assumed
+     * validated; the duplicate-username check throws so the caller's transaction
+     * rolls back cleanly.
+     */
+    @Transactional
+    public User createUserInOrganization(UUID organizationId, String username, String email, String rawPassword, String role) {
         userRepository.findByUsername(username).ifPresent(existing -> {
             throw new DataIntegrityViolationException("username already exists: " + username);
         });
 
         User user = new User();
         user.setUsername(username);
-        user.setEmail(request.email());
-        user.setPasswordHash(passwordEncoder.encode(password));
+        user.setEmail(email);
+        user.setPasswordHash(passwordEncoder.encode(rawPassword));
         User savedUser = userRepository.save(user);
 
         OrganizationUser membership = new OrganizationUser();
-        membership.setId(new OrganizationUserId(principal.organizationId(), savedUser.getId()));
+        membership.setId(new OrganizationUserId(organizationId, savedUser.getId()));
         membership.setRole(role);
         organizationUserRepository.save(membership);
 
-        return new MeResponse.UserSummary(savedUser.getId(), savedUser.getUsername(), role, false);
+        return savedUser;
     }
 
     private String normalizedRole(String role) {

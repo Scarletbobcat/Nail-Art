@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -186,6 +187,71 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"accountSid\":\"x\",\"phoneNumber\":\"y\",\"authToken\":\"z\"}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    @Test
+    void adminCreatesSalon_withMarkerServiceAndSettings_andOwnerCanSignIn() throws Exception {
+        String body = mockMvc.perform(post("/admin/organizations")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Fresh Salon\",\"timezone\":\"America/Chicago\","
+                                + "\"ownerUsername\":\"freshowner\",\"ownerPassword\":\"secret-pass\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("Fresh Salon"))
+                .andExpect(jsonPath("$.ownerUsername").value("freshowner"))
+                .andReturn().getResponse().getContentAsString();
+        UUID freshSalonId = UUID.fromString(objectMapper.readTree(body).get("organizationId").asText());
+
+        // Provisioned: an "Unavailable" marker service and a settings row (SMS off).
+        Integer markerCount = jdbcTemplate.queryForObject(
+                "select count(*) from services where organization_id = ? and is_unavailability_marker = true and name = 'Unavailable'",
+                Integer.class, freshSalonId);
+        org.junit.jupiter.api.Assertions.assertEquals(1, markerCount);
+        Boolean smsEnabled = jdbcTemplate.queryForObject(
+                "select sms_reminders_enabled from organization_settings where organization_id = ?",
+                Boolean.class, freshSalonId);
+        org.junit.jupiter.api.Assertions.assertEquals(Boolean.FALSE, smsEnabled);
+
+        // Appears in the admin list (now 3 salons) and the new owner can authenticate.
+        mockMvc.perform(get("/admin/organizations").header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(jsonPath("$.length()").value(3));
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"freshowner\",\"password\":\"secret-pass\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void createSalon_duplicateOrgName_isRejected() throws Exception {
+        mockMvc.perform(post("/admin/organizations")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Salon A\",\"ownerUsername\":\"someone\",\"ownerPassword\":\"secret-pass\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void createSalon_duplicateOwnerUsername_rollsBackTheNewOrg() throws Exception {
+        mockMvc.perform(post("/admin/organizations")
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Rollback Salon\",\"ownerUsername\":\"ownerA\",\"ownerPassword\":\"secret-pass\"}"))
+                .andExpect(status().isConflict());
+
+        Integer orgCount = jdbcTemplate.queryForObject(
+                "select count(*) from organizations where name = 'Rollback Salon'", Integer.class);
+        org.junit.jupiter.api.Assertions.assertEquals(0, orgCount, "the org must not persist when owner creation fails");
+    }
+
+    @Test
+    void ownerAndStaff_areForbiddenFromCreatingSalons() throws Exception {
+        for (String token : new String[]{ownerAToken, staffAToken}) {
+            mockMvc.perform(post("/admin/organizations")
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"X\",\"ownerUsername\":\"y\",\"ownerPassword\":\"z\"}"))
                     .andExpect(status().isForbidden());
         }
     }
