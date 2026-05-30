@@ -17,21 +17,11 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
-import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
+import { SPACING, MAX_CONTENT_WIDTH, TIMEZONES } from "../constants/design";
 import { getHttpStatus } from "../utils/httpError";
 import { formatPhoneInput } from "../utils/phone";
 import { createSalon, type CreateSalonResponse } from "../api/admin";
 import { adminSalonsQueryKey } from "./Organizations";
-
-const TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Phoenix",
-  "America/Los_Angeles",
-  "America/Anchorage",
-  "Pacific/Honolulu",
-];
 
 export default function CreateOrganization() {
   const navigate = useNavigate();

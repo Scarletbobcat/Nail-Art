@@ -22,7 +22,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
 import PageSkeleton from "../components/PageSkeleton";
-import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
+import { SPACING, MAX_CONTENT_WIDTH, TIMEZONES } from "../constants/design";
 import { getHttpStatus } from "../utils/httpError";
 import { formatPhoneInput } from "../utils/phone";
 import {
@@ -32,16 +32,6 @@ import {
   updateSalonTwilio,
 } from "../api/admin";
 import { adminSalonsQueryKey } from "./Organizations";
-
-const TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Phoenix",
-  "America/Los_Angeles",
-  "America/Anchorage",
-  "Pacific/Honolulu",
-];
 
 type Snack = { msg: string; severity: "success" | "error" };
 

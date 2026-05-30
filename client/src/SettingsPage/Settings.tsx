@@ -20,7 +20,7 @@ import {
 import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
 import PageSkeleton from "../components/PageSkeleton";
-import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
+import { SPACING, MAX_CONTENT_WIDTH, TIMEZONES } from "../constants/design";
 import {
   getOrganizationSettings,
   updateOrganizationSettings,
@@ -28,16 +28,6 @@ import {
 } from "../api/organization";
 import { getHttpStatus } from "../utils/httpError";
 import { formatPhoneInput } from "../utils/phone";
-
-const TIMEZONES = [
-  "America/New_York",
-  "America/Chicago",
-  "America/Denver",
-  "America/Phoenix",
-  "America/Los_Angeles",
-  "America/Anchorage",
-  "Pacific/Honolulu",
-];
 
 type FormState = {
   name: string;
