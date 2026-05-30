@@ -7,6 +7,9 @@ import MobileBottomNav from "./Navbar/MobileBottomNav.tsx";
 import Search from "./AppointmentsPage/Search/Search.tsx";
 import Clients from "./ClientsPage/Clients.tsx";
 import Settings from "./SettingsPage/Settings.tsx";
+import AdminOrganizations from "./AdminPage/Organizations.tsx";
+import AdminOrganizationDetail from "./AdminPage/OrganizationDetail.tsx";
+import AdminCreateOrganization from "./AdminPage/CreateOrganization.tsx";
 import { RequireMe } from "./components/RequireMe";
 import {
   BrowserRouter as Router,
@@ -79,6 +82,30 @@ function AppContent() {
             element={
               <RequireMe requiredRole="owner">
                 <Settings />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Admin"
+            element={
+              <RequireMe requirePlatformAdmin>
+                <AdminOrganizations />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Admin/new"
+            element={
+              <RequireMe requirePlatformAdmin>
+                <AdminCreateOrganization />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Admin/:organizationId"
+            element={
+              <RequireMe requirePlatformAdmin>
+                <AdminOrganizationDetail />
               </RequireMe>
             }
           />

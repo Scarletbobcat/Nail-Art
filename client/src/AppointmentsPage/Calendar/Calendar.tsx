@@ -12,7 +12,7 @@ const CalendarClient = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
   const { data: me } = useMe();
-  const orgTz = me?.organization.timezone;
+  const orgTz = me?.organization?.timezone;
   const [startDate, setStartDate] = useState(
     localStorage.getItem("startDate")
       ? dayjs(localStorage.getItem("startDate"))
