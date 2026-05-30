@@ -15,8 +15,6 @@ load_dotenv()
 
 
 TWILIO_API_URL = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-SALON_NAME = "Nail Art & Spa LLC."
-SALON_PHONE = "330-758-6633"
 
 
 class SendRemindersError(Exception):
@@ -72,7 +70,8 @@ def fetch_appointments(conn: psycopg.Connection, target_date: str | None) -> lis
             a.phone_number,
             (a.starts_at at time zone o.timezone) as starts_at_local,
             o.timezone,
-            o.name as organization_name
+            o.name as organization_name,
+            o.business_phone as organization_phone
         from appointments a
         join organizations o on o.id = a.organization_id
         join organization_settings s on s.organization_id = a.organization_id
@@ -97,12 +96,17 @@ def fetch_appointments(conn: psycopg.Connection, target_date: str | None) -> lis
         return list(cur.fetchall())
 
 
-def build_message(starts_at_local: datetime) -> str:
+def build_message(starts_at_local: datetime, salon_name: str, salon_phone: str | None) -> str:
     day = starts_at_local.strftime("%A")
     when = starts_at_local.strftime("%b %-d at %-I:%M %p")
+    call_to_action = (
+        f"Please call the salon at {salon_phone} if you "
+        if salon_phone
+        else "Please call the salon if you "
+    )
     return (
-        f"Hello! This is {SALON_NAME}, and this is a reminder for your appointment on "
-        f"{day}, {when}. Please call the salon at {SALON_PHONE} if you "
+        f"Hello! This is {salon_name}, and this is a reminder for your appointment on "
+        f"{day}, {when}. {call_to_action}"
         f"need to reschedule or cancel. We look forward to seeing you!\n\n"
         f"Reply STOP to stop receiving messages from this number."
     )
@@ -165,7 +169,11 @@ def main() -> int:
             if not args.send:
                 print(preview + "  (dry run)")
                 continue
-            ok, info = send_sms(creds, a["phone_number"], build_message(a["starts_at_local"]))
+            ok, info = send_sms(
+                creds,
+                a["phone_number"],
+                build_message(a["starts_at_local"], a["organization_name"], a["organization_phone"]),
+            )
             if ok:
                 mark_sent(conn, a["id"])
                 sent += 1

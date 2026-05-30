@@ -1,8 +1,10 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.entities.Appointment;
+import com.nail_art.appointment_book.entities.Organization;
 import com.nail_art.appointment_book.entities.OrganizationSettings;
 import com.nail_art.appointment_book.multitenancy.TenantContext;
+import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationSettingsRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,21 +15,31 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SmsServiceTest {
+    private static final String ORG_A_NAME = "Salon Alpha";
+    private static final String ORG_A_PHONE = "330-111-1111";
+    private static final String ORG_B_NAME = "Salon Bravo";
+    private static final String ORG_B_PHONE = "330-222-2222";
+
     @Mock
     private AppointmentService appointmentService;
 
     @Mock
     private OrganizationSettingsRepository organizationSettingsRepository;
+
+    @Mock
+    private OrganizationRepository organizationRepository;
 
     @Mock
     private SmsDeliveryGateway smsDeliveryGateway;
@@ -41,6 +53,8 @@ class SmsServiceTest {
     void sendReminders_iteratesOrgsWithRunAs() {
         UUID orgA = UUID.randomUUID();
         UUID orgB = UUID.randomUUID();
+        stubOrganization(orgA, ORG_A_NAME, ORG_A_PHONE);
+        stubOrganization(orgB, ORG_B_NAME, ORG_B_PHONE);
         Appointment orgAAppointment = appointment(UUID.randomUUID(), "330-555-1000");
         Appointment orgBAppointment = appointment(UUID.randomUUID(), "330-555-2000");
         List<UUID> contextsSeen = new ArrayList<>();
@@ -65,9 +79,53 @@ class SmsServiceTest {
     }
 
     @Test
+    void sendReminders_sendsEachOrgItsOwnSalonIdentity() {
+        UUID orgA = UUID.randomUUID();
+        UUID orgB = UUID.randomUUID();
+        stubOrganization(orgA, ORG_A_NAME, ORG_A_PHONE);
+        stubOrganization(orgB, ORG_B_NAME, ORG_B_PHONE);
+        Appointment orgAAppointment = appointment(UUID.randomUUID(), "330-555-1000");
+        Appointment orgBAppointment = appointment(UUID.randomUUID(), "330-555-2000");
+        when(organizationSettingsRepository.findBySmsRemindersEnabledTrue())
+                .thenReturn(List.of(settings(orgA), settings(orgB)));
+        when(appointmentService.getAppointmentsForTomorrow()).thenAnswer(invocation ->
+                TenantContext.get().equals(orgA) ? List.of(orgAAppointment) : List.of(orgBAppointment)
+        );
+        when(smsDeliveryGateway.sendReminder(anyString(), anyString())).thenReturn(SmsDeliveryGateway.Result.SENT);
+
+        smsService().sendReminders();
+
+        // org A's client gets org A's identity; org B's gets org B's. Never the other salon's.
+        verify(smsDeliveryGateway).sendReminder(
+                orgAAppointment.getPhoneNumber(),
+                SmsService.buildReminderMessage(orgAAppointment, ORG_A_NAME, ORG_A_PHONE));
+        verify(smsDeliveryGateway).sendReminder(
+                orgBAppointment.getPhoneNumber(),
+                SmsService.buildReminderMessage(orgBAppointment, ORG_B_NAME, ORG_B_PHONE));
+    }
+
+    @Test
+    void buildReminderMessage_carriesPerOrgSalonIdentityAndNeverAnother() {
+        Appointment appointment = appointment(UUID.randomUUID(), "330-555-1000");
+
+        String messageA = SmsService.buildReminderMessage(appointment, ORG_A_NAME, ORG_A_PHONE);
+        String messageB = SmsService.buildReminderMessage(appointment, ORG_B_NAME, ORG_B_PHONE);
+
+        assertThat(messageA)
+                .contains(ORG_A_NAME).contains(ORG_A_PHONE)
+                .doesNotContain(ORG_B_NAME).doesNotContain(ORG_B_PHONE)
+                .doesNotContain("Nail Art & Spa LLC.").doesNotContain("330-758-6633");
+        assertThat(messageB)
+                .contains(ORG_B_NAME).contains(ORG_B_PHONE)
+                .doesNotContain(ORG_A_NAME).doesNotContain(ORG_A_PHONE);
+    }
+
+    @Test
     void sendReminders_perOrgTryCatch() {
         UUID orgA = UUID.randomUUID();
         UUID orgB = UUID.randomUUID();
+        stubOrganization(orgA, ORG_A_NAME, ORG_A_PHONE);
+        stubOrganization(orgB, ORG_B_NAME, ORG_B_PHONE);
         Appointment orgAAppointment = appointment(UUID.randomUUID(), "330-555-1000");
         Appointment orgBAppointment = appointment(UUID.randomUUID(), "330-555-2000");
         when(organizationSettingsRepository.findBySmsRemindersEnabledTrue())
@@ -77,8 +135,10 @@ class SmsServiceTest {
         );
         doThrow(new RuntimeException("twilio org A outage"))
                 .when(smsDeliveryGateway)
-                .sendReminder(orgAAppointment.getPhoneNumber(), SmsService.buildReminderMessage(orgAAppointment));
-        when(smsDeliveryGateway.sendReminder(orgBAppointment.getPhoneNumber(), SmsService.buildReminderMessage(orgBAppointment)))
+                .sendReminder(orgAAppointment.getPhoneNumber(),
+                        SmsService.buildReminderMessage(orgAAppointment, ORG_A_NAME, ORG_A_PHONE));
+        when(smsDeliveryGateway.sendReminder(orgBAppointment.getPhoneNumber(),
+                SmsService.buildReminderMessage(orgBAppointment, ORG_B_NAME, ORG_B_PHONE)))
                 .thenReturn(SmsDeliveryGateway.Result.SENT);
 
         smsService().sendReminders();
@@ -89,14 +149,17 @@ class SmsServiceTest {
     @Test
     void sendReminders_twilioFailureOnOneAppointment_othersDispatch() {
         UUID orgA = UUID.randomUUID();
+        stubOrganization(orgA, ORG_A_NAME, ORG_A_PHONE);
         Appointment failed = appointment(UUID.randomUUID(), "330-555-1000");
         Appointment sent = appointment(UUID.randomUUID(), "330-555-2000");
         when(organizationSettingsRepository.findBySmsRemindersEnabledTrue()).thenReturn(List.of(settings(orgA)));
         when(appointmentService.getAppointmentsForTomorrow()).thenReturn(List.of(failed, sent));
         doThrow(new RuntimeException("transient send failure"))
                 .when(smsDeliveryGateway)
-                .sendReminder(failed.getPhoneNumber(), SmsService.buildReminderMessage(failed));
-        when(smsDeliveryGateway.sendReminder(sent.getPhoneNumber(), SmsService.buildReminderMessage(sent)))
+                .sendReminder(failed.getPhoneNumber(),
+                        SmsService.buildReminderMessage(failed, ORG_A_NAME, ORG_A_PHONE));
+        when(smsDeliveryGateway.sendReminder(sent.getPhoneNumber(),
+                SmsService.buildReminderMessage(sent, ORG_A_NAME, ORG_A_PHONE)))
                 .thenReturn(SmsDeliveryGateway.Result.SENT);
 
         smsService().sendReminders();
@@ -114,7 +177,15 @@ class SmsServiceTest {
     }
 
     private SmsService smsService() {
-        return new SmsService(appointmentService, organizationSettingsRepository, smsDeliveryGateway);
+        return new SmsService(appointmentService, organizationSettingsRepository, organizationRepository, smsDeliveryGateway);
+    }
+
+    private void stubOrganization(UUID organizationId, String name, String businessPhone) {
+        Organization organization = new Organization();
+        organization.setId(organizationId);
+        organization.setName(name);
+        organization.setBusinessPhone(businessPhone);
+        lenient().when(organizationRepository.findById(organizationId)).thenReturn(Optional.of(organization));
     }
 
     private OrganizationSettings settings(UUID organizationId) {
