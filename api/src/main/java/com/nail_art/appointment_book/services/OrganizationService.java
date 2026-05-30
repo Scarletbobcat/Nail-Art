@@ -6,7 +6,6 @@ import com.nail_art.appointment_book.entities.OrganizationSettings;
 import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationSettingsRepository;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
-import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +26,7 @@ public class OrganizationService {
     }
 
     @Transactional(readOnly = true)
-    public OrganizationSettingsResponse getSettings(AuthenticatedPrincipal principal) {
-        UUID organizationId = principal.organizationId();
+    public OrganizationSettingsResponse getSettings(UUID organizationId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
         OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
@@ -36,18 +34,18 @@ public class OrganizationService {
     }
 
     /**
-     * Owners update profile (name, business phone, timezone) and the SMS toggle.
-     * Twilio credentials are operator-managed and never touched here. The toggle
-     * can only be turned on when Twilio is already configured (a hard 400); a
-     * profile-only edit leaves the stored flag untouched, so a salon's reminders
-     * survive until the operator runs the credential cutover.
+     * Update profile (name, business phone, timezone) and the SMS toggle for one
+     * org. Shared by the owner Settings endpoint (scoped to the caller's own org)
+     * and the platform-admin console (scoped to a target org id). Twilio
+     * credentials are not touched here. The toggle can only be turned on when
+     * Twilio is already configured (a hard 400); a profile-only edit leaves the
+     * stored flag untouched, so a salon's reminders survive until creds are set.
      */
     @Transactional
     public OrganizationSettingsResponse updateSettings(
-            AuthenticatedPrincipal principal,
+            UUID organizationId,
             OrganizationSettingsUpdateRequest request
     ) {
-        UUID organizationId = principal.organizationId();
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
         OrganizationSettings settings = organizationSettingsRepository.findById(organizationId)

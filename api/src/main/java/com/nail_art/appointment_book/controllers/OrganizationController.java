@@ -27,14 +27,14 @@ public class OrganizationController {
     @GetMapping
     @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<OrganizationSettingsResponse> getSettings() {
-        return ResponseEntity.ok(organizationService.getSettings(currentPrincipal()));
+        return ResponseEntity.ok(organizationService.getSettings(currentPrincipal().organizationId()));
     }
 
     @PutMapping
     @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<OrganizationSettingsResponse> updateSettings(
             @RequestBody OrganizationSettingsUpdateRequest request) {
-        return ResponseEntity.ok(organizationService.updateSettings(currentPrincipal(), request));
+        return ResponseEntity.ok(organizationService.updateSettings(currentPrincipal().organizationId(), request));
     }
 
     private AuthenticatedPrincipal currentPrincipal() {
