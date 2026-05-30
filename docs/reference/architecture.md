@@ -68,7 +68,7 @@ API reads environment-driven properties (see `api/src/main/resources/application
 
 - `POSTGRES_URL`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - `JWT_SECRET_KEY`, `JWT_EXPIRATION`, `JWT_REFRESH_EXPIRATION`
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
+- `APP_ENCRYPTION_KEY` (pgcrypto passphrase; per-org Twilio creds live encrypted in `organization_settings`, not in env vars)
 - `DEV_FRONTEND_URL` / `PROD_FRONTEND_URL`
 
 Client reads `VITE_API_URL` through `import.meta.env`.

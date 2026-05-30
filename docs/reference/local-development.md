@@ -6,7 +6,7 @@
 - **JDK 21** for the API (CI uses Temurin 21).
 - **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the cron or bootstrap scripts.
 - **Docker** for the local PostgreSQL container.
-- **Twilio credentials** if you want reminders to actually send. Otherwise leave the env vars empty and skip the scheduled job.
+- **Twilio credentials** if you want reminders to actually send. These now live per-organization in the database (encrypted), not in env vars — set them via the owner Settings page or `scripts/set_org_twilio.py`. Without any configured org, the scheduled job simply skips every org.
 
 ## Environment variables
 
@@ -18,10 +18,19 @@ PROD_FRONTEND_URL=
 JWT_SECRET_KEY=<random base64-encoded secret>
 JWT_EXPIRATION=3600000
 JWT_REFRESH_EXPIRATION=2592000000
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_PHONE_NUMBER=
+APP_ENCRYPTION_KEY=<random secret; pgcrypto passphrase for per-org Twilio tokens>
 ```
+
+`APP_ENCRYPTION_KEY` has no default — the API fails to start without it. Use the
+same value for the Python scripts (it decrypts the same tokens), and keep it
+stable: rotating it strands every token already encrypted under the old key.
+Generate one with `openssl rand -base64 48`.
+
+Per-org Twilio credentials (account SID, auth token, phone number) are stored on
+`organization_settings`, with the auth token encrypted via pgcrypto. To load an
+org's credentials, run `scripts/set_org_twilio.py` (token read from
+`TWILIO_AUTH_TOKEN` env or an interactive prompt — never a CLI argument; run with
+`HISTFILE=/dev/null`), or use the owner Settings page.
 
 The `dev` profile points at the local Compose database:
 
@@ -37,11 +46,17 @@ Create `client/.env`:
 VITE_API_URL=http://localhost:8080
 ```
 
-For cron and bootstrap scripts, create `cron/.env` or export:
+For cron and bootstrap scripts, create `scripts/.env` or export:
 
 ```
 POSTGRES_URL=postgresql://nail_art:nail_art_password@localhost:5432/nail_art
+APP_ENCRYPTION_KEY=<same value as the API; decrypts per-org Twilio tokens>
 ```
+
+`scripts/send_reminders.py` needs `APP_ENCRYPTION_KEY` to decrypt tokens when
+sending; `scripts/set_org_twilio.py` needs it to write them. The cutover script
+also reads `TWILIO_ACCOUNT_SID` / `TWILIO_PHONE_NUMBER` (non-secret) and the auth
+token from `TWILIO_AUTH_TOKEN` or an interactive prompt.
 
 For Docker Compose, copy the root `.env.example` to `.env` if you want to override the local PostgreSQL defaults:
 

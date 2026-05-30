@@ -121,9 +121,7 @@ Operational checklist for the MongoDB to PostgreSQL production cutover. Keep thi
   - [ ] `JWT_SECRET_KEY`
   - [ ] `JWT_EXPIRATION`
   - [ ] `JWT_REFRESH_EXPIRATION`
-  - [ ] `TWILIO_ACCOUNT_SID`
-  - [ ] `TWILIO_AUTH_TOKEN`
-  - [ ] `TWILIO_PHONE_NUMBER`
+  - [ ] `APP_ENCRYPTION_KEY` (pgcrypto passphrase for per-org Twilio tokens; no default — set before deploy. Twilio creds themselves are per-org in the DB, loaded via `scripts/set_org_twilio.py`, not env vars.)
 - [ ] Add staff accounts through the owner-gated endpoint if needed:
 
   ```sh
