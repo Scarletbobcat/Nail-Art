@@ -7,5 +7,5 @@ public interface SmsDeliveryGateway {
         FAILED
     }
 
-    Result sendReminder(String to, String message);
+    Result sendReminder(String to, String message, TwilioCredentials credentials);
 }
