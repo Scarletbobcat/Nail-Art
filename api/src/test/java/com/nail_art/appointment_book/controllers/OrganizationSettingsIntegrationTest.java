@@ -39,6 +39,9 @@ class OrganizationSettingsIntegrationTest extends PostgresIntegrationTest {
     @Value("${security.jwt.secret-key}")
     private String secretKey;
 
+    @Value("${app.encryption.key}")
+    private String encryptionKey;
+
     private PostgresIdentityTestSupport identitySupport;
     private SeededIdentity owner;
     private String ownerToken;
@@ -68,8 +71,25 @@ class OrganizationSettingsIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(jsonPath("$.name").value(PostgresIdentityTestSupport.TEST_ORGANIZATION_NAME))
                 .andExpect(jsonPath("$.timezone").value(PostgresIdentityTestSupport.TEST_TIMEZONE))
                 .andExpect(jsonPath("$.smsRemindersEnabled").value(false))
-                .andExpect(jsonPath("$.twilioConfigured").value(false))
-                .andExpect(jsonPath("$.twilioPhoneNumberMasked").doesNotExist());
+                .andExpect(jsonPath("$.twilioConfigured").value(false));
+    }
+
+    @Test
+    void get_neverExposesTwilioCredentials() throws Exception {
+        operatorConfigureTwilio(owner.organizationId());
+
+        String body = mockMvc.perform(get("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.twilioConfigured").value(true))
+                .andReturn().getResponse().getContentAsString();
+
+        // Owners never see Twilio identifiers or the token over the API.
+        assertThat(body)
+                .doesNotContain("twilioAccountSid")
+                .doesNotContain("twilioAuthToken")
+                .doesNotContain("twilioPhoneNumber")
+                .doesNotContain("ACoperator")
+                .doesNotContain("operator-token");
     }
 
     @Test
@@ -99,7 +119,7 @@ class OrganizationSettingsIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void put_enablingSmsWithIncompleteConfig_returns400_andLeavesItDisabled() throws Exception {
+    void put_enablingSmsWhenTwilioNotConfigured_returns400() throws Exception {
         mockMvc.perform(put("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"smsRemindersEnabled\":true}"))
@@ -111,69 +131,57 @@ class OrganizationSettingsIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void put_completeCredentialsAndEnabledInOneRequest_succeedsAndConfigures() throws Exception {
+    void put_enablingSmsWhenOperatorHasConfiguredTwilio_succeeds() throws Exception {
+        operatorConfigureTwilio(owner.organizationId());
+
         mockMvc.perform(put("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "smsRemindersEnabled": true,
-                                  "twilioAccountSid": "ACtest123",
-                                  "twilioAuthToken": "super-secret-token",
-                                  "twilioPhoneNumber": "+15551234567"
-                                }
-                                """))
+                        .content("{\"smsRemindersEnabled\":true}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.smsRemindersEnabled").value(true))
-                .andExpect(jsonPath("$.twilioConfigured").value(true))
-                .andExpect(jsonPath("$.twilioAccountSid").value("ACtest123"))
-                .andExpect(jsonPath("$.twilioPhoneNumberMasked").value("•••• 4567"));
+                .andExpect(jsonPath("$.twilioConfigured").value(true));
     }
 
     @Test
-    void get_neverExposesTokenOrCiphertext() throws Exception {
-        configureFully();
+    void put_profileOnly_doesNotClobberStoredSmsFlag_evenWhenNotYetConfigured() throws Exception {
+        // Legacy state: the salon's reminder flag is on, but Twilio creds are not
+        // yet in the DB (cutover pending). A profile-only edit must leave the flag
+        // intact so reminders resume once the operator loads credentials.
+        seedSettingsFlag(owner.organizationId(), true);
 
-        String body = mockMvc.perform(get("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.twilioConfigured").value(true))
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(body)
-                .as("write-only token must never be serialized, plaintext or ciphertext")
-                .doesNotContain("super-secret-token")
-                .doesNotContain("twilioAuthToken");
-        // raw ciphertext bytea begins with the PGP magic; ensure no token field leaked at all
-        assertThat(body).doesNotContain("\\x");
-    }
-
-    @Test
-    void put_profileOnly_preservesPreviouslyStoredToken() throws Exception {
-        configureFully();
-
-        // A profile-only PUT (no authToken) must not wipe the stored token.
         mockMvc.perform(put("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"businessPhone\":\"330-111-2222\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.twilioConfigured").value(true))
-                .andExpect(jsonPath("$.smsRemindersEnabled").value(true));
+                .andExpect(jsonPath("$.smsRemindersEnabled").value(true))
+                .andExpect(jsonPath("$.twilioConfigured").value(false));
+
+        Boolean stored = jdbcTemplate.queryForObject(
+                "select sms_reminders_enabled from organization_settings where organization_id = ?",
+                Boolean.class, owner.organizationId());
+        assertThat(stored).isTrue();
     }
 
     @Test
-    void put_blankingTwilioPhone_autoDisablesToggle_noOrphanEnabledState() throws Exception {
-        configureFully();
-
-        // Clear the Twilio sending number -> config becomes incomplete -> toggle auto-off.
+    void owner_put_cannotSetTwilioCredentials() throws Exception {
+        // Even if a client sends Twilio fields, they are ignored (not in the DTO),
+        // so the org stays unconfigured and the toggle cannot be turned on.
         mockMvc.perform(put("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"twilioPhoneNumber\":\"\"}"))
+                        .content("""
+                                {
+                                  "twilioAccountSid": "ACsneaky",
+                                  "twilioAuthToken": "sneaky-token",
+                                  "twilioPhoneNumber": "+15550000000"
+                                }
+                                """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.twilioConfigured").value(false))
-                .andExpect(jsonPath("$.smsRemindersEnabled").value(false));
+                .andExpect(jsonPath("$.twilioConfigured").value(false));
 
-        mockMvc.perform(get("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken))
-                .andExpect(jsonPath("$.twilioConfigured").value(false))
-                .andExpect(jsonPath("$.smsRemindersEnabled").value(false));
+        Integer tokenCount = jdbcTemplate.queryForObject(
+                "select count(*) from organization_settings where organization_id = ? and twilio_auth_token is not null",
+                Integer.class, owner.organizationId());
+        assertThat(tokenCount).isZero();
     }
 
     @Test
@@ -181,30 +189,37 @@ class OrganizationSettingsIntegrationTest extends PostgresIntegrationTest {
         UUID otherOrg = identitySupport.createOrganization("Other Salon");
         jdbcTemplate.update("insert into organization_settings (organization_id) values (?)", otherOrg);
 
-        configureFully();
-
-        // The other org's settings row is untouched by this owner's writes.
-        Boolean otherEnabled = jdbcTemplate.queryForObject(
-                "select sms_reminders_enabled from organization_settings where organization_id = ?",
-                Boolean.class, otherOrg);
-        assertThat(otherEnabled).isFalse();
-        Integer otherTokenCount = jdbcTemplate.queryForObject(
-                "select count(*) from organization_settings where organization_id = ? and twilio_auth_token is not null",
-                Integer.class, otherOrg);
-        assertThat(otherTokenCount).isZero();
-    }
-
-    private void configureFully() throws Exception {
         mockMvc.perform(put("/organization").header(HttpHeaders.AUTHORIZATION, ownerToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "smsRemindersEnabled": true,
-                                  "twilioAccountSid": "ACtest123",
-                                  "twilioAuthToken": "super-secret-token",
-                                  "twilioPhoneNumber": "+15551234567"
-                                }
-                                """))
+                        .content("{\"name\":\"Mine Only\"}"))
                 .andExpect(status().isOk());
+
+        String otherName = jdbcTemplate.queryForObject(
+                "select name from organizations where id = ?", String.class, otherOrg);
+        assertThat(otherName).isEqualTo("Other Salon");
+    }
+
+    private void operatorConfigureTwilio(UUID organizationId) {
+        jdbcTemplate.update(
+                """
+                insert into organization_settings
+                    (organization_id, twilio_account_sid, twilio_phone_number, twilio_auth_token)
+                values (?, 'ACoperator', '+15551234567', pgp_sym_encrypt('operator-token', ?))
+                on conflict (organization_id) do update set
+                    twilio_account_sid = excluded.twilio_account_sid,
+                    twilio_phone_number = excluded.twilio_phone_number,
+                    twilio_auth_token = excluded.twilio_auth_token
+                """,
+                organizationId, encryptionKey);
+    }
+
+    private void seedSettingsFlag(UUID organizationId, boolean enabled) {
+        jdbcTemplate.update(
+                """
+                insert into organization_settings (organization_id, sms_reminders_enabled)
+                values (?, ?)
+                on conflict (organization_id) do update set sms_reminders_enabled = excluded.sms_reminders_enabled
+                """,
+                organizationId, enabled);
     }
 }

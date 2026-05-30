@@ -14,24 +14,29 @@ vi.mock("../api/organization", () => ({
   updateOrganizationSettings: vi.fn(),
 }));
 
-const configured: OrganizationSettings = {
+const configuredOn: OrganizationSettings = {
   name: "Salon One",
   businessPhone: "330-555-0100",
   timezone: "America/New_York",
   smsRemindersEnabled: true,
   twilioConfigured: true,
-  twilioAccountSid: "ACexisting",
-  twilioPhoneNumberMasked: "•••• 4567",
 };
 
-const unconfigured: OrganizationSettings = {
+// Legacy state: flag is on in the DB but Twilio creds aren't loaded yet.
+const flagOnButUnconfigured: OrganizationSettings = {
   name: "Salon One",
   businessPhone: "330-555-0100",
   timezone: "America/New_York",
+  smsRemindersEnabled: true,
+  twilioConfigured: false,
+};
+
+const unconfiguredBlankPhone: OrganizationSettings = {
+  name: "Salon One",
+  businessPhone: "",
+  timezone: "America/New_York",
   smsRemindersEnabled: false,
   twilioConfigured: false,
-  twilioAccountSid: null,
-  twilioPhoneNumberMasked: null,
 };
 
 function mockGet() {
@@ -62,71 +67,76 @@ describe("Settings page", () => {
     mockUpdate().mockReset();
   });
 
-  it("loads profile values and disables the SMS toggle with a hint when unconfigured", async () => {
-    mockGet().mockResolvedValue(unconfigured);
+  it("never renders Twilio credential fields (operator-managed)", async () => {
+    mockGet().mockResolvedValue(configuredOn);
 
     renderSettings();
+    await screen.findByLabelText("Salon name");
 
-    expect(await screen.findByText("Add Twilio config first")).toBeInTheDocument();
-    expect(screen.getByLabelText("Send SMS appointment reminders")).toBeDisabled();
-    expect(screen.getByLabelText("Salon name")).toHaveValue("Salon One");
+    expect(screen.queryByLabelText("Twilio Account SID")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Twilio Auth Token")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Twilio Phone Number")).not.toBeInTheDocument();
   });
 
-  it("enables the SMS toggle once all three Twilio fields are filled", async () => {
-    mockGet().mockResolvedValue(unconfigured);
+  it("locks the SMS toggle OFF with a hint when Twilio is not configured, even if the stored flag is on", async () => {
+    mockGet().mockResolvedValue(flagOnButUnconfigured);
 
     renderSettings();
-    await screen.findByText("Add Twilio config first");
 
-    fireEvent.change(screen.getByLabelText("Twilio Account SID"), { target: { value: "ACnew" } });
-    fireEvent.change(screen.getByLabelText("Twilio Auth Token"), { target: { value: "tok-123" } });
-    fireEvent.change(screen.getByLabelText("Twilio Phone Number"), { target: { value: "+15551230000" } });
-
-    await waitFor(() => expect(screen.getByLabelText("Send SMS appointment reminders")).not.toBeDisabled());
-    expect(screen.queryByText("Add Twilio config first")).not.toBeInTheDocument();
+    const toggle = await screen.findByLabelText("Send SMS appointment reminders");
+    // The stored flag is true, but unconfigured -> reads off and locked.
+    expect(toggle).not.toBeChecked();
+    expect(toggle).toBeDisabled();
+    expect(
+      screen.getByText(/SMS reminders aren't set up for this salon yet/i)
+    ).toBeInTheDocument();
   });
 
-  it("renders the auth token as a write-only password field that never shows a stored token", async () => {
-    mockGet().mockResolvedValue(configured);
+  it("shows the SMS toggle on and editable when Twilio is configured", async () => {
+    mockGet().mockResolvedValue(configuredOn);
 
     renderSettings();
 
-    const tokenField = await screen.findByLabelText("Twilio Auth Token");
-    expect(tokenField).toHaveAttribute("type", "password");
-    expect(tokenField).toHaveValue("");
-    expect(screen.getByPlaceholderText("•••••••• (token saved)")).toBeInTheDocument();
-    // configured + blank token field -> toggle is allowed (no re-typing needed)
-    expect(screen.getByLabelText("Send SMS appointment reminders")).not.toBeDisabled();
+    const toggle = await screen.findByLabelText("Send SMS appointment reminders");
+    expect(toggle).toBeChecked();
+    expect(toggle).not.toBeDisabled();
   });
 
-  it("saves only the fields that changed, sending the token only when entered", async () => {
-    mockGet().mockResolvedValue(unconfigured);
-    mockUpdate().mockResolvedValue(configured);
+  it("formats the business phone like the appointment search input", async () => {
+    mockGet().mockResolvedValue(unconfiguredBlankPhone);
 
     renderSettings();
-    await screen.findByText("Add Twilio config first");
+    const phone = await screen.findByLabelText("Business phone");
 
+    fireEvent.change(phone, { target: { value: "12" } });
+    expect(phone).toHaveValue("12");
+    fireEvent.change(phone, { target: { value: "123" } });
+    expect(phone).toHaveValue("123-"); // auto-dash after the area code
+    // letters are rejected (value unchanged)
+    fireEvent.change(phone, { target: { value: "123-a" } });
+    expect(phone).toHaveValue("123-");
+  });
+
+  it("saves profile fields and the toggle when Twilio is configured", async () => {
+    mockGet().mockResolvedValue(configuredOn);
+    mockUpdate().mockResolvedValue({ ...configuredOn, smsRemindersEnabled: false });
+
+    renderSettings();
+    const toggle = await screen.findByLabelText("Send SMS appointment reminders");
     fireEvent.change(screen.getByLabelText("Salon name"), { target: { value: "Renamed" } });
-    fireEvent.change(screen.getByLabelText("Twilio Account SID"), { target: { value: "ACnew" } });
-    fireEvent.change(screen.getByLabelText("Twilio Auth Token"), { target: { value: "tok-123" } });
-    fireEvent.change(screen.getByLabelText("Twilio Phone Number"), { target: { value: "+15551230000" } });
+    fireEvent.click(toggle); // turn off
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
     await waitFor(() => expect(mockUpdate()).toHaveBeenCalledTimes(1));
     expect(mockUpdate()).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: "Renamed",
-        twilioAccountSid: "ACnew",
-        twilioAuthToken: "tok-123",
-        twilioPhoneNumber: "+15551230000",
-      })
+      expect.objectContaining({ name: "Renamed", smsRemindersEnabled: false })
     );
     expect(await screen.findByText("Settings saved.")).toBeInTheDocument();
   });
 
-  it("does not send the auth token on a profile-only save", async () => {
-    mockGet().mockResolvedValue(configured);
-    mockUpdate().mockResolvedValue(configured);
+  it("does not send the SMS flag when Twilio is not configured (leaves it untouched)", async () => {
+    mockGet().mockResolvedValue(flagOnButUnconfigured);
+    mockUpdate().mockResolvedValue(flagOnButUnconfigured);
 
     renderSettings();
     const nameField = await screen.findByLabelText("Salon name");
@@ -135,31 +145,28 @@ describe("Settings page", () => {
 
     await waitFor(() => expect(mockUpdate()).toHaveBeenCalledTimes(1));
     const payload = mockUpdate().mock.calls[0][0];
-    expect(payload).not.toHaveProperty("twilioAuthToken");
+    expect(payload).not.toHaveProperty("smsRemindersEnabled");
     expect(payload.name).toBe("Just A Rename");
   });
 
-  it("shows the gate-specific message on a 400 and preserves entered values", async () => {
-    mockGet().mockResolvedValue(unconfigured);
+  it("shows the gate-specific message on a 400", async () => {
+    mockGet().mockResolvedValue(configuredOn);
     mockUpdate().mockRejectedValue({ response: { status: 400 } });
 
     renderSettings();
-    await screen.findByText("Add Twilio config first");
-
-    fireEvent.change(screen.getByLabelText("Salon name"), { target: { value: "Edited Name" } });
+    const nameField = await screen.findByLabelText("Salon name");
+    fireEvent.change(nameField, { target: { value: "Edited" } });
     fireEvent.click(screen.getByRole("button", { name: /save/i }));
 
     expect(
       await screen.findByText(
-        "SMS reminders require Account SID, Auth Token, and Phone Number to be set."
+        "SMS reminders can't be enabled until Twilio is configured for this salon."
       )
     ).toBeInTheDocument();
-    // entered values are not wiped on failure
-    expect(screen.getByLabelText("Salon name")).toHaveValue("Edited Name");
   });
 
   it("shows a generic retry message on a non-400 failure", async () => {
-    mockGet().mockResolvedValue(configured);
+    mockGet().mockResolvedValue(configuredOn);
     mockUpdate().mockRejectedValue({ response: { status: 500 } });
 
     renderSettings();

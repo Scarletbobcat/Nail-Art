@@ -17,16 +17,13 @@ import java.util.UUID;
 public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingsRepository organizationSettingsRepository;
-    private final TwilioCredentialsService twilioCredentialsService;
 
     public OrganizationService(
             OrganizationRepository organizationRepository,
-            OrganizationSettingsRepository organizationSettingsRepository,
-            TwilioCredentialsService twilioCredentialsService
+            OrganizationSettingsRepository organizationSettingsRepository
     ) {
         this.organizationRepository = organizationRepository;
         this.organizationSettingsRepository = organizationSettingsRepository;
-        this.twilioCredentialsService = twilioCredentialsService;
     }
 
     @Transactional(readOnly = true)
@@ -35,13 +32,15 @@ public class OrganizationService {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
         OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
-        return toResponse(organization, settings, tokenPresent(organizationId));
+        return toResponse(organization, settings, isConfigured(organizationId, settings));
     }
 
     /**
-     * One transaction across Organization (profile), OrganizationSettings (plaintext
-     * Twilio fields + sms flag), and the native token upsert, so the enable-gate
-     * validates the final committed state and no half-written state is observable.
+     * Owners update profile (name, business phone, timezone) and the SMS toggle.
+     * Twilio credentials are operator-managed and never touched here. The toggle
+     * can only be turned on when Twilio is already configured (a hard 400); a
+     * profile-only edit leaves the stored flag untouched, so a salon's reminders
+     * survive until the operator runs the credential cutover.
      */
     @Transactional
     public OrganizationSettingsResponse updateSettings(
@@ -58,7 +57,6 @@ public class OrganizationService {
                     return created;
                 });
 
-        // Profile (NOT NULL columns only set when a real value is supplied).
         if (isPresent(request.name())) {
             organization.setName(request.name());
         }
@@ -69,80 +67,43 @@ public class OrganizationService {
             organization.setTimezone(request.timezone());
         }
 
-        // Twilio identifiers: null = leave untouched; an explicit empty value clears
-        // (so a config can be deliberately blanked, which then auto-disables below).
-        if (request.twilioAccountSid() != null) {
-            settings.setTwilioAccountSid(request.twilioAccountSid());
-        }
-        if (request.twilioPhoneNumber() != null) {
-            settings.setTwilioPhoneNumber(request.twilioPhoneNumber());
-        }
-
-        boolean tokenProvided = isPresent(request.twilioAuthToken());
-        boolean tokenPresentAfter = tokenProvided || tokenPresent(organizationId);
-
-        // Completeness is evaluated against the POST-write state.
-        boolean complete = isPresent(settings.getTwilioAccountSid())
-                && isPresent(settings.getTwilioPhoneNumber())
-                && tokenPresentAfter;
-
-        boolean currentlyEnabled = settings.isSmsRemindersEnabled();
+        boolean configured = isConfigured(organizationId, settings);
         Boolean requestedEnabled = request.smsRemindersEnabled();
-        boolean wantEnabled = requestedEnabled != null ? requestedEnabled : currentlyEnabled;
-        if (wantEnabled && !complete) {
-            if (Boolean.TRUE.equals(requestedEnabled)) {
-                // Explicitly enabling with incomplete config is a hard 400.
+        if (requestedEnabled != null) {
+            if (requestedEnabled && !configured) {
                 throw new IllegalArgumentException(
-                        "SMS reminders require Account SID, Auth Token, and Phone Number to be set");
+                        "SMS reminders can't be enabled until Twilio is configured for this salon");
             }
-            // A partial edit that happens to leave config incomplete auto-disables the
-            // toggle instead of silently leaving it on — the bad state is unreachable.
-            wantEnabled = false;
+            settings.setSmsRemindersEnabled(requestedEnabled);
         }
-        settings.setSmsRemindersEnabled(wantEnabled);
 
         organizationRepository.save(organization);
         organizationSettingsRepository.save(settings);
-        if (tokenProvided) {
-            twilioCredentialsService.saveAuthToken(organizationId, request.twilioAuthToken());
-        }
 
-        return toResponse(organization, settings, tokenPresentAfter);
+        return toResponse(organization, settings, configured);
     }
 
-    private boolean tokenPresent(UUID organizationId) {
-        return Boolean.TRUE.equals(organizationSettingsRepository.authTokenPresent(organizationId));
+    private boolean isConfigured(UUID organizationId, OrganizationSettings settings) {
+        if (settings == null) {
+            return false;
+        }
+        return isPresent(settings.getTwilioAccountSid())
+                && isPresent(settings.getTwilioPhoneNumber())
+                && Boolean.TRUE.equals(organizationSettingsRepository.authTokenPresent(organizationId));
     }
 
     private OrganizationSettingsResponse toResponse(
-            Organization organization, OrganizationSettings settings, boolean tokenPresent) {
-        String sid = settings == null ? null : settings.getTwilioAccountSid();
-        String phone = settings == null ? null : settings.getTwilioPhoneNumber();
-        boolean smsEnabled = settings != null && settings.isSmsRemindersEnabled();
-        boolean configured = isPresent(sid) && isPresent(phone) && tokenPresent;
+            Organization organization, OrganizationSettings settings, boolean configured) {
         return new OrganizationSettingsResponse(
                 organization.getName(),
                 organization.getBusinessPhone(),
                 organization.getTimezone(),
-                smsEnabled,
-                configured,
-                sid,
-                maskPhone(phone)
+                settings != null && settings.isSmsRemindersEnabled(),
+                configured
         );
     }
 
     private static boolean isPresent(String value) {
         return value != null && !value.isBlank();
-    }
-
-    private static String maskPhone(String phone) {
-        if (phone == null || phone.isBlank()) {
-            return null;
-        }
-        String trimmed = phone.trim();
-        if (trimmed.length() <= 4) {
-            return "••••";
-        }
-        return "•••• " + trimmed.substring(trimmed.length() - 4);
     }
 }

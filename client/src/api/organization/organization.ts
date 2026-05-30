@@ -5,21 +5,18 @@ export type OrganizationSettings = {
   businessPhone: string | null;
   timezone: string;
   smsRemindersEnabled: boolean;
+  // Twilio credentials are operator-managed; the owner view only learns whether
+  // they are configured (so the SMS toggle knows if it can be enabled).
   twilioConfigured: boolean;
-  twilioAccountSid: string | null;
-  twilioPhoneNumberMasked: string | null;
 };
 
-// Every field optional: omit one to leave the stored value untouched. The auth
-// token is write-only — only send it to set or replace it, never to read it.
+// Owners update profile + the SMS toggle only. Every field optional: omit one to
+// leave the stored value untouched.
 export type OrganizationSettingsUpdate = {
   name?: string;
   businessPhone?: string;
   timezone?: string;
   smsRemindersEnabled?: boolean;
-  twilioAccountSid?: string;
-  twilioAuthToken?: string;
-  twilioPhoneNumber?: string;
 };
 
 export const getOrganizationSettings = async (): Promise<OrganizationSettings> => {

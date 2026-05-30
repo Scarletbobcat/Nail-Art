@@ -27,6 +27,7 @@ import {
   type OrganizationSettingsUpdate,
 } from "../api/organization";
 import { getHttpStatus } from "../utils/httpError";
+import { formatPhoneInput } from "../utils/phone";
 
 const TIMEZONES = [
   "America/New_York",
@@ -42,9 +43,6 @@ type FormState = {
   name: string;
   businessPhone: string;
   timezone: string;
-  twilioAccountSid: string;
-  twilioAuthToken: string;
-  twilioPhoneNumber: string;
   smsRemindersEnabled: boolean;
 };
 
@@ -66,17 +64,13 @@ export default function Settings() {
   const [snack, setSnack] = useState<Snack | null>(null);
 
   // Reset the form from server state on first load and after each save. With
-  // staleTime Infinity + no window refetch, `data` only changes on those events,
-  // so in-progress edits are never clobbered by a background refetch.
+  // staleTime Infinity + no window refetch, `data` only changes on those events.
   useEffect(() => {
     if (!data) return;
     setForm({
       name: data.name ?? "",
       businessPhone: data.businessPhone ?? "",
       timezone: data.timezone ?? "America/New_York",
-      twilioAccountSid: data.twilioAccountSid ?? "",
-      twilioAuthToken: "",
-      twilioPhoneNumber: "",
       smsRemindersEnabled: data.smsRemindersEnabled,
     });
   }, [data]);
@@ -104,15 +98,9 @@ export default function Settings() {
   const update = (patch: Partial<FormState>) =>
     setForm((current) => (current ? { ...current, ...patch } : current));
 
-  const tokenBlank = form.twilioAuthToken.trim() === "";
-  const allTwilioFieldsFilled =
-    form.twilioAccountSid.trim() !== "" &&
-    form.twilioAuthToken.trim() !== "" &&
-    form.twilioPhoneNumber.trim() !== "";
-  // Mirrors the server gate: enable allowed when the server already holds creds
-  // (configured + token field left blank) OR all three fields are freshly filled.
-  const canEnableSms = (data.twilioConfigured && tokenBlank) || allTwilioFieldsFilled;
-  const smsSwitchDisabled = !canEnableSms && !form.smsRemindersEnabled;
+  // Reminders are effectively on only when Twilio is configured AND the flag is
+  // set; when unconfigured the toggle reads off and is locked (operator-managed).
+  const smsToggleChecked = data.twilioConfigured && form.smsRemindersEnabled;
 
   const timezoneOptions = TIMEZONES.includes(form.timezone)
     ? TIMEZONES
@@ -123,29 +111,23 @@ export default function Settings() {
       name: form.name,
       businessPhone: form.businessPhone,
       timezone: form.timezone,
-      twilioAccountSid: form.twilioAccountSid,
-      smsRemindersEnabled: form.smsRemindersEnabled,
     };
-    // Write-only / leave-untouched: only send the token and number when entered.
-    if (form.twilioAuthToken.trim() !== "") {
-      payload.twilioAuthToken = form.twilioAuthToken;
-    }
-    if (form.twilioPhoneNumber.trim() !== "") {
-      payload.twilioPhoneNumber = form.twilioPhoneNumber;
+    // Only send the toggle when the owner can actually control it (Twilio
+    // configured). Otherwise leave the stored flag untouched.
+    if (data.twilioConfigured) {
+      payload.smsRemindersEnabled = form.smsRemindersEnabled;
     }
 
     setSaving(true);
     try {
       await updateOrganizationSettings(payload);
-      // Spinner stays until the follow-up GET resolves, so the form reflects the
-      // committed state (incl. server-side auto-disable) before we stop saving.
       await queryClient.invalidateQueries({ queryKey: organizationSettingsQueryKey });
       setSnack({ msg: "Settings saved.", severity: "success" });
     } catch (error) {
       setSnack({
         msg:
           getHttpStatus(error) === 400
-            ? "SMS reminders require Account SID, Auth Token, and Phone Number to be set."
+            ? "SMS reminders can't be enabled until Twilio is configured for this salon."
             : "Settings could not be saved. Please try again.",
         severity: "error",
       });
@@ -176,7 +158,10 @@ export default function Settings() {
               fullWidth
               size="small"
               value={form.businessPhone}
-              onChange={(e) => update({ businessPhone: e.target.value })}
+              onChange={(e) => {
+                const next = formatPhoneInput(e.target.value, form.businessPhone);
+                if (next !== null) update({ businessPhone: next });
+              }}
             />
             <TextField
               select
@@ -199,55 +184,23 @@ export default function Settings() {
           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
             SMS reminders
           </Typography>
-          <Stack spacing={2}>
-            <TextField
-              label="Twilio Account SID"
-              fullWidth
-              size="small"
-              value={form.twilioAccountSid}
-              onChange={(e) => update({ twilioAccountSid: e.target.value })}
-            />
-            <TextField
-              label="Twilio Auth Token"
-              type="password"
-              fullWidth
-              size="small"
-              value={form.twilioAuthToken}
-              onChange={(e) => update({ twilioAuthToken: e.target.value })}
-              placeholder={data.twilioConfigured ? "•••••••• (token saved)" : "Paste auth token"}
-              helperText={
-                data.twilioConfigured
-                  ? "Token is saved. Enter a new value only to replace it."
-                  : "Required to enable SMS reminders."
+          <Box>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={smsToggleChecked}
+                  disabled={!data.twilioConfigured}
+                  onChange={(e) => update({ smsRemindersEnabled: e.target.checked })}
+                />
               }
+              label="Send SMS appointment reminders"
             />
-            <TextField
-              label="Twilio Phone Number"
-              fullWidth
-              size="small"
-              value={form.twilioPhoneNumber}
-              onChange={(e) => update({ twilioPhoneNumber: e.target.value })}
-              placeholder={data.twilioPhoneNumberMasked ?? "+15555550100"}
-              helperText={
-                data.twilioPhoneNumberMasked
-                  ? `Saved: ${data.twilioPhoneNumberMasked}. Enter a new value only to replace it.`
-                  : "The number reminders are sent from."
-              }
-            />
-            <Box>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.smsRemindersEnabled}
-                    disabled={smsSwitchDisabled}
-                    onChange={(e) => update({ smsRemindersEnabled: e.target.checked })}
-                  />
-                }
-                label="Send SMS appointment reminders"
-              />
-              {smsSwitchDisabled && <FormHelperText>Add Twilio config first</FormHelperText>}
-            </Box>
-          </Stack>
+            {!data.twilioConfigured && (
+              <FormHelperText>
+                SMS reminders aren&apos;t set up for this salon yet. Contact support to enable them.
+              </FormHelperText>
+            )}
+          </Box>
 
           <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
             <Button
