@@ -20,7 +20,7 @@ import java.util.Set;
 
 @Service
 public class UserService {
-    private static final Set<String> VALID_ROLES = Set.of("owner", "admin", "staff");
+    private static final Set<String> VALID_ROLES = Set.of("owner", "staff");
 
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
@@ -89,7 +89,7 @@ public class UserService {
 
         String normalized = role.toLowerCase(Locale.ROOT);
         if (!VALID_ROLES.contains(normalized)) {
-            throw new IllegalArgumentException("role must be one of: owner, admin, staff");
+            throw new IllegalArgumentException("role must be one of: owner, staff");
         }
         return normalized;
     }
