@@ -87,7 +87,7 @@ export default function OrganizationDetail() {
     return <PageSkeleton />;
   }
 
-  if (salonQuery.isError || !salonQuery.data || !twilioQuery.data) {
+  if (salonQuery.isError || twilioQuery.isError || !salonQuery.data || !twilioQuery.data) {
     return (
       <AnimatedPage>
         <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
@@ -110,11 +110,14 @@ export default function OrganizationDetail() {
   const handleSaveProfile = async () => {
     setSavingProfile(true);
     try {
+      // Only send the SMS toggle when it's actually controllable (Twilio configured);
+      // otherwise a profile-only edit would re-send a stored `true` and trip the
+      // backend's enable-without-Twilio 400. Mirrors the owner Settings page.
       await updateSalon(organizationId, {
         name: profile.name,
         businessPhone: profile.businessPhone,
         timezone: profile.timezone,
-        smsRemindersEnabled: profile.smsRemindersEnabled,
+        ...(twilioConfigured ? { smsRemindersEnabled: profile.smsRemindersEnabled } : {}),
       });
       await invalidate();
       setSnack({ msg: "Profile saved.", severity: "success" });

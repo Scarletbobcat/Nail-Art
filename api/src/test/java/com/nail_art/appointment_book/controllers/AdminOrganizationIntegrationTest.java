@@ -169,13 +169,39 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
     void blankToken_preservesStoredToken() throws Exception {
         configureTwilio(salonB, "ACtestsid", "+15555550111", "super-secret-token");
 
-        // Re-send sid/phone with a blank token — must NOT wipe the stored token.
+        // Capture the exact stored ciphertext. pgp_sym_encrypt is randomized, so a
+        // re-encrypt (the bug we guard against) would change these bytes; an untouched
+        // column keeps them identical. This proves preservation, not just "still non-null".
+        String tokenBefore = jdbcTemplate.queryForObject(
+                "select md5(twilio_auth_token::text) from organization_settings where organization_id = ?",
+                String.class, salonB);
+
+        // Re-send sid/phone with a blank token — must NOT wipe or rewrite the stored token.
         mockMvc.perform(put("/admin/organizations/{id}/twilio", salonB)
                         .header(HttpHeaders.AUTHORIZATION, adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"accountSid\":\"ACtestsid\",\"phoneNumber\":\"+15555550111\",\"authToken\":\"\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.configured").value(true));
+
+        String tokenAfter = jdbcTemplate.queryForObject(
+                "select md5(twilio_auth_token::text) from organization_settings where organization_id = ?",
+                String.class, salonB);
+        org.junit.jupiter.api.Assertions.assertEquals(tokenBefore, tokenAfter,
+                "blank authToken must leave the stored ciphertext byte-for-byte unchanged");
+    }
+
+    @Test
+    void adminToken_isForbiddenFromOwnerGatedSalonEndpoints() throws Exception {
+        // platform_admin authority is not 'owner'/'staff': the admin cannot act on
+        // owner-gated salon endpoints (defense beyond the org-less tenant scope).
+        mockMvc.perform(post("/employees/create").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"name\":\"X\",\"color\":\"#abcdef\"}"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/users").header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"x\",\"password\":\"secret-pass\",\"role\":\"staff\"}"))
+                .andExpect(status().isForbidden());
     }
 
     @Test

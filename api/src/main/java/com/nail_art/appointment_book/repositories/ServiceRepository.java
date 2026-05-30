@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,8 @@ public interface ServiceRepository extends JpaRepository<Service, UUID> {
      * create-salon transaction, whose Hibernate session is bound to the sentinel
      * tenant — mirrors create_organization.py's raw insert.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
+    @Transactional
     @Query(value = "insert into services (organization_id, name, is_unavailability_marker) "
             + "values (:organizationId, :name, true)", nativeQuery = true)
     void insertUnavailabilityMarker(@Param("organizationId") UUID organizationId, @Param("name") String name);

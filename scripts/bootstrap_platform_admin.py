@@ -31,10 +31,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--db-url", default=None, help="Postgres URL; defaults to POSTGRES_URL")
     parser.add_argument("--username", required=True)
     parser.add_argument("--password", required=True)
+    parser.add_argument("--email", default=None, help="Optional contact email for the admin account")
     return parser.parse_args()
 
 
-def create_platform_admin(db_url: str, username: str, password: str) -> str:
+def create_platform_admin(db_url: str, username: str, password: str, email: str | None) -> str:
     password_hash = bcrypt.hashpw(
         password.encode("utf-8"), bcrypt.gensalt(rounds=10)
     ).decode("utf-8")
@@ -49,11 +50,11 @@ def create_platform_admin(db_url: str, username: str, password: str) -> str:
 
                 cur.execute(
                     """
-                    insert into users (username, password_hash, is_platform_admin)
-                    values (%s, %s, true)
+                    insert into users (username, email, password_hash, is_platform_admin)
+                    values (%s, %s, %s, true)
                     returning id
                     """,
-                    (username, password_hash),
+                    (username, email, password_hash),
                 )
                 return str(cur.fetchone()[0])
     except errors.UniqueViolation as exc:
@@ -69,6 +70,7 @@ def main() -> int:
             postgres_url(args.db_url),
             args.username,
             args.password,
+            args.email,
         )
     except BootstrapError as exc:
         print(str(exc), file=sys.stderr)

@@ -128,6 +128,37 @@ class PlatformAdminAuthIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void revokedAdmin_isRejectedDespiteValidToken() throws Exception {
+        String token = identitySupport.adminBearer(adminId);
+        // Access works while the flag is set.
+        mockMvc.perform(get("/users/me").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk());
+
+        // Revoke the flag; the still-valid token must now be rejected (live re-check).
+        jdbcTemplate.update("update users set is_platform_admin = false where id = ?", adminId);
+
+        mockMvc.perform(get("/users/me").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void revokedAdmin_cannotRefreshToANewAdminToken() throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"operator\",\"password\":\"%s\"}"
+                                .formatted(PostgresIdentityTestSupport.TEST_PASSWORD)))
+                .andExpect(status().isOk())
+                .andReturn();
+        Cookie refreshCookie = loginResult.getResponse().getCookie("refreshToken");
+        assertNotNull(refreshCookie);
+
+        jdbcTemplate.update("update users set is_platform_admin = false where id = ?", adminId);
+
+        mockMvc.perform(post("/auth/refresh").cookie(refreshCookie))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void tokenWithSubjectOnly_isRejected() throws Exception {
         // A non-admin token missing org/role must be rejected cleanly (no NPE -> 401),
         // proving the admin branch didn't loosen the org-scoped path.
