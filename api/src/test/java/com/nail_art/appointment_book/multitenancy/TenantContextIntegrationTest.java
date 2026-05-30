@@ -5,7 +5,6 @@ import com.nail_art.appointment_book.PostgresIntegrationTest;
 import com.nail_art.appointment_book.support.PostgresIdentityTestSupport;
 import com.nail_art.appointment_book.support.PostgresIdentityTestSupport.SeededIdentity;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +24,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -79,8 +79,19 @@ class TenantContextIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    @Disabled("verified at U4 once Employee exists with @TenantId")
-    void authedRequest_withMismatchedOrgClaim_returnsEmpty() {
+    void authedRequest_withForgedOrgClaim_isRejectedAsBadMembership() throws Exception {
+        // org A's real user, but a JWT minted with org B's org claim. The membership cross-check
+        // (existsByUserIdAndOrganizationId) must reject it before any tenant-scoped query runs —
+        // a forged org claim never opens another tenant's scope.
+        SeededIdentity orgA = identitySupport.seedIdentity("owner-a", "owner");
+        SeededIdentity orgB = identitySupport.seedIdentity("owner-b", "owner");
+
+        String forgedToken = "Bearer " + identitySupport.signedToken(
+                orgA.userId(), orgB.organizationId(), orgA.role());
+
+        mockMvc.perform(get("/employees/").header(HttpHeaders.AUTHORIZATION, forgedToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().string("Invalid organization membership"));
     }
 
     @Test
