@@ -19,6 +19,7 @@ This directory is the canonical map of the Nail Art & Spa appointment book. Root
 - [Local development](reference/local-development.md) — how to run the stack and what each port serves.
 - [Docker / deployment notes](reference/deployment.md) — published images and runtime expectations.
 - [PostgreSQL cutover runbook](operations/postgres-cutover-runbook.md) — cutover-day checklist, rollback path, and post-cutover cleanup.
+- [Salon onboarding & Twilio runbook](operations/salon-onboarding.md) — create an org + owner, load per-org Twilio credentials, and cut the existing salon over to DB-stored creds.
 
 ## Changelog
 
