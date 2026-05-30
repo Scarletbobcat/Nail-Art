@@ -47,11 +47,17 @@ public class AuthenticationService {
     }
 
     public String generateAccessToken(User user) {
+        if (user.isPlatformAdmin()) {
+            return jwtService.generateAdminToken(user);
+        }
         OrganizationUser membership = getPrimaryMembership(user);
         return jwtService.generateToken(user, membership.getOrganizationId(), membership.getRole());
     }
 
     public String generateRefreshToken(User user) {
+        if (user.isPlatformAdmin()) {
+            return jwtService.generateAdminRefreshToken(user);
+        }
         OrganizationUser membership = getPrimaryMembership(user);
         return jwtService.generateRefreshToken(user, membership.getOrganizationId(), membership.getRole());
     }
@@ -62,9 +68,19 @@ public class AuthenticationService {
         }
 
         UUID userId = jwtService.extractUserId(refreshToken);
-        UUID organizationId = jwtService.extractOrganizationId(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        // Platform admins are org-less: re-check the live flag (it may have been
+        // revoked since the refresh token was minted) and mint a fresh admin token.
+        if (jwtService.extractIsPlatformAdmin(refreshToken)) {
+            if (!user.isPlatformAdmin()) {
+                throw new BadCredentialsException("Platform admin access revoked");
+            }
+            return jwtService.generateAdminToken(user);
+        }
+
+        UUID organizationId = jwtService.extractOrganizationId(refreshToken);
         OrganizationUser membership = organizationUserRepository.findByUserIdAndOrganizationId(userId, organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization membership not found"));
 
@@ -86,6 +102,7 @@ public class AuthenticationService {
         sanitized.setEmail(user.getEmail());
         sanitized.setCreatedAt(user.getCreatedAt());
         sanitized.setUpdatedAt(user.getUpdatedAt());
+        sanitized.setPlatformAdmin(user.isPlatformAdmin());
         return sanitized;
     }
 }

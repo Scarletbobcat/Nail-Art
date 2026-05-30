@@ -54,6 +54,11 @@ public class JwtService {
         return extractClaim(token, claims -> claims.get("role", String.class));
     }
 
+    /** True only when the token carries the {@code admin=true} claim (a platform-admin token). */
+    public boolean extractIsPlatformAdmin(String token) {
+        return Boolean.TRUE.equals(extractClaim(token, claims -> claims.get("admin", Boolean.class)));
+    }
+
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
@@ -72,6 +77,13 @@ public class JwtService {
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return buildToken(extraClaims, userDetails, jwtExpiration);
+    }
+
+    /** Access token for an org-less platform admin: sub=userId, admin=true, no org/role. */
+    public String generateAdminToken(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("admin", true);
+        return buildToken(claims, user.getId().toString(), jwtExpiration);
     }
 
     public long getExpirationTime() {
@@ -105,6 +117,23 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put("org", organizationId.toString());
         claims.put("role", role);
+        claims.put("jti", UUID.randomUUID().toString());
+
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setUserId(user.getId());
+        refreshToken.setToken(buildToken(claims, user.getId().toString(), refreshExpiration));
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
+        refreshTokenRepository.save(refreshToken);
+        return refreshToken.getToken();
+    }
+
+    /** Refresh token for an org-less platform admin: sub=userId, admin=true, jti, no org/role. */
+    @Transactional
+    public String generateAdminRefreshToken(User user) {
+        refreshTokenRepository.deleteByUserId(user.getId());
+
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("admin", true);
         claims.put("jti", UUID.randomUUID().toString());
 
         RefreshToken refreshToken = new RefreshToken();

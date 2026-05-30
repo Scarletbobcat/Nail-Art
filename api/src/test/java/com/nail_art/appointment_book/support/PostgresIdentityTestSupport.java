@@ -87,6 +87,56 @@ public class PostgresIdentityTestSupport {
         return userId;
     }
 
+    /**
+     * Seed an org-less platform admin: a user with is_platform_admin=true and NO
+     * organization_users membership. Returns the user id.
+     */
+    public UUID seedPlatformAdmin(String username) {
+        UUID userId = jdbcTemplate.queryForObject(
+                "insert into users (username, email, password_hash, is_platform_admin) values (?, ?, ?, true) returning id",
+                UUID.class,
+                username,
+                username.toLowerCase(Locale.ROOT) + "@example.com",
+                passwordEncoder.encode(TEST_PASSWORD)
+        );
+        assertNotNull(userId);
+        return userId;
+    }
+
+    /** Bearer for an org-less platform admin: sub=userId, admin=true, no org/role. */
+    public String adminBearer(UUID userId) {
+        return "Bearer " + signedAdminToken(userId, 3_600_000L);
+    }
+
+    /** Lenient JWT payload decode — does not assert org/role (admin tokens carry neither). */
+    public JsonNode claimsOf(String jwt) throws Exception {
+        String[] parts = jwt.split("\\.");
+        assertEquals(3, parts.length);
+        return objectMapper.readTree(new String(Base64.getUrlDecoder().decode(parts[1])));
+    }
+
+    /** Bearer carrying only a subject — no org, no role, no admin claim. Should be rejected. */
+    public String bearerSubjectOnly(UUID userId) {
+        return "Bearer " + Jwts.builder()
+                .setSubject(userId.toString())
+                .claim("jti", UUID.randomUUID().toString())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 3_600_000L))
+                .signWith(signingKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    private String signedAdminToken(UUID userId, long expirationMillis) {
+        return Jwts.builder()
+                .setSubject(userId.toString())
+                .claim("admin", true)
+                .claim("jti", UUID.randomUUID().toString())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expirationMillis))
+                .signWith(signingKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public String persistRefreshToken(UUID userId, UUID organizationId, String role) {
         String token = signedToken(userId, organizationId, role, 2_592_000_000L);
         jdbcTemplate.update(

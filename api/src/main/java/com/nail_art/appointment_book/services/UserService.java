@@ -42,11 +42,20 @@ public class UserService {
     public MeResponse getMe(AuthenticatedPrincipal principal) {
         User user = userRepository.findById(principal.userId())
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        // Platform admins are org-less: no role, no organization summary.
+        if (principal.platformAdmin()) {
+            return new MeResponse(
+                    new MeResponse.UserSummary(user.getId(), user.getUsername(), null, true),
+                    null
+            );
+        }
+
         Organization organization = organizationRepository.findById(principal.organizationId())
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
 
         return new MeResponse(
-                new MeResponse.UserSummary(user.getId(), user.getUsername(), principal.role()),
+                new MeResponse.UserSummary(user.getId(), user.getUsername(), principal.role(), false),
                 new MeResponse.OrganizationSummary(
                         organization.getId(),
                         organization.getName(),
@@ -79,7 +88,7 @@ public class UserService {
         membership.setRole(role);
         organizationUserRepository.save(membership);
 
-        return new MeResponse.UserSummary(savedUser.getId(), savedUser.getUsername(), role);
+        return new MeResponse.UserSummary(savedUser.getId(), savedUser.getUsername(), role, false);
     }
 
     private String normalizedRole(String role) {
