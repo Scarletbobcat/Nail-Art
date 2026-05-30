@@ -1,11 +1,13 @@
 package com.nail_art.appointment_book.services;
 
+import com.nail_art.appointment_book.dtos.AdminTwilioConfigRequest;
 import com.nail_art.appointment_book.dtos.OrganizationSettingsUpdateRequest;
 import com.nail_art.appointment_book.entities.Organization;
 import com.nail_art.appointment_book.entities.OrganizationSettings;
 import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationSettingsRepository;
 import com.nail_art.appointment_book.responses.AdminOrganizationSummaryResponse;
+import com.nail_art.appointment_book.responses.AdminTwilioConfigResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
@@ -18,13 +20,16 @@ import java.util.UUID;
 public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingsRepository organizationSettingsRepository;
+    private final TwilioCredentialsService twilioCredentialsService;
 
     public OrganizationService(
             OrganizationRepository organizationRepository,
-            OrganizationSettingsRepository organizationSettingsRepository
+            OrganizationSettingsRepository organizationSettingsRepository,
+            TwilioCredentialsService twilioCredentialsService
     ) {
         this.organizationRepository = organizationRepository;
         this.organizationSettingsRepository = organizationSettingsRepository;
+        this.twilioCredentialsService = twilioCredentialsService;
     }
 
     /**
@@ -105,6 +110,55 @@ public class OrganizationService {
         organizationSettingsRepository.save(settings);
 
         return toResponse(organization, settings, configured);
+    }
+
+    /**
+     * Platform-admin read of a salon's Twilio config. Returns the non-secret
+     * identifiers and the configured flag; the auth token is never read back.
+     */
+    @Transactional(readOnly = true)
+    public AdminTwilioConfigResponse getTwilioConfig(UUID organizationId) {
+        organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new BadCredentialsException("Organization not found"));
+        OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
+        return new AdminTwilioConfigResponse(
+                isConfigured(organizationId, settings),
+                settings == null ? null : settings.getTwilioAccountSid(),
+                settings == null ? null : settings.getTwilioPhoneNumber()
+        );
+    }
+
+    /**
+     * Platform-admin write of a salon's Twilio config. SID/phone are set when
+     * non-blank (left untouched otherwise); the auth token is encrypted via
+     * pgcrypto only when non-blank, so a profile-only edit never wipes a stored
+     * token. The settings row is flushed before the token upsert so both writes
+     * land on the same row deterministically.
+     */
+    @Transactional
+    public AdminTwilioConfigResponse updateTwilioConfig(UUID organizationId, AdminTwilioConfigRequest request) {
+        organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new BadCredentialsException("Organization not found"));
+        OrganizationSettings settings = organizationSettingsRepository.findById(organizationId)
+                .orElseGet(() -> {
+                    OrganizationSettings created = new OrganizationSettings();
+                    created.setOrganizationId(organizationId);
+                    return created;
+                });
+
+        if (isPresent(request.accountSid())) {
+            settings.setTwilioAccountSid(request.accountSid());
+        }
+        if (isPresent(request.phoneNumber())) {
+            settings.setTwilioPhoneNumber(request.phoneNumber());
+        }
+        organizationSettingsRepository.saveAndFlush(settings);
+
+        if (isPresent(request.authToken())) {
+            twilioCredentialsService.saveAuthToken(organizationId, request.authToken());
+        }
+
+        return getTwilioConfig(organizationId);
     }
 
     private boolean isConfigured(UUID organizationId, OrganizationSettings settings) {

@@ -1,7 +1,9 @@
 package com.nail_art.appointment_book.controllers;
 
+import com.nail_art.appointment_book.dtos.AdminTwilioConfigRequest;
 import com.nail_art.appointment_book.dtos.OrganizationSettingsUpdateRequest;
 import com.nail_art.appointment_book.responses.AdminOrganizationSummaryResponse;
+import com.nail_art.appointment_book.responses.AdminTwilioConfigResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
 import com.nail_art.appointment_book.services.OrganizationService;
 import org.springframework.http.ResponseEntity;
@@ -47,5 +49,17 @@ public class AdminOrganizationController {
             @PathVariable UUID organizationId,
             @RequestBody OrganizationSettingsUpdateRequest request) {
         return ResponseEntity.ok(organizationService.updateSettings(organizationId, request));
+    }
+
+    @GetMapping("/{organizationId}/twilio")
+    public ResponseEntity<AdminTwilioConfigResponse> getTwilio(@PathVariable UUID organizationId) {
+        return ResponseEntity.ok(organizationService.getTwilioConfig(organizationId));
+    }
+
+    @PutMapping("/{organizationId}/twilio")
+    public ResponseEntity<AdminTwilioConfigResponse> updateTwilio(
+            @PathVariable UUID organizationId,
+            @RequestBody AdminTwilioConfigRequest request) {
+        return ResponseEntity.ok(organizationService.updateTwilioConfig(organizationId, request));
     }
 }

@@ -125,6 +125,71 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
         }
     }
 
+    private void configureTwilio(UUID salon, String sid, String phone, String token) throws Exception {
+        mockMvc.perform(put("/admin/organizations/{id}/twilio", salon)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accountSid\":\"%s\",\"phoneNumber\":\"%s\",\"authToken\":\"%s\"}"
+                                .formatted(sid, phone, token)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminConfiguresTwilio_thenReadsBackWithoutToken() throws Exception {
+        configureTwilio(salonB, "ACtestsid", "+15555550111", "super-secret-token");
+
+        String body = mockMvc.perform(get("/admin/organizations/{id}/twilio", salonB)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.configured").value(true))
+                .andExpect(jsonPath("$.accountSid").value("ACtestsid"))
+                .andExpect(jsonPath("$.phoneNumber").value("+15555550111"))
+                .andReturn().getResponse().getContentAsString();
+
+        // R11: the auth token is write-only — never present in any read.
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("super-secret-token"), "auth token must never be returned");
+    }
+
+    @Test
+    void smsToggle_enableable_onceTwilioConfigured() throws Exception {
+        configureTwilio(salonB, "ACtestsid", "+15555550111", "super-secret-token");
+
+        mockMvc.perform(put("/admin/organizations/{id}", salonB)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"smsRemindersEnabled\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.smsRemindersEnabled").value(true))
+                .andExpect(jsonPath("$.twilioConfigured").value(true));
+    }
+
+    @Test
+    void blankToken_preservesStoredToken() throws Exception {
+        configureTwilio(salonB, "ACtestsid", "+15555550111", "super-secret-token");
+
+        // Re-send sid/phone with a blank token — must NOT wipe the stored token.
+        mockMvc.perform(put("/admin/organizations/{id}/twilio", salonB)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"accountSid\":\"ACtestsid\",\"phoneNumber\":\"+15555550111\",\"authToken\":\"\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.configured").value(true));
+    }
+
+    @Test
+    void ownerAndStaff_areForbiddenFromTwilioEndpoints() throws Exception {
+        for (String token : new String[]{ownerAToken, staffAToken}) {
+            mockMvc.perform(get("/admin/organizations/{id}/twilio", salonA).header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(put("/admin/organizations/{id}/twilio", salonA)
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"accountSid\":\"x\",\"phoneNumber\":\"y\",\"authToken\":\"z\"}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
     @Test
     void orglessAdmin_seesNoTenantOwnedData() throws Exception {
         // Salon A has an employee; the org-less admin (no tenant scope) must see none
