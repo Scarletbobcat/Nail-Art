@@ -54,4 +54,16 @@ public interface OrganizationSettingsRepository extends JpaRepository<Organizati
             @Param("organizationId") UUID organizationId,
             @Param("key") String key
     );
+
+    /**
+     * Whether this org has a stored (encrypted) auth token, WITHOUT decrypting it —
+     * used to compute "twilioConfigured" and the enable-gate without ever touching
+     * the key or the plaintext. Null when the org has no settings row.
+     */
+    @Query(value = """
+            select twilio_auth_token is not null
+            from organization_settings
+            where organization_id = :organizationId
+            """, nativeQuery = true)
+    Boolean authTokenPresent(@Param("organizationId") UUID organizationId);
 }
