@@ -139,11 +139,11 @@ class AuthenticationControllerIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void refresh_afterRoleChange_returnsTokenWithNewRole() throws Exception {
-        SeededIdentity identity = identitySupport.seedIdentity("NailArt", "owner");
-        String refreshToken = identitySupport.persistRefreshToken(identity.userId(), identity.organizationId(), "owner");
+        SeededIdentity identity = identitySupport.seedIdentity("NailArt", "staff");
+        String refreshToken = identitySupport.persistRefreshToken(identity.userId(), identity.organizationId(), "staff");
 
         jdbcTemplate.update(
-                "update organization_users set role = 'admin' where organization_id = ? and user_id = ?",
+                "update organization_users set role = 'owner' where organization_id = ? and user_id = ?",
                 identity.organizationId(),
                 identity.userId()
         );
@@ -157,7 +157,7 @@ class AuthenticationControllerIntegrationTest extends PostgresIntegrationTest {
 
         JsonNode claims = identitySupport.decodeJwtPayload(objectMapper.readTree(body).get("token").asText());
 
-        assertEquals("admin", claims.get("role").asText());
+        assertEquals("owner", claims.get("role").asText());
     }
 
     private String loginBody(String username, String password) {
