@@ -32,7 +32,7 @@ public class UserController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<UserCreateResponse> createUser(@RequestBody CreateUserRequest request) {
         MeResponse.UserSummary user = userService.createUser(request, currentPrincipal());
 

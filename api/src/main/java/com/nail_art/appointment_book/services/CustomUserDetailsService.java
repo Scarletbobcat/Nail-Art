@@ -27,8 +27,8 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         String role = organizationUserRepository.findFirstByUserId(user.getId())
-                .map(membership -> membership.getRole().toUpperCase())
-                .orElse("STAFF");
+                .map(membership -> membership.getRole())
+                .orElse("staff");
 
         UserBuilder builder = org.springframework.security.core.userdetails.User.withUsername(user.getUsername());
         return builder
