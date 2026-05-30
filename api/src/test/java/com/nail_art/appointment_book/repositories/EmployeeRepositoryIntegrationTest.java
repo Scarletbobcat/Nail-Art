@@ -176,6 +176,25 @@ class EmployeeRepositoryIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void tenantId_findAllById_respectsDiscriminator() {
+        UUID orgAEmployeeId = insertEmployee(orgA, "Anna", "#111111");
+        UUID orgBEmployeeId = insertEmployee(orgB, "Bea", "#222222");
+
+        // findAllById on a simple-id entity issues an `id in (:ids)` query (not EntityManager.find),
+        // so the @TenantId filter DOES apply — unlike findById/em.find. This is the path
+        // EmployeeService.reorder() relies on; locking it in guards the reorder boundary.
+        List<Employee> found = TenantContext.runAs(
+                orgA,
+                () -> employeeRepository.findAllById(List.of(orgAEmployeeId, orgBEmployeeId))
+        );
+
+        assertThat(ids(found))
+                .as("operation=findAllById activeContext=%s seedOrgA=%s seedOrgB=%s orgAEmployee=%s orgBEmployee=%s returnedIds=%s",
+                        TenantContext.get(), orgA, orgB, orgAEmployeeId, orgBEmployeeId, ids(found))
+                .containsExactly(orgAEmployeeId);
+    }
+
+    @Test
     void tenantId_derivedQuery_respectsDiscriminator() {
         UUID orgAEmployeeId = insertEmployee(orgA, "Anna", "#111111");
         UUID orgBEmployeeId = insertEmployee(orgB, "Joanne", "#222222");
