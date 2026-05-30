@@ -33,9 +33,11 @@ The API is configured through environment variables (see `docs/reference/local-d
 - `JWT_SECRET_KEY`
 - `JWT_EXPIRATION`
 - `JWT_REFRESH_EXPIRATION`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_PHONE_NUMBER`
+- `APP_ENCRYPTION_KEY` (pgcrypto passphrase for per-org Twilio auth tokens; no default — a missing value fails the boot. Must match the Python scripts and stay stable.)
+
+Twilio credentials are no longer env vars; each organization stores its own (auth
+token encrypted via pgcrypto) in `organization_settings`, managed through the
+owner Settings page or `scripts/set_org_twilio.py`.
 
 Spring Boot runs Flyway migrations during API startup and fails the deploy if a migration fails.
 

@@ -40,7 +40,7 @@ public class ServiceController {
     }
 
     @PostMapping("/create")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<?> createService(@Valid @RequestBody Service service, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
@@ -54,7 +54,7 @@ public class ServiceController {
     }
 
     @PutMapping("/edit/{id}")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Service> editService(@PathVariable UUID id, @Valid @RequestBody Service service) {
         Optional<Service> editedService = serviceService.editService(id, service);
         if (editedService.isEmpty()) {
@@ -64,7 +64,7 @@ public class ServiceController {
     }
 
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Void> deleteService(@PathVariable UUID id) {
         if (!serviceService.deleteService(id)) {
             return ResponseEntity.notFound().build();

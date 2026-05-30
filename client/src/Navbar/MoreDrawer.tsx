@@ -9,11 +9,13 @@ import {
 import { Link } from "react-router-dom";
 import BadgeIcon from "@mui/icons-material/Badge";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
+import SettingsIcon from "@mui/icons-material/Settings";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { logout } from "../api/auth/auth";
+import { useMe } from "../hooks/useMe";
 
-const moreItems = [
+const baseItems = [
   { title: "Employees", url: "/Employees", icon: <BadgeIcon /> },
   { title: "Services", url: "/Services", icon: <ContentCutIcon /> },
 ];
@@ -28,6 +30,12 @@ export default function MoreDrawer({
   onClose: () => void;
 }) {
   const isLoggedIn = Boolean(localStorage.getItem("token"));
+  const { data: me } = useMe();
+  // Settings is owner-only; staff never see the entry.
+  const moreItems =
+    me?.user.role === "owner"
+      ? [...baseItems, { title: "Settings", url: "/Settings", icon: <SettingsIcon /> }]
+      : baseItems;
 
   return (
     <SwipeableDrawer

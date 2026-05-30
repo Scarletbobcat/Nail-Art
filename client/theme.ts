@@ -50,15 +50,6 @@ const theme = createTheme({
     }),
   ] as typeof defaultTheme.shadows,
   components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          backgroundImage:
-            "radial-gradient(ellipse at 20% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 50%)," +
-            "radial-gradient(ellipse at 80% 100%, rgba(244, 63, 94, 0.04) 0%, transparent 50%)",
-        },
-      },
-    },
     MuiPaper: {
       defaultProps: {
         elevation: 0,

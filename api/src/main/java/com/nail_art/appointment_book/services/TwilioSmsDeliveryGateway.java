@@ -1,13 +1,12 @@
 package com.nail_art.appointment_book.services;
 
-import com.twilio.Twilio;
 import com.twilio.exception.ApiConnectionException;
 import com.twilio.exception.ApiException;
+import com.twilio.http.TwilioRestClient;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,21 +16,17 @@ public class TwilioSmsDeliveryGateway implements SmsDeliveryGateway {
     private static final int MAX_ATTEMPTS = 3;
     private static final long RETRY_BACKOFF_MS = 5000;
 
-    @Value("${twilio.account.sid}")
-    private String accountSid;
-
-    @Value("${twilio.auth.token}")
-    private String authToken;
-
-    @Value("${twilio.phone.number}")
-    private String phoneNumber;
-
     @Override
-    public Result sendReminder(String to, String message) {
-        Twilio.init(accountSid, authToken);
+    public Result sendReminder(String to, String message, TwilioCredentials credentials) {
+        // Per-request client built from this org's own credentials — never the
+        // global static Twilio.init state, which would leak one org's account
+        // into another's send across the scheduler loop.
+        TwilioRestClient client = new TwilioRestClient.Builder(
+                credentials.accountSid(), credentials.authToken()).build();
+        PhoneNumber from = new PhoneNumber(credentials.phoneNumber());
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
-                Message.creator(new PhoneNumber(to), new PhoneNumber(phoneNumber), message).create();
+                Message.creator(new PhoneNumber(to), from, message).create(client);
                 return Result.SENT;
             } catch (ApiException e) {
                 if (e.getCode() != null && e.getCode() == TWILIO_UNSUBSCRIBED_CODE) {

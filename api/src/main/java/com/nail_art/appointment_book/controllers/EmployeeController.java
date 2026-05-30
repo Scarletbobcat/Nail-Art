@@ -48,7 +48,7 @@ public class EmployeeController {
     }
 
     @PostMapping("/create")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<?> createEmployee(@Valid @RequestBody Employee employee, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
@@ -57,7 +57,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/edit/{id}")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Employee> editEmployee(@PathVariable UUID id, @Valid @RequestBody Employee employee) {
         Optional<Employee> editedEmployee = employeeService.editEmployee(id, employee);
         if (editedEmployee.isEmpty()) {
@@ -67,7 +67,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/delete/{id}")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable UUID id) {
         if (!employeeService.deleteEmployee(id)) {
             return ResponseEntity.notFound().build();
@@ -81,7 +81,7 @@ public class EmployeeController {
     }
 
     @PostMapping("/reorder")
-    @PreAuthorize("hasAuthority('OWNER')")
+    @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<?> reorder(@Valid @RequestBody EmployeeReorderRequest request, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));

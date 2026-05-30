@@ -6,12 +6,14 @@ import Navbar from "./Navbar/Navbar.tsx";
 import MobileBottomNav from "./Navbar/MobileBottomNav.tsx";
 import Search from "./AppointmentsPage/Search/Search.tsx";
 import Clients from "./ClientsPage/Clients.tsx";
+import Settings from "./SettingsPage/Settings.tsx";
 import { RequireMe } from "./components/RequireMe";
 import {
   BrowserRouter as Router,
   Route,
   Routes,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { MOBILE_BREAKPOINT } from "./constants/design";
@@ -19,11 +21,16 @@ import { MOBILE_BREAKPOINT } from "./constants/design";
 function AppContent() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down(MOBILE_BREAKPOINT));
+  const location = useLocation();
+  // The login page is the only unauthenticated route. Hiding the nav there keeps
+  // its useMe() lookups from firing without a token, which would 401 -> redirect
+  // to /login -> remount -> loop.
+  const showChrome = location.pathname.toLowerCase() !== "/login";
 
   return (
     <>
-      <Navbar />
-      <Box sx={{ pb: isMobile ? "72px" : 0 }}>
+      {showChrome && <Navbar />}
+      <Box sx={{ pb: isMobile && showChrome ? "72px" : 0 }}>
         <Routes>
           <Route path="/" element={<Navigate to="/Appointments" replace />} />
           <Route
@@ -67,9 +74,17 @@ function AppContent() {
               </RequireMe>
             }
           />
+          <Route
+            path="/Settings"
+            element={
+              <RequireMe requiredRole="owner">
+                <Settings />
+              </RequireMe>
+            }
+          />
         </Routes>
       </Box>
-      <MobileBottomNav />
+      {showChrome && <MobileBottomNav />}
     </>
   );
 }
