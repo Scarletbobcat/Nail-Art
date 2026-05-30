@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,6 +40,7 @@ public class ServiceController {
     }
 
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<?> createService(@Valid @RequestBody Service service, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
@@ -52,6 +54,7 @@ public class ServiceController {
     }
 
     @PutMapping("/edit/{id}")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<Service> editService(@PathVariable UUID id, @Valid @RequestBody Service service) {
         Optional<Service> editedService = serviceService.editService(id, service);
         if (editedService.isEmpty()) {
@@ -61,6 +64,7 @@ public class ServiceController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<Void> deleteService(@PathVariable UUID id) {
         if (!serviceService.deleteService(id)) {
             return ResponseEntity.notFound().build();

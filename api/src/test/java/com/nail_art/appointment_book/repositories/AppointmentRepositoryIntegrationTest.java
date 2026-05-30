@@ -134,6 +134,38 @@ class AppointmentRepositoryIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void tenantId_appointmentServiceLink_derivedFinders_respectDiscriminator() {
+        UUID orgBEmployee = insertEmployee(orgB, "Bea");
+        UUID orgBAppointment = insertAppointment(orgB, orgBEmployee, "Org B", "2026-04-10T10:00:00-04:00", "2026-04-10T11:00:00-04:00", null);
+        insertAppointmentService(orgB, orgBAppointment, orgBService);
+
+        // Read path used by AppointmentService.attachServiceIds: a derived finder on the embedded
+        // key column must still apply the @TenantId filter, so org A never sees org B's links.
+        List<AppointmentServiceLink> crossOrgRead = TenantContext.runAs(
+                orgA,
+                () -> appointmentServiceLinkRepository.findByIdAppointmentId(orgBAppointment)
+        );
+        assertThat(crossOrgRead)
+                .as("operation=findByIdAppointmentId activeContext=%s orgA=%s orgB=%s orgBAppointment=%s",
+                        TenantContext.get(), orgA, orgB, orgBAppointment)
+                .isEmpty();
+
+        // Write path used by AppointmentService.replaceServiceLinks: a cross-org derived delete must
+        // touch zero org B links.
+        TenantContext.runAs(orgA, () -> appointmentServiceLinkRepository.deleteByIdAppointmentId(orgBAppointment));
+
+        Integer remaining = jdbcTemplate.queryForObject(
+                "select count(*) from appointment_services where appointment_id = ?",
+                Integer.class,
+                orgBAppointment
+        );
+        assertThat(remaining)
+                .as("operation=deleteByIdAppointmentId activeContext-was=%s orgA=%s orgB=%s orgBAppointment=%s",
+                        orgA, orgA, orgB, orgBAppointment)
+                .isEqualTo(1);
+    }
+
+    @Test
     void appointmentServiceLink_compositeFkBlocksCrossOrgLink() {
         UUID appointmentId = insertAppointment(orgA, orgAEmployee, "Org A", "2026-04-10T10:00:00-04:00", "2026-04-10T11:00:00-04:00", null);
 

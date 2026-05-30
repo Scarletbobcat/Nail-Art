@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -155,6 +156,118 @@ class CrossOrgIsolationIntegrationTest extends PostgresIntegrationTest {
         assertThat(clientCount(ownerB.organizationId(), "330-555-2000")).isEqualTo(1);
     }
 
+    @Test
+    void readByIdEndpoints_hideOrgBRowsFromOrgA() throws Exception {
+        String token = identitySupport.bearer(ownerA);
+
+        // The documented Hibernate 6.5 PK-lookup leak class: a by-id read must go through
+        // findScopedById, never a raw findById, so org A can never fetch org B's row by id.
+        mockMvc.perform(get("/clients/{id}", clientB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/appointments/{id}", appointmentB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+
+        // A nonexistent id is indistinguishable from a cross-org id (no existence oracle).
+        mockMvc.perform(get("/clients/{id}", UUID.randomUUID()).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void searchAndNameReaders_hideOrgBRowsFromOrgA() throws Exception {
+        String token = identitySupport.bearer(ownerA);
+
+        // Derived ...ContainingIgnoreCase / name finders rely entirely on the @TenantId filter.
+        mockMvc.perform(get("/employees/name/{name}", "Bea").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(employeeB)).doesNotExist());
+        mockMvc.perform(get("/services/name/{name}", "Waxing").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == '%s')]".formatted(serviceB)).doesNotExist());
+        mockMvc.perform(get("/appointments/search/{phone}", "330-555-2000").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+
+        // Paged readers with org B's identifying values must surface zero org B rows.
+        mockMvc.perform(get("/employees/").param("name", "Bea").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '%s')]".formatted(employeeB)).doesNotExist());
+        mockMvc.perform(get("/services/").param("name", "Waxing").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '%s')]".formatted(serviceB)).doesNotExist());
+        mockMvc.perform(get("/clients/").param("name", "Org B Client").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '%s')]".formatted(clientB)).doesNotExist());
+        mockMvc.perform(get("/clients/").param("phoneNumber", "330-555-2000").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.id == '%s')]".formatted(clientB)).doesNotExist());
+
+        // /users/me must only ever describe the caller's own org.
+        mockMvc.perform(get("/users/me").header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.organization.id").value(ownerA.organizationId().toString()));
+    }
+
+    @Test
+    void deleteEndpoints_blockOrgBIdsFromOrgA() throws Exception {
+        String token = identitySupport.bearer(ownerA);
+
+        mockMvc.perform(delete("/clients/delete/{id}", clientB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/employees/delete/{id}", employeeB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/services/delete/{id}", serviceB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/appointments/delete/{id}", appointmentB).header(HttpHeaders.AUTHORIZATION, token))
+                .andExpect(status().isNotFound());
+
+        // Org B rows survive untouched; the appointment soft-delete (archived_at) never fired.
+        assertThat(rowExists("clients", clientB)).isTrue();
+        assertThat(rowExists("employees", employeeB)).isTrue();
+        assertThat(rowExists("services", serviceB)).isTrue();
+        assertThat(rowExists("appointments", appointmentB)).isTrue();
+        assertThat(appointmentArchivedAt(appointmentB)).isNull();
+    }
+
+    @Test
+    void bodyOnlyAppointmentEdit_blocksOrgBId() throws Exception {
+        String token = identitySupport.bearer(ownerA);
+
+        // PUT /appointments/edit takes the id in the body — a separate code path from /edit/{id}.
+        mockMvc.perform(put("/appointments/edit")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(appointmentBodyWithId(appointmentB, employeeA, serviceA, "Mallory", "330-555-9999")))
+                .andExpect(status().isNotFound());
+
+        assertThat(customerName(appointmentB)).isEqualTo("Org B Appointment");
+    }
+
+    @Test
+    void reorderEndpoint_cannotTouchOrgBEmployees() throws Exception {
+        String token = identitySupport.bearer(ownerA);
+        int orgBOrder = displayOrder(employeeB);
+        int orgAOrder = displayOrder(employeeA);
+
+        // Mixed payload: one of the caller's own employees plus org B's. reorder() uses an
+        // inherited findAllById that is NOT @TenantId-filtered (the documented leak), so org B's
+        // displayOrder could be rewritten. Security-correct outcome: the whole call fails and
+        // org B's row is untouched.
+        mockMvc.perform(post("/employees/reorder")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items":[{"id":"%s","displayOrder":5},{"id":"%s","displayOrder":999}]}
+                                """.formatted(employeeA, employeeB)))
+                .andExpect(status().isBadRequest());
+
+        assertThat(displayOrder(employeeB))
+                .as("org B employee displayOrder must be unchanged after a cross-org reorder attempt")
+                .isEqualTo(orgBOrder);
+        assertThat(displayOrder(employeeA))
+                .as("org A employee displayOrder must be unchanged after the atomic reorder is rejected")
+                .isEqualTo(orgAOrder);
+    }
+
     private String appointmentBody(UUID employeeId, UUID serviceId, String customerName, String phoneNumber) {
         return """
                 {
@@ -167,6 +280,21 @@ class CrossOrgIsolationIntegrationTest extends PostgresIntegrationTest {
                   "showedUp": false
                 }
                 """.formatted(customerName, employeeId, serviceId, phoneNumber);
+    }
+
+    private String appointmentBodyWithId(UUID id, UUID employeeId, UUID serviceId, String customerName, String phoneNumber) {
+        return """
+                {
+                  "id": "%s",
+                  "customerName": "%s",
+                  "employeeId": "%s",
+                  "serviceIds": ["%s"],
+                  "phoneNumber": "%s",
+                  "startsAt": "2026-04-10T12:00:00-04:00",
+                  "endsAt": "2026-04-10T13:00:00-04:00",
+                  "showedUp": false
+                }
+                """.formatted(id, customerName, employeeId, serviceId, phoneNumber);
     }
 
     private UUID insertEmployee(UUID organizationId, String name, String color) {
@@ -221,6 +349,23 @@ class CrossOrgIsolationIntegrationTest extends PostgresIntegrationTest {
 
     private String customerName(UUID id) {
         return jdbcTemplate.queryForObject("select customer_name from appointments where id = ?", String.class, id);
+    }
+
+    private boolean rowExists(String tableName, UUID id) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from " + tableName + " where id = ?", Integer.class, id);
+        return count != null && count > 0;
+    }
+
+    private java.time.OffsetDateTime appointmentArchivedAt(UUID id) {
+        return jdbcTemplate.queryForObject(
+                "select archived_at from appointments where id = ?", java.time.OffsetDateTime.class, id);
+    }
+
+    private int displayOrder(UUID employeeId) {
+        Integer order = jdbcTemplate.queryForObject(
+                "select display_order from employees where id = ?", Integer.class, employeeId);
+        return order == null ? -1 : order;
     }
 
     private Integer clientCount(UUID organizationId, String phoneNumber) {

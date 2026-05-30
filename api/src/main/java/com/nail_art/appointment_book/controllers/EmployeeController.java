@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,6 +48,7 @@ public class EmployeeController {
     }
 
     @PostMapping("/create")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<?> createEmployee(@Valid @RequestBody Employee employee, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
@@ -55,6 +57,7 @@ public class EmployeeController {
     }
 
     @PutMapping("/edit/{id}")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<Employee> editEmployee(@PathVariable UUID id, @Valid @RequestBody Employee employee) {
         Optional<Employee> editedEmployee = employeeService.editEmployee(id, employee);
         if (editedEmployee.isEmpty()) {
@@ -64,6 +67,7 @@ public class EmployeeController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable UUID id) {
         if (!employeeService.deleteEmployee(id)) {
             return ResponseEntity.notFound().build();
@@ -77,6 +81,7 @@ public class EmployeeController {
     }
 
     @PostMapping("/reorder")
+    @PreAuthorize("hasAuthority('OWNER')")
     public ResponseEntity<?> reorder(@Valid @RequestBody EmployeeReorderRequest request, BindingResult result) {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));

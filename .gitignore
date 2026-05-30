@@ -63,3 +63,9 @@ build/
 # Build stuff
 dist/
 *.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
