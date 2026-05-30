@@ -52,7 +52,13 @@ public class PostgresIdentityTestSupport {
     }
 
     public SeededIdentity seedIdentity(String username, String role) {
-        UUID organizationId = createOrganization(TEST_ORGANIZATION_NAME);
+        return seedIdentity(username, role, TEST_ORGANIZATION_NAME);
+    }
+
+    // Organization names are unique (V9). Tests that seed more than one org in a
+    // single run must pass distinct names through this overload.
+    public SeededIdentity seedIdentity(String username, String role, String organizationName) {
+        UUID organizationId = createOrganization(organizationName);
         UUID userId = seedUserInOrganization(organizationId, username, role);
         return new SeededIdentity(organizationId, userId, username, role);
     }

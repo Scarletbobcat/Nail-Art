@@ -53,8 +53,8 @@ class ClientControllerIntegrationTest extends PostgresIntegrationTest {
         jdbcTemplate.update("delete from appointments");
         jdbcTemplate.update("delete from clients");
         identitySupport.resetIdentityTables();
-        ownerA = identitySupport.seedIdentity("owner-a", "owner");
-        ownerB = identitySupport.seedIdentity("owner-b", "owner");
+        ownerA = identitySupport.seedIdentity("owner-a", "owner", "Org A");
+        ownerB = identitySupport.seedIdentity("owner-b", "owner", "Org B");
     }
 
     @Test
