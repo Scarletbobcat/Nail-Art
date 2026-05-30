@@ -5,11 +5,13 @@ import com.nail_art.appointment_book.entities.Organization;
 import com.nail_art.appointment_book.entities.OrganizationSettings;
 import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationSettingsRepository;
+import com.nail_art.appointment_book.responses.AdminOrganizationSummaryResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,6 +25,30 @@ public class OrganizationService {
     ) {
         this.organizationRepository = organizationRepository;
         this.organizationSettingsRepository = organizationSettingsRepository;
+    }
+
+    /**
+     * Every salon with its profile, SMS flag, and Twilio-configured status — the
+     * platform-admin "all salons" view. Operates on non-@TenantId config tables,
+     * so it is not tenant-scoped (the admin sees every org by design). One settings
+     * lookup per org; fine at the handful-of-salons scale this serves.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminOrganizationSummaryResponse> listAllSalons() {
+        return organizationRepository.findAll().stream()
+                .map(organization -> {
+                    UUID organizationId = organization.getId();
+                    OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
+                    return new AdminOrganizationSummaryResponse(
+                            organizationId,
+                            organization.getName(),
+                            organization.getTimezone(),
+                            organization.getBusinessPhone(),
+                            settings != null && settings.isSmsRemindersEnabled(),
+                            isConfigured(organizationId, settings)
+                    );
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
