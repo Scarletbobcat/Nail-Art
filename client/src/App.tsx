@@ -6,6 +6,7 @@ import Navbar from "./Navbar/Navbar.tsx";
 import MobileBottomNav from "./Navbar/MobileBottomNav.tsx";
 import Search from "./AppointmentsPage/Search/Search.tsx";
 import Clients from "./ClientsPage/Clients.tsx";
+import Settings from "./SettingsPage/Settings.tsx";
 import { RequireMe } from "./components/RequireMe";
 import {
   BrowserRouter as Router,
@@ -64,6 +65,14 @@ function AppContent() {
             element={
               <RequireMe>
                 <Search />
+              </RequireMe>
+            }
+          />
+          <Route
+            path="/Settings"
+            element={
+              <RequireMe requiredRole="owner">
+                <Settings />
               </RequireMe>
             }
           />

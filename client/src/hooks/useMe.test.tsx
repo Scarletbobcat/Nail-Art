@@ -221,4 +221,42 @@ describe("RequireMe", () => {
 
     expect(screen.getByText("Protected content")).toBeInTheDocument();
   });
+
+  function renderRoleProtected() {
+    return render(
+      <MemoryRouter initialEntries={["/Settings"]}>
+        <Routes>
+          <Route
+            path="/Settings"
+            element={
+              <RequireMe requiredRole="owner">
+                <div>Owner only</div>
+              </RequireMe>
+            }
+          />
+          <Route path="/Appointments" element={<div>Appointments screen</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+  }
+
+  it("renders an owner-gated route for an owner", () => {
+    mockUseMe({ data: meResponse, isSuccess: true });
+
+    renderRoleProtected();
+
+    expect(screen.getByText("Owner only")).toBeInTheDocument();
+  });
+
+  it("redirects a staff user away from an owner-gated route", () => {
+    mockUseMe({
+      data: { ...meResponse, user: { ...meResponse.user, role: "staff" } },
+      isSuccess: true,
+    });
+
+    renderRoleProtected();
+
+    expect(screen.getByText("Appointments screen")).toBeInTheDocument();
+    expect(screen.queryByText("Owner only")).not.toBeInTheDocument();
+  });
 });

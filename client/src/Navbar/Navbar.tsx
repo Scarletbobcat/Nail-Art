@@ -10,6 +10,7 @@ import {
   Box,
 } from "@mui/material";
 import { logout } from "../api/auth/auth";
+import { useMe } from "../hooks/useMe";
 import { MAX_CONTENT_WIDTH } from "../constants/design";
 
 const navItems = [
@@ -36,6 +37,13 @@ function Navbar() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const location = useLocation();
+  const { data: me } = useMe();
+
+  // Settings is owner-only; staff never see the entry.
+  const items =
+    me?.user.role === "owner"
+      ? [...navItems, { title: "Settings", url: "/Settings" }]
+      : navItems;
 
   const isActive = (url: string) => location.pathname === url;
   const isGroupActive = (subMenu: { url: string }[]) =>
@@ -86,7 +94,7 @@ function Navbar() {
           }}
         >
           <Box sx={{ display: "flex", gap: 0.5 }}>
-            {navItems.map((item, index) => {
+            {items.map((item, index) => {
               if (item.url) {
                 const active = isActive(item.url);
                 return (
