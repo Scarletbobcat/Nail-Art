@@ -1,5 +1,6 @@
 package com.nail_art.appointment_book.services;
 
+import com.nail_art.appointment_book.dtos.AdminUserUpdateRequest;
 import com.nail_art.appointment_book.dtos.CreateUserRequest;
 import com.nail_art.appointment_book.entities.Organization;
 import com.nail_art.appointment_book.entities.OrganizationUser;
@@ -8,6 +9,7 @@ import com.nail_art.appointment_book.entities.User;
 import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationUserRepository;
 import com.nail_art.appointment_book.repositories.UserRepository;
+import com.nail_art.appointment_book.responses.AdminUserSummary;
 import com.nail_art.appointment_book.responses.MeResponse;
 import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -16,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
@@ -104,6 +107,53 @@ public class UserService {
         organizationUserRepository.save(membership);
 
         return savedUser;
+    }
+
+    /** Platform-admin: every user (owner/staff) in a salon, with their role. */
+    @Transactional(readOnly = true)
+    public List<AdminUserSummary> listOrganizationUsers(UUID organizationId) {
+        return organizationUserRepository.findByOrganizationId(organizationId).stream()
+                .map(membership -> {
+                    User user = userRepository.findById(membership.getUserId())
+                            .orElseThrow(() -> new BadCredentialsException("User not found"));
+                    return new AdminUserSummary(user.getId(), user.getUsername(), membership.getRole());
+                })
+                .toList();
+    }
+
+    /**
+     * Platform-admin: change a salon user's username and/or password. Scoped to a
+     * user that belongs to the given org (membership required, else rejected).
+     * Both fields optional — blank/null leaves the value unchanged. A username
+     * collision with a different user throws (→ 409). The password is hashed.
+     */
+    @Transactional
+    public AdminUserSummary updateUserCredentials(UUID organizationId, UUID userId, AdminUserUpdateRequest request) {
+        OrganizationUser membership = organizationUserRepository
+                .findByUserIdAndOrganizationId(userId, organizationId)
+                .orElseThrow(() -> new BadCredentialsException("User is not a member of this organization"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BadCredentialsException("User not found"));
+
+        if (request != null && isPresent(request.username())) {
+            String newUsername = request.username().trim();
+            userRepository.findByUsername(newUsername).ifPresent(existing -> {
+                if (!existing.getId().equals(userId)) {
+                    throw new DataIntegrityViolationException("username already exists: " + newUsername);
+                }
+            });
+            user.setUsername(newUsername);
+        }
+        if (request != null && isPresent(request.password())) {
+            user.setPasswordHash(passwordEncoder.encode(request.password()));
+        }
+        userRepository.save(user);
+
+        return new AdminUserSummary(user.getId(), user.getUsername(), membership.getRole());
+    }
+
+    private static boolean isPresent(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String normalizedRole(String role) {

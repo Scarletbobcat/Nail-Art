@@ -50,6 +50,8 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
     private String staffAToken;
     private UUID salonA;
     private UUID salonB;
+    private UUID ownerAId;
+    private UUID staffAId;
 
     @BeforeEach
     void setUp() {
@@ -67,10 +69,10 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
         adminToken = identitySupport.adminBearer(adminId);
 
         salonA = identitySupport.createOrganization("Salon A");
-        SeededIdentity ownerA = new SeededIdentity(
-                salonA, identitySupport.seedUserInOrganization(salonA, "ownerA", "owner"), "ownerA", "owner");
-        SeededIdentity staffA = new SeededIdentity(
-                salonA, identitySupport.seedUserInOrganization(salonA, "staffA", "staff"), "staffA", "staff");
+        ownerAId = identitySupport.seedUserInOrganization(salonA, "ownerA", "owner");
+        staffAId = identitySupport.seedUserInOrganization(salonA, "staffA", "staff");
+        SeededIdentity ownerA = new SeededIdentity(salonA, ownerAId, "ownerA", "owner");
+        SeededIdentity staffA = new SeededIdentity(salonA, staffAId, "staffA", "staff");
         ownerAToken = identitySupport.bearer(ownerA);
         staffAToken = identitySupport.bearer(staffA);
 
@@ -278,6 +280,78 @@ class AdminOrganizationIntegrationTest extends PostgresIntegrationTest {
                             .header(HttpHeaders.AUTHORIZATION, token)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"name\":\"X\",\"ownerUsername\":\"y\",\"ownerPassword\":\"z\"}"))
+                    .andExpect(status().isForbidden());
+        }
+    }
+
+    private void login(String username, String password, org.springframework.test.web.servlet.ResultMatcher expected)
+            throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"%s\",\"password\":\"%s\"}".formatted(username, password)))
+                .andExpect(expected);
+    }
+
+    @Test
+    void adminListsSalonUsers() throws Exception {
+        mockMvc.perform(get("/admin/organizations/{id}/users", salonA).header(HttpHeaders.AUTHORIZATION, adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.username=='ownerA')].role").value("owner"))
+                .andExpect(jsonPath("$[?(@.username=='staffA')].role").value("staff"));
+    }
+
+    @Test
+    void adminChangesPassword_oldFailsNewWorks() throws Exception {
+        mockMvc.perform(put("/admin/organizations/{id}/users/{userId}", salonA, ownerAId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"brand-new-pass\"}"))
+                .andExpect(status().isOk());
+
+        login("ownerA", PostgresIdentityTestSupport.TEST_PASSWORD, status().isUnauthorized());
+        login("ownerA", "brand-new-pass", status().isOk());
+    }
+
+    @Test
+    void adminChangesUsername_newUsernameAuthenticates() throws Exception {
+        mockMvc.perform(put("/admin/organizations/{id}/users/{userId}", salonA, ownerAId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"owner-renamed\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("owner-renamed"));
+
+        login("owner-renamed", PostgresIdentityTestSupport.TEST_PASSWORD, status().isOk());
+    }
+
+    @Test
+    void changeUsername_toAnExistingUsername_isRejected() throws Exception {
+        mockMvc.perform(put("/admin/organizations/{id}/users/{userId}", salonA, ownerAId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"staffA\"}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void updateUser_notAMemberOfThatSalon_isRejected() throws Exception {
+        // ownerA belongs to Salon A, not Salon B — editing them via Salon B must fail.
+        mockMvc.perform(put("/admin/organizations/{id}/users/{userId}", salonB, ownerAId)
+                        .header(HttpHeaders.AUTHORIZATION, adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"password\":\"x\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void ownerAndStaff_areForbiddenFromUserManagement() throws Exception {
+        for (String token : new String[]{ownerAToken, staffAToken}) {
+            mockMvc.perform(get("/admin/organizations/{id}/users", salonA).header(HttpHeaders.AUTHORIZATION, token))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(put("/admin/organizations/{id}/users/{userId}", salonA, staffAId)
+                            .header(HttpHeaders.AUTHORIZATION, token)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"password\":\"x\"}"))
                     .andExpect(status().isForbidden());
         }
     }

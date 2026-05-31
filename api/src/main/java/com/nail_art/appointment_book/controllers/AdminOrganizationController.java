@@ -1,14 +1,17 @@
 package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.dtos.AdminTwilioConfigRequest;
+import com.nail_art.appointment_book.dtos.AdminUserUpdateRequest;
 import com.nail_art.appointment_book.dtos.CreateOrganizationRequest;
 import com.nail_art.appointment_book.dtos.OrganizationSettingsUpdateRequest;
 import com.nail_art.appointment_book.responses.AdminOrganizationSummaryResponse;
 import com.nail_art.appointment_book.responses.AdminTwilioConfigResponse;
+import com.nail_art.appointment_book.responses.AdminUserSummary;
 import com.nail_art.appointment_book.responses.CreateOrganizationResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
 import com.nail_art.appointment_book.services.AdminProvisioningService;
 import com.nail_art.appointment_book.services.OrganizationService;
+import com.nail_art.appointment_book.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,13 +38,16 @@ import java.util.UUID;
 public class AdminOrganizationController {
     private final OrganizationService organizationService;
     private final AdminProvisioningService adminProvisioningService;
+    private final UserService userService;
 
     public AdminOrganizationController(
             OrganizationService organizationService,
-            AdminProvisioningService adminProvisioningService
+            AdminProvisioningService adminProvisioningService,
+            UserService userService
     ) {
         this.organizationService = organizationService;
         this.adminProvisioningService = adminProvisioningService;
+        this.userService = userService;
     }
 
     @GetMapping
@@ -77,5 +83,18 @@ public class AdminOrganizationController {
             @PathVariable UUID organizationId,
             @RequestBody AdminTwilioConfigRequest request) {
         return ResponseEntity.ok(organizationService.updateTwilioConfig(organizationId, request));
+    }
+
+    @GetMapping("/{organizationId}/users")
+    public ResponseEntity<List<AdminUserSummary>> listUsers(@PathVariable UUID organizationId) {
+        return ResponseEntity.ok(userService.listOrganizationUsers(organizationId));
+    }
+
+    @PutMapping("/{organizationId}/users/{userId}")
+    public ResponseEntity<AdminUserSummary> updateUser(
+            @PathVariable UUID organizationId,
+            @PathVariable UUID userId,
+            @RequestBody AdminUserUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateUserCredentials(organizationId, userId, request));
     }
 }
