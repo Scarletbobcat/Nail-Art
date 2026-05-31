@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig } from "axios";
 import { refreshToken } from "./auth/auth";
+import { ROUTES } from "../constants/routes";
 const BASE_URL = import.meta.env.VITE_API_URL;
 
 declare module "axios" {
@@ -51,7 +52,7 @@ api.interceptors.response.use(
       ) {
         localStorage.removeItem("token");
         localStorage.setItem("previousUrl", window.location.pathname);
-        window.location.href = "/login";
+        window.location.href = ROUTES.login;
       } else {
         try {
           const originalRequest: AxiosRequestConfig = error.config;
@@ -64,13 +65,13 @@ api.interceptors.response.use(
           return api(originalRequest);
         } catch {
           localStorage.setItem("previousUrl", window.location.pathname);
-          window.location.href = "/login";
+          window.location.href = ROUTES.login;
         }
       }
     }
     if (status === 403) {
       localStorage.setItem("previousUrl", window.location.pathname);
-      window.location.href = "/login";
+      window.location.href = ROUTES.login;
     }
     return Promise.reject(error);
   }

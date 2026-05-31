@@ -26,6 +26,7 @@ import {
 } from "../../../api/appointments";
 import { getAllServices } from "../../../api/services";
 import { getClients } from "../../../api/clients";
+import { appointmentsSearchPath } from "../../../constants/routes";
 import { Appointment, Employee, Service } from "../../../types";
 import CircularLoading from "../../../components/CircularLoading";
 import EmployeeSelector from "./EmployeeSelector";
@@ -492,7 +493,7 @@ export default function MobileCalendar({
                   variant="outlined"
                   onClick={() => {
                     setDetailApp(null);
-                    navigate(`/Appointments/Search?pn=${detailApp.phoneNumber}`);
+                    navigate(appointmentsSearchPath(detailApp.phoneNumber));
                   }}
                   sx={{ px: 1 }}
                 />

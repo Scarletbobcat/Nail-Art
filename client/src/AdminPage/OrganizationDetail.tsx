@@ -26,6 +26,7 @@ import PageSkeleton from "../components/PageSkeleton";
 import { SPACING, MAX_CONTENT_WIDTH, TIMEZONES } from "../constants/design";
 import { getHttpStatus } from "../utils/httpError";
 import { formatPhoneInput } from "../utils/phone";
+import { ROUTES } from "../constants/routes";
 import {
   getSalon,
   getSalonTwilio,
@@ -222,7 +223,7 @@ export default function OrganizationDetail() {
   return (
     <AnimatedPage>
       <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/Admin")} sx={{ mb: 1 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(ROUTES.admin)} sx={{ mb: 1 }}>
           All salons
         </Button>
 

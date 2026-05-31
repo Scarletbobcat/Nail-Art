@@ -5,6 +5,7 @@ import { Navigate } from "react-router-dom";
 
 import { useMe } from "../hooks/useMe";
 import { getHttpStatus } from "../utils/httpError";
+import { ROUTES } from "../constants/routes";
 import CircularLoading from "./CircularLoading";
 
 type RequireMeProps = {
@@ -13,7 +14,7 @@ type RequireMeProps = {
   // `redirectTo`. Omitting it preserves the plain authenticated-only behavior.
   requiredRole?: string;
   // When true, the route requires a platform admin (the org-less operator). When
-  // false/omitted, platform admins are redirected to /Admin — salon pages can't
+  // false/omitted, platform admins are redirected to /admin — salon pages can't
   // function without an org, so admins are corralled into the console.
   requirePlatformAdmin?: boolean;
   redirectTo?: string;
@@ -27,7 +28,7 @@ export function RequireMe({
   children,
   requiredRole,
   requirePlatformAdmin,
-  redirectTo = "/Appointments",
+  redirectTo = ROUTES.appointments,
 }: RequireMeProps) {
   const { data, error, isError, isLoading, isPending, refetch } = useMe();
 
@@ -37,7 +38,7 @@ export function RequireMe({
 
   if (isError) {
     if (getHttpStatus(error) === 401) {
-      return <Navigate to="/Login" replace />;
+      return <Navigate to={ROUTES.login} replace />;
     }
 
     if (!data) {
@@ -60,7 +61,7 @@ export function RequireMe({
 
   // Salon route: a platform admin has no org and can't use it — send to the console.
   if (data.user.isPlatformAdmin) {
-    return <Navigate to="/Admin" replace />;
+    return <Navigate to={ROUTES.admin} replace />;
   }
 
   if (requiredRole && data.user.role !== requiredRole) {

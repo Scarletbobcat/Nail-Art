@@ -18,6 +18,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
 import { SPACING, MAX_CONTENT_WIDTH, TIMEZONES } from "../constants/design";
+import { ROUTES, adminOrganizationPath } from "../constants/routes";
 import { getHttpStatus } from "../utils/httpError";
 import { formatPhoneInput } from "../utils/phone";
 import { createSalon, type CreateSalonResponse } from "../api/admin";
@@ -97,10 +98,10 @@ export default function CreateOrganization() {
                 <div>Owner username: {created.ownerUsername}</div>
               </Box>
               <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
-                <Button variant="contained" onClick={() => navigate(`/Admin/${created.organizationId}`)}>
+                <Button variant="contained" onClick={() => navigate(adminOrganizationPath(created.organizationId))}>
                   Configure Twilio
                 </Button>
-                <Button onClick={() => navigate("/Admin")}>Back to salons</Button>
+                <Button onClick={() => navigate(ROUTES.admin)}>Back to salons</Button>
               </Stack>
             </Stack>
           </Paper>
@@ -112,7 +113,7 @@ export default function CreateOrganization() {
   return (
     <AnimatedPage>
       <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate("/Admin")} sx={{ mb: 1 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(ROUTES.admin)} sx={{ mb: 1 }}>
           All salons
         </Button>
         <Paper variant="outlined" sx={{ p: SPACING.section }}>

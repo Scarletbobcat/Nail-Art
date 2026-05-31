@@ -16,6 +16,7 @@ import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
 import PageSkeleton from "../components/PageSkeleton";
 import { SPACING, MAX_CONTENT_WIDTH } from "../constants/design";
+import { ROUTES, adminOrganizationPath } from "../constants/routes";
 import { listSalons } from "../api/admin";
 
 export const adminSalonsQueryKey = ["admin-salons"] as const;
@@ -42,7 +43,7 @@ export default function Organizations() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => navigate("/Admin/new")}
+              onClick={() => navigate(ROUTES.adminNew)}
             >
               New salon
             </Button>
@@ -61,7 +62,7 @@ export default function Organizations() {
               <Paper
                 key={salon.id}
                 variant="outlined"
-                onClick={() => navigate(`/Admin/${salon.id}`)}
+                onClick={() => navigate(adminOrganizationPath(salon.id))}
                 sx={{
                   p: SPACING.card,
                   display: "flex",

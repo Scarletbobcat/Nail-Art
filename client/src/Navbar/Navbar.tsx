@@ -12,6 +12,7 @@ import {
 import { logout } from "../api/auth/auth";
 import { useMe } from "../hooks/useMe";
 import { MAX_CONTENT_WIDTH } from "../constants/design";
+import { ROUTES } from "../constants/routes";
 
 const navItems = [
   {
@@ -19,17 +20,17 @@ const navItems = [
     subMenu: [
       {
         title: "Search",
-        url: "/Appointments/Search",
+        url: ROUTES.appointmentsSearch,
       },
       {
         title: "Calendar",
-        url: "/Appointments",
+        url: ROUTES.appointments,
       },
     ],
   },
-  { title: "Employees", url: "/Employees" },
-  { title: "Services", url: "/Services" },
-  { title: "Clients", url: "/Clients" },
+  { title: "Employees", url: ROUTES.employees },
+  { title: "Services", url: ROUTES.services },
+  { title: "Clients", url: ROUTES.clients },
 ];
 
 
@@ -42,9 +43,9 @@ function Navbar() {
   // Platform admins are org-less: they see only the operator console, never the
   // salon nav. Otherwise Settings is owner-only; staff never see the entry.
   const items = me?.user.isPlatformAdmin
-    ? [{ title: "Salons", url: "/Admin" }]
+    ? [{ title: "Salons", url: ROUTES.admin }]
     : me?.user.role === "owner"
-      ? [...navItems, { title: "Settings", url: "/Settings" }]
+      ? [...navItems, { title: "Settings", url: ROUTES.settings }]
       : navItems;
 
   const isActive = (url: string) => location.pathname === url;
@@ -197,7 +198,7 @@ function Navbar() {
             ) : (
               <Button
                 component={Link}
-                to="/Login"
+                to={ROUTES.login}
                 variant="outlined"
                 size="small"
                 sx={{

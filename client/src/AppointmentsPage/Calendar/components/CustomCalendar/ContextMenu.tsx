@@ -13,6 +13,7 @@ import EventIcon from "@mui/icons-material/Event";
 import { Appointment, Service } from "../../../../types";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { appointmentsSearchPath } from "../../../../constants/routes";
 
 export default function ContextMenu({
   onClose,
@@ -56,7 +57,7 @@ export default function ContextMenu({
     if (!appointment) return;
     setIsLoading(true);
     onClose(e);
-    nav(`/Appointments/Search?pn=${appointment.phoneNumber}`);
+    nav(appointmentsSearchPath(appointment.phoneNumber));
     setIsLoading(false);
   };
   const unavailabilityService = services.find((service) => service.isUnavailabilityMarker);
