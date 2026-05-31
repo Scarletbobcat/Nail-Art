@@ -15,10 +15,11 @@ import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { logout } from "../api/auth/auth";
 import { useMe } from "../hooks/useMe";
+import { ROUTES } from "../constants/routes";
 
 const baseItems = [
-  { title: "Employees", url: "/Employees", icon: <BadgeIcon /> },
-  { title: "Services", url: "/Services", icon: <ContentCutIcon /> },
+  { title: "Employees", url: ROUTES.employees, icon: <BadgeIcon /> },
+  { title: "Services", url: ROUTES.services, icon: <ContentCutIcon /> },
 ];
 
 export default function MoreDrawer({
@@ -35,9 +36,9 @@ export default function MoreDrawer({
   // Platform admins are org-less: only the operator console. Otherwise Settings
   // is owner-only; staff never see the entry.
   const moreItems = me?.user.isPlatformAdmin
-    ? [{ title: "Salons", url: "/Admin", icon: <StorefrontIcon /> }]
+    ? [{ title: "Salons", url: ROUTES.admin, icon: <StorefrontIcon /> }]
     : me?.user.role === "owner"
-      ? [...baseItems, { title: "Settings", url: "/Settings", icon: <SettingsIcon /> }]
+      ? [...baseItems, { title: "Settings", url: ROUTES.settings, icon: <SettingsIcon /> }]
       : baseItems;
 
   return (
@@ -83,7 +84,7 @@ export default function MoreDrawer({
             <ListItemText primary="Logout" />
           </ListItemButton>
         ) : (
-          <ListItemButton component={Link} to="/Login" onClick={onClose}>
+          <ListItemButton component={Link} to={ROUTES.login} onClick={onClose}>
             <ListItemIcon><LoginIcon /></ListItemIcon>
             <ListItemText primary="Login" />
           </ListItemButton>

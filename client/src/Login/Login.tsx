@@ -14,6 +14,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { login } from "../api/auth/auth";
 import { fetchMe } from "../api/me";
 import { meQueryKey } from "../hooks/useMe";
+import { ROUTES } from "../constants/routes";
 import { useNavigate } from "react-router-dom";
 import { AxiosError } from "axios";
 import { useState, FormEvent } from "react";
@@ -42,12 +43,12 @@ export default function Login() {
       // a salon page (or a stale previousUrl pointing at one).
       if (me.user.isPlatformAdmin) {
         localStorage.removeItem("previousUrl");
-        navigate("/Admin");
+        navigate(ROUTES.admin);
       } else if (previousUrl) {
         navigate(previousUrl);
         localStorage.removeItem("previousUrl");
       } else {
-        navigate("/");
+        navigate(ROUTES.home);
       }
     } catch (error) {
       const errors = error as AxiosError;

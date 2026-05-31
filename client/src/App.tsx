@@ -20,6 +20,7 @@ import {
 } from "react-router-dom";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 import { MOBILE_BREAKPOINT } from "./constants/design";
+import { ROUTES } from "./constants/routes";
 
 function AppContent() {
   const theme = useTheme();
@@ -28,16 +29,16 @@ function AppContent() {
   // The login page is the only unauthenticated route. Hiding the nav there keeps
   // its useMe() lookups from firing without a token, which would 401 -> redirect
   // to /login -> remount -> loop.
-  const showChrome = location.pathname.toLowerCase() !== "/login";
+  const showChrome = location.pathname.toLowerCase() !== ROUTES.login;
 
   return (
     <>
       {showChrome && <Navbar />}
       <Box sx={{ pb: isMobile && showChrome ? "72px" : 0 }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/Appointments" replace />} />
+          <Route path={ROUTES.home} element={<Navigate to={ROUTES.appointments} replace />} />
           <Route
-            path="/Appointments"
+            path={ROUTES.appointments}
             element={
               <RequireMe>
                 <Calendar />
@@ -45,16 +46,16 @@ function AppContent() {
             }
           />
           <Route
-            path="/Clients"
+            path={ROUTES.clients}
             element={
               <RequireMe>
                 <Clients />
               </RequireMe>
             }
           />
-          <Route path="/Login" element={<Login />} />
+          <Route path={ROUTES.login} element={<Login />} />
           <Route
-            path="/Employees"
+            path={ROUTES.employees}
             element={
               <RequireMe>
                 <Employees />
@@ -62,7 +63,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Services"
+            path={ROUTES.services}
             element={
               <RequireMe>
                 <Services />
@@ -70,7 +71,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Appointments/Search"
+            path={ROUTES.appointmentsSearch}
             element={
               <RequireMe>
                 <Search />
@@ -78,7 +79,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Settings"
+            path={ROUTES.settings}
             element={
               <RequireMe requiredRole="owner">
                 <Settings />
@@ -86,7 +87,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Admin"
+            path={ROUTES.admin}
             element={
               <RequireMe requirePlatformAdmin>
                 <AdminOrganizations />
@@ -94,7 +95,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Admin/new"
+            path={ROUTES.adminNew}
             element={
               <RequireMe requirePlatformAdmin>
                 <AdminCreateOrganization />
@@ -102,7 +103,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/Admin/:organizationId"
+            path={ROUTES.adminOrganization}
             element={
               <RequireMe requirePlatformAdmin>
                 <AdminOrganizationDetail />

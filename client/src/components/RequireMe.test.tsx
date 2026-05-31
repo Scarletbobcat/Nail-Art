@@ -45,14 +45,14 @@ describe("RequireMe platform-admin gating", () => {
   it("redirects a non-admin away from an admin-only route", () => {
     asLoaded(owner);
     render(<RequireMe requirePlatformAdmin>{child()}</RequireMe>);
-    expect(screen.getByTestId("navigate")).toHaveTextContent("/Appointments");
+    expect(screen.getByTestId("navigate")).toHaveTextContent("/appointments");
     expect(screen.queryByTestId("child")).not.toBeInTheDocument();
   });
 
   it("redirects a platform admin off a salon route to the console", () => {
     asLoaded(admin);
     render(<RequireMe>{child()}</RequireMe>);
-    expect(screen.getByTestId("navigate")).toHaveTextContent("/Admin");
+    expect(screen.getByTestId("navigate")).toHaveTextContent("/admin");
   });
 
   it("renders a salon route for an owner", () => {
@@ -68,6 +68,6 @@ describe("RequireMe platform-admin gating", () => {
         {child()}
       </RequireMe>
     );
-    expect(screen.getByTestId("navigate")).toHaveTextContent("/Appointments");
+    expect(screen.getByTestId("navigate")).toHaveTextContent("/appointments");
   });
 });

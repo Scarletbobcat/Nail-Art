@@ -1,4 +1,5 @@
 import api from "../api";
+import { ROUTES } from "../../constants/routes";
 
 export const login = async (username: string, password: string) => {
   const response = await api.post("/auth/login", {
@@ -29,5 +30,5 @@ export const logout = async () => {
     // Continue with local cleanup even if the server call fails
   }
   localStorage.removeItem("token");
-  window.location.href = "/Login";
+  window.location.href = ROUTES.login;
 };

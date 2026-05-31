@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Box, TextField, Chip, Button } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { useQuery } from "@tanstack/react-query";
@@ -43,6 +43,26 @@ export default function Search() {
   const { data: me, isLoading: meLoading } = useMe();
   const orgTz = me?.organization?.timezone;
 
+  const runSearch = useCallback(async (rawPhoneNumber: string) => {
+    const normalizedPhoneNumber = rawPhoneNumber.trim();
+    if (!normalizedPhoneNumber) {
+      setTempData([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const appointmentsData = await getAppointmentsByPhoneNumber(
+        normalizedPhoneNumber
+      );
+      setTempData(appointmentsData);
+    } catch (error) {
+      console.error("Error fetching appointments:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const {
     data: employees,
     isLoading: employeesLoading,
@@ -62,24 +82,9 @@ export default function Search() {
   });
 
   useEffect(() => {
-    const fetchAppointments = async () => {
-      if (phoneNumberParam && phoneNumberParam.trim() !== "") {
-        setLoading(true);
-        try {
-          const appointmentsData = await getAppointmentsByPhoneNumber(
-            phoneNumberParam
-          );
-          setTempData(appointmentsData);
-        } catch (error) {
-          console.error("Error fetching appointments:", error);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchAppointments();
-  }, [phoneNumberParam]);
+    setPhoneNumber(phoneNumberParam);
+    void runSearch(phoneNumberParam);
+  }, [phoneNumberParam, runSearch]);
 
   function changePhoneNumber(inputPhoneNumber: string) {
     const regex = /^\d{0,3}[\s-]?\d{0,3}[\s-]?\d{0,4}$/;
@@ -97,17 +102,7 @@ export default function Search() {
 
   const handleKeyDown = async (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Enter") {
-      setLoading(true);
-      try {
-        const appointmentsData = await getAppointmentsByPhoneNumber(
-          phoneNumber || phoneNumberParam
-        );
-        setTempData(appointmentsData);
-      } catch (error) {
-        console.error("Error fetching appointments:", error);
-      } finally {
-        setLoading(false);
-      }
+      await runSearch(phoneNumber || phoneNumberParam);
     }
   };
 
@@ -179,11 +174,7 @@ export default function Search() {
           <Button
             variant="contained"
             startIcon={<SearchIcon />}
-            onClick={async () => {
-              setLoading(true);
-              setTempData(await getAppointmentsByPhoneNumber(phoneNumber));
-              setLoading(false);
-            }}
+            onClick={() => void runSearch(phoneNumber)}
             sx={{ height: 40, width: { xs: "100%", sm: "auto" }, flexShrink: 0 }}
           >
             Search
@@ -224,7 +215,7 @@ export default function Search() {
             onClose={() => setIsEditOpen(false)}
             appointment={selectedApp}
             renderEvents={async () =>
-              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+              runSearch(phoneNumber || phoneNumberParam)
             }
             allEmployees={employees}
             allServices={services}
@@ -240,7 +231,7 @@ export default function Search() {
             onClose={() => setIsDeleteOpen(false)}
             appointment={selectedApp}
             renderEvents={async () =>
-              setTempData(await getAppointmentsByPhoneNumber(phoneNumber))
+              runSearch(phoneNumber || phoneNumberParam)
             }
             allEmployees={employees}
             orgTz={orgTz}

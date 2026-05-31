@@ -8,7 +8,14 @@ export const getAppointmentsByDate = async (date: string) => {
 };
 
 export const getAppointmentsByPhoneNumber = async (phoneNumber: string) => {
-  const response = await api.get(`/appointments/search/${phoneNumber}`);
+  const normalizedPhoneNumber = phoneNumber.trim();
+  if (!normalizedPhoneNumber) {
+    return [];
+  }
+
+  const response = await api.get(
+    `/appointments/search/${encodeURIComponent(normalizedPhoneNumber)}`
+  );
 
   return response.data;
 };

@@ -92,7 +92,7 @@ describe("useMe", () => {
 
   it("lets the axios interceptor clear auth state on 401", async () => {
     localStorage.setItem("token", "stale-token");
-    window.history.pushState({}, "", "/Appointments");
+    window.history.pushState({}, "", "/appointments");
 
     await expect(
       responseInterceptor().rejected({
@@ -105,12 +105,12 @@ describe("useMe", () => {
     ).rejects.toBeDefined();
 
     expect(localStorage.getItem("token")).toBeNull();
-    expect(localStorage.getItem("previousUrl")).toBe("/Appointments");
+    expect(localStorage.getItem("previousUrl")).toBe("/appointments");
   });
 
   it("does not trigger the logout interceptor on 503", async () => {
     localStorage.setItem("token", "still-valid");
-    window.history.pushState({}, "", "/Appointments");
+    window.history.pushState({}, "", "/appointments");
 
     const unavailable = {
       response: {
@@ -164,17 +164,17 @@ describe("RequireMe", () => {
 
   function renderProtected() {
     return render(
-      <MemoryRouter initialEntries={["/Appointments"]}>
+      <MemoryRouter initialEntries={["/appointments"]}>
         <Routes>
           <Route
-            path="/Appointments"
+            path="/appointments"
             element={
               <RequireMe>
                 <div>Protected content</div>
               </RequireMe>
             }
           />
-          <Route path="/Login" element={<div>Login screen</div>} />
+          <Route path="/login" element={<div>Login screen</div>} />
         </Routes>
       </MemoryRouter>
     );
@@ -225,17 +225,17 @@ describe("RequireMe", () => {
 
   function renderRoleProtected() {
     return render(
-      <MemoryRouter initialEntries={["/Settings"]}>
+      <MemoryRouter initialEntries={["/settings"]}>
         <Routes>
           <Route
-            path="/Settings"
+            path="/settings"
             element={
               <RequireMe requiredRole="owner">
                 <div>Owner only</div>
               </RequireMe>
             }
           />
-          <Route path="/Appointments" element={<div>Appointments screen</div>} />
+          <Route path="/appointments" element={<div>Appointments screen</div>} />
         </Routes>
       </MemoryRouter>
     );

@@ -13,11 +13,12 @@ import PeopleIcon from "@mui/icons-material/People";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import MoreDrawer from "./MoreDrawer";
 import { MOBILE_BREAKPOINT } from "../constants/design";
+import { ROUTES } from "../constants/routes";
 
 const tabs = [
-  { label: "Calendar", icon: <CalendarTodayIcon />, path: "/Appointments" },
-  { label: "Search", icon: <SearchIcon />, path: "/Appointments/Search" },
-  { label: "Clients", icon: <PeopleIcon />, path: "/Clients" },
+  { label: "Calendar", icon: <CalendarTodayIcon />, path: ROUTES.appointments },
+  { label: "Search", icon: <SearchIcon />, path: ROUTES.appointmentsSearch },
+  { label: "Clients", icon: <PeopleIcon />, path: ROUTES.clients },
 ];
 
 export default function MobileBottomNav() {
