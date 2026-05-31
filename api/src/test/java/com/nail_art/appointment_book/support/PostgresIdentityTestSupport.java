@@ -10,9 +10,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.security.Key;
+import java.security.MessageDigest;
 import java.time.OffsetDateTime;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -144,14 +146,25 @@ public class PostgresIdentityTestSupport {
     }
 
     public String persistRefreshToken(UUID userId, UUID organizationId, String role) {
-        String token = signedToken(userId, organizationId, role, 2_592_000_000L);
+        String token = UUID.randomUUID() + "." + UUID.randomUUID();
         jdbcTemplate.update(
-                "insert into refresh_tokens (user_id, token, expires_at) values (?, ?, ?)",
+                "insert into refresh_tokens (user_id, organization_id, token_hash, expires_at) values (?, ?, ?, ?)",
                 userId,
-                token,
+                organizationId,
+                hashRefreshToken(token),
                 OffsetDateTime.now().plusDays(30)
         );
         return token;
+    }
+
+    public String hashRefreshToken(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
     }
 
     public String bearer(SeededIdentity identity) {

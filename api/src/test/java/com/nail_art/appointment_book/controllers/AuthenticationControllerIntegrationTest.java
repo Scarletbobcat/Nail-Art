@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nail_art.appointment_book.PostgresIntegrationTest;
 import com.nail_art.appointment_book.support.PostgresIdentityTestSupport;
 import com.nail_art.appointment_book.support.PostgresIdentityTestSupport.SeededIdentity;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.UUID;
 
@@ -81,6 +83,50 @@ class AuthenticationControllerIntegrationTest extends PostgresIntegrationTest {
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("SameSite=None")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Secure")))
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, org.hamcrest.Matchers.containsString("Max-Age=2592000")));
+    }
+
+    @Test
+    void loginTwice_sameUser_bothRefreshCookiesRemainValid() throws Exception {
+        identitySupport.seedIdentity("NailArt", "owner");
+
+        Cookie firstDevice = loginForRefreshCookie("NailArt");
+        Cookie secondDevice = loginForRefreshCookie("NailArt");
+
+        mockMvc.perform(post("/auth/refresh").cookie(firstDevice))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString());
+        mockMvc.perform(post("/auth/refresh").cookie(secondDevice))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString());
+
+        Integer tokenRows = jdbcTemplate.queryForObject(
+                "select count(*) from refresh_tokens",
+                Integer.class
+        );
+        assertEquals(2, tokenRows);
+    }
+
+    @Test
+    void logout_revokesOnlyCurrentRefreshCookie() throws Exception {
+        identitySupport.seedIdentity("NailArt", "owner");
+
+        Cookie firstDevice = loginForRefreshCookie("NailArt");
+        Cookie secondDevice = loginForRefreshCookie("NailArt");
+
+        mockMvc.perform(post("/auth/logout").cookie(firstDevice))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/refresh").cookie(firstDevice))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/auth/refresh").cookie(secondDevice))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isString());
+
+        Integer tokenRows = jdbcTemplate.queryForObject(
+                "select count(*) from refresh_tokens",
+                Integer.class
+        );
+        assertEquals(1, tokenRows);
     }
 
     @Test
@@ -167,5 +213,17 @@ class AuthenticationControllerIntegrationTest extends PostgresIntegrationTest {
                   "password": "%s"
                 }
                 """.formatted(username, password);
+    }
+
+    private Cookie loginForRefreshCookie(String username) throws Exception {
+        MvcResult result = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginBody(username, PostgresIdentityTestSupport.TEST_PASSWORD)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        Cookie refreshCookie = result.getResponse().getCookie("refreshToken");
+        org.junit.jupiter.api.Assertions.assertNotNull(refreshCookie, "login must set a refresh cookie");
+        return refreshCookie;
     }
 }

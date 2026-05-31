@@ -1,6 +1,7 @@
 package com.nail_art.appointment_book.services;
 
 import com.nail_art.appointment_book.dtos.LoginUserDto;
+import com.nail_art.appointment_book.entities.RefreshToken;
 import com.nail_art.appointment_book.entities.OrganizationUser;
 import com.nail_art.appointment_book.entities.User;
 import com.nail_art.appointment_book.repositories.OrganizationUserRepository;
@@ -59,31 +60,32 @@ public class AuthenticationService {
             return jwtService.generateAdminRefreshToken(user);
         }
         OrganizationUser membership = getPrimaryMembership(user);
-        return jwtService.generateRefreshToken(user, membership.getOrganizationId(), membership.getRole());
+        return jwtService.generateRefreshToken(user, membership.getOrganizationId());
     }
 
     public String refreshAccessToken(String refreshToken) {
-        if (!jwtService.validateRefreshToken(refreshToken)) {
-            throw new BadCredentialsException("Invalid or expired refresh token");
-        }
+        RefreshToken session = jwtService.findValidRefreshToken(refreshToken)
+                .orElseThrow(() -> new BadCredentialsException("Invalid or expired refresh token"));
 
-        UUID userId = jwtService.extractUserId(refreshToken);
+        UUID userId = session.getUserId();
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BadCredentialsException("User not found"));
 
         // Platform admins are org-less: re-check the live flag (it may have been
         // revoked since the refresh token was minted) and mint a fresh admin token.
-        if (jwtService.extractIsPlatformAdmin(refreshToken)) {
+        if (session.getOrganizationId() == null) {
             if (!user.isPlatformAdmin()) {
                 throw new BadCredentialsException("Platform admin access revoked");
             }
+            jwtService.markRefreshTokenUsed(session);
             return jwtService.generateAdminToken(user);
         }
 
-        UUID organizationId = jwtService.extractOrganizationId(refreshToken);
+        UUID organizationId = session.getOrganizationId();
         OrganizationUser membership = organizationUserRepository.findByUserIdAndOrganizationId(userId, organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization membership not found"));
 
+        jwtService.markRefreshTokenUsed(session);
         return jwtService.generateToken(user, organizationId, membership.getRole());
     }
 

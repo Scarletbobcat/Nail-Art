@@ -2,6 +2,10 @@
 
 Accretive log of significant documentation changes. Append to the top.
 
+## 2026-05-30 — Per-device refresh sessions
+
+- Updated auth docs to describe hashed opaque refresh tokens, independent multi-device sessions, and current-session logout behavior.
+
 ## 2026-05-25 — PostgreSQL cutover runbook
 
 - Added [`docs/operations/postgres-cutover-runbook.md`](operations/postgres-cutover-runbook.md), a checklist for dry-run, migration, deploy, manual E2E, rollback, and Atlas cleanup.

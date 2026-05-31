@@ -68,24 +68,53 @@ class AuthenticationServiceTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void generateRefreshToken_persistsTokenForPostgresUserId() {
+    void generateRefreshToken_persistsHashedTokenForPostgresUserId() {
         identitySupport.seedIdentity("NailArt", "owner");
         User user = authenticationService.authenticate(loginDto("NailArt", PostgresIdentityTestSupport.TEST_PASSWORD));
 
         String token = authenticationService.generateRefreshToken(user);
+        String tokenHash = identitySupport.hashRefreshToken(token);
 
         Integer savedTokens = jdbcTemplate.queryForObject(
                 """
                         select count(*)
                         from refresh_tokens rt
                         join users u on u.id = rt.user_id
-                        where u.username = ? and rt.token = ?
+                        where u.username = ? and rt.token_hash = ?
                         """,
                 Integer.class,
                 "NailArt",
-                token
+                tokenHash
         );
         assertEquals(1, savedTokens);
+
+        Integer rawTokens = jdbcTemplate.queryForObject(
+                "select count(*) from refresh_tokens where token_hash = ?",
+                Integer.class,
+                token
+        );
+        assertEquals(0, rawTokens);
+    }
+
+    @Test
+    void generateRefreshToken_keepsExistingDeviceSessions() {
+        identitySupport.seedIdentity("NailArt", "owner");
+        User user = authenticationService.authenticate(loginDto("NailArt", PostgresIdentityTestSupport.TEST_PASSWORD));
+
+        authenticationService.generateRefreshToken(user);
+        authenticationService.generateRefreshToken(user);
+
+        Integer savedTokens = jdbcTemplate.queryForObject(
+                """
+                        select count(*)
+                        from refresh_tokens rt
+                        join users u on u.id = rt.user_id
+                        where u.username = ?
+                        """,
+                Integer.class,
+                "NailArt"
+        );
+        assertEquals(2, savedTokens);
     }
 
     private LoginUserDto loginDto(String username, String password) {
