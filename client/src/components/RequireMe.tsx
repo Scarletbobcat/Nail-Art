@@ -12,6 +12,10 @@ type RequireMeProps = {
   // When set, the route also requires this role; a mismatch redirects to
   // `redirectTo`. Omitting it preserves the plain authenticated-only behavior.
   requiredRole?: string;
+  // When true, the route requires a platform admin (the org-less operator). When
+  // false/omitted, platform admins are redirected to /Admin — salon pages can't
+  // function without an org, so admins are corralled into the console.
+  requirePlatformAdmin?: boolean;
   redirectTo?: string;
 };
 
@@ -19,7 +23,12 @@ type RetryFallbackProps = {
   onRetry: () => void;
 };
 
-export function RequireMe({ children, requiredRole, redirectTo = "/Appointments" }: RequireMeProps) {
+export function RequireMe({
+  children,
+  requiredRole,
+  requirePlatformAdmin,
+  redirectTo = "/Appointments",
+}: RequireMeProps) {
   const { data, error, isError, isLoading, isPending, refetch } = useMe();
 
   if (isLoading || isPending) {
@@ -34,11 +43,24 @@ export function RequireMe({ children, requiredRole, redirectTo = "/Appointments"
     if (!data) {
       return <RetryFallback onRetry={() => void refetch()} />;
     }
-    // fall through to the role check below, using cached data
+    // fall through to the gate checks below, using cached data
   }
 
   if (!data) {
     return <CircularLoading />;
+  }
+
+  if (requirePlatformAdmin) {
+    // Admin-only route: non-admins go back to their salon home.
+    if (!data.user.isPlatformAdmin) {
+      return <Navigate to={redirectTo} replace />;
+    }
+    return <>{children}</>;
+  }
+
+  // Salon route: a platform admin has no org and can't use it — send to the console.
+  if (data.user.isPlatformAdmin) {
+    return <Navigate to="/Admin" replace />;
   }
 
   if (requiredRole && data.user.role !== requiredRole) {

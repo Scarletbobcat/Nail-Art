@@ -1,6 +1,8 @@
 package com.nail_art.appointment_book.configs;
 
+import com.nail_art.appointment_book.entities.User;
 import com.nail_art.appointment_book.repositories.OrganizationUserRepository;
+import com.nail_art.appointment_book.repositories.UserRepository;
 import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
 import com.nail_art.appointment_book.services.JwtService;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -26,13 +28,16 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final OrganizationUserRepository organizationUserRepository;
+    private final UserRepository userRepository;
 
     public JwtAuthenticationFilter(
             JwtService jwtService,
-            OrganizationUserRepository organizationUserRepository
+            OrganizationUserRepository organizationUserRepository,
+            UserRepository userRepository
     ) {
         this.jwtService = jwtService;
         this.organizationUserRepository = organizationUserRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -51,24 +56,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             final String jwt = authHeader.substring(7);
             UUID userId = jwtService.extractUserId(jwt);
-            UUID organizationId = jwtService.extractOrganizationId(jwt);
-            String role = jwtService.extractRole(jwt);
 
-            if (role == null || role.isBlank()) {
-                writeUnauthorized(response, "Invalid bearer token");
-                return;
+            AuthenticatedPrincipal principal;
+            String authority;
+
+            if (jwtService.extractIsPlatformAdmin(jwt)) {
+                // Org-less platform admin. Re-check the live flag (it may have been
+                // revoked since the token was minted) — the membership check's analogue.
+                boolean stillAdmin = userRepository.findById(userId)
+                        .map(User::isPlatformAdmin)
+                        .orElse(false);
+                if (!stillAdmin) {
+                    writeUnauthorized(response, "Platform admin access revoked");
+                    return;
+                }
+                principal = new AuthenticatedPrincipal(userId, null, null, true);
+                authority = "platform_admin";
+            } else {
+                UUID organizationId = jwtService.extractOrganizationId(jwt);
+                String role = jwtService.extractRole(jwt);
+
+                if (role == null || role.isBlank()) {
+                    writeUnauthorized(response, "Invalid bearer token");
+                    return;
+                }
+
+                if (!organizationUserRepository.existsByUserIdAndOrganizationId(userId, organizationId)) {
+                    writeUnauthorized(response, "Invalid organization membership");
+                    return;
+                }
+
+                principal = new AuthenticatedPrincipal(userId, organizationId, role, false);
+                authority = role;
             }
 
-            if (!organizationUserRepository.existsByUserIdAndOrganizationId(userId, organizationId)) {
-                writeUnauthorized(response, "Invalid organization membership");
-                return;
-            }
-
-            AuthenticatedPrincipal principal = new AuthenticatedPrincipal(userId, organizationId, role);
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                     principal,
                     null,
-                    List.of(new SimpleGrantedAuthority(role))
+                    List.of(new SimpleGrantedAuthority(authority))
             );
             authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authToken);

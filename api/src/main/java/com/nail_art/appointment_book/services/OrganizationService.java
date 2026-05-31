@@ -1,34 +1,63 @@
 package com.nail_art.appointment_book.services;
 
+import com.nail_art.appointment_book.dtos.AdminTwilioConfigRequest;
 import com.nail_art.appointment_book.dtos.OrganizationSettingsUpdateRequest;
 import com.nail_art.appointment_book.entities.Organization;
 import com.nail_art.appointment_book.entities.OrganizationSettings;
 import com.nail_art.appointment_book.repositories.OrganizationRepository;
 import com.nail_art.appointment_book.repositories.OrganizationSettingsRepository;
+import com.nail_art.appointment_book.responses.AdminOrganizationSummaryResponse;
+import com.nail_art.appointment_book.responses.AdminTwilioConfigResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
-import com.nail_art.appointment_book.security.AuthenticatedPrincipal;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
 public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final OrganizationSettingsRepository organizationSettingsRepository;
+    private final TwilioCredentialsService twilioCredentialsService;
 
     public OrganizationService(
             OrganizationRepository organizationRepository,
-            OrganizationSettingsRepository organizationSettingsRepository
+            OrganizationSettingsRepository organizationSettingsRepository,
+            TwilioCredentialsService twilioCredentialsService
     ) {
         this.organizationRepository = organizationRepository;
         this.organizationSettingsRepository = organizationSettingsRepository;
+        this.twilioCredentialsService = twilioCredentialsService;
+    }
+
+    /**
+     * Every salon with its profile, SMS flag, and Twilio-configured status — the
+     * platform-admin "all salons" view. Operates on non-@TenantId config tables,
+     * so it is not tenant-scoped (the admin sees every org by design). One settings
+     * lookup per org; fine at the handful-of-salons scale this serves.
+     */
+    @Transactional(readOnly = true)
+    public List<AdminOrganizationSummaryResponse> listAllSalons() {
+        return organizationRepository.findAll().stream()
+                .map(organization -> {
+                    UUID organizationId = organization.getId();
+                    OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
+                    return new AdminOrganizationSummaryResponse(
+                            organizationId,
+                            organization.getName(),
+                            organization.getTimezone(),
+                            organization.getBusinessPhone(),
+                            settings != null && settings.isSmsRemindersEnabled(),
+                            isConfigured(organizationId, settings)
+                    );
+                })
+                .toList();
     }
 
     @Transactional(readOnly = true)
-    public OrganizationSettingsResponse getSettings(AuthenticatedPrincipal principal) {
-        UUID organizationId = principal.organizationId();
+    public OrganizationSettingsResponse getSettings(UUID organizationId) {
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
         OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
@@ -36,18 +65,18 @@ public class OrganizationService {
     }
 
     /**
-     * Owners update profile (name, business phone, timezone) and the SMS toggle.
-     * Twilio credentials are operator-managed and never touched here. The toggle
-     * can only be turned on when Twilio is already configured (a hard 400); a
-     * profile-only edit leaves the stored flag untouched, so a salon's reminders
-     * survive until the operator runs the credential cutover.
+     * Update profile (name, business phone, timezone) and the SMS toggle for one
+     * org. Shared by the owner Settings endpoint (scoped to the caller's own org)
+     * and the platform-admin console (scoped to a target org id). Twilio
+     * credentials are not touched here. The toggle can only be turned on when
+     * Twilio is already configured (a hard 400); a profile-only edit leaves the
+     * stored flag untouched, so a salon's reminders survive until creds are set.
      */
     @Transactional
     public OrganizationSettingsResponse updateSettings(
-            AuthenticatedPrincipal principal,
+            UUID organizationId,
             OrganizationSettingsUpdateRequest request
     ) {
-        UUID organizationId = principal.organizationId();
         Organization organization = organizationRepository.findById(organizationId)
                 .orElseThrow(() -> new BadCredentialsException("Organization not found"));
         OrganizationSettings settings = organizationSettingsRepository.findById(organizationId)
@@ -81,6 +110,55 @@ public class OrganizationService {
         organizationSettingsRepository.save(settings);
 
         return toResponse(organization, settings, configured);
+    }
+
+    /**
+     * Platform-admin read of a salon's Twilio config. Returns the non-secret
+     * identifiers and the configured flag; the auth token is never read back.
+     */
+    @Transactional(readOnly = true)
+    public AdminTwilioConfigResponse getTwilioConfig(UUID organizationId) {
+        organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new BadCredentialsException("Organization not found"));
+        OrganizationSettings settings = organizationSettingsRepository.findById(organizationId).orElse(null);
+        return new AdminTwilioConfigResponse(
+                isConfigured(organizationId, settings),
+                settings == null ? null : settings.getTwilioAccountSid(),
+                settings == null ? null : settings.getTwilioPhoneNumber()
+        );
+    }
+
+    /**
+     * Platform-admin write of a salon's Twilio config. SID/phone are set when
+     * non-blank (left untouched otherwise); the auth token is encrypted via
+     * pgcrypto only when non-blank, so a profile-only edit never wipes a stored
+     * token. The settings row is flushed before the token upsert so both writes
+     * land on the same row deterministically.
+     */
+    @Transactional
+    public AdminTwilioConfigResponse updateTwilioConfig(UUID organizationId, AdminTwilioConfigRequest request) {
+        organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new BadCredentialsException("Organization not found"));
+        OrganizationSettings settings = organizationSettingsRepository.findById(organizationId)
+                .orElseGet(() -> {
+                    OrganizationSettings created = new OrganizationSettings();
+                    created.setOrganizationId(organizationId);
+                    return created;
+                });
+
+        if (isPresent(request.accountSid())) {
+            settings.setTwilioAccountSid(request.accountSid());
+        }
+        if (isPresent(request.phoneNumber())) {
+            settings.setTwilioPhoneNumber(request.phoneNumber());
+        }
+        organizationSettingsRepository.saveAndFlush(settings);
+
+        if (isPresent(request.authToken())) {
+            twilioCredentialsService.saveAuthToken(organizationId, request.authToken());
+        }
+
+        return getTwilioConfig(organizationId);
     }
 
     private boolean isConfigured(UUID organizationId, OrganizationSettings settings) {

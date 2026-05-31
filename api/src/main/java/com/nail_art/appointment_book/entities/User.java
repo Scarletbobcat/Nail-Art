@@ -34,6 +34,12 @@ public class User implements UserDetails {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
+    // Platform super-user capability. A User-level flag, not an org role: a
+    // platform admin has no organization_users membership and no role. Authority
+    // for admin-only operations derives from this flag.
+    @Column(name = "is_platform_admin", nullable = false)
+    private boolean platformAdmin;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
@@ -81,6 +87,14 @@ public class User implements UserDetails {
 
     public void setPassword(String password) {
         this.passwordHash = password;
+    }
+
+    public boolean isPlatformAdmin() {
+        return platformAdmin;
+    }
+
+    public void setPlatformAdmin(boolean platformAdmin) {
+        this.platformAdmin = platformAdmin;
     }
 
     public OffsetDateTime getCreatedAt() {

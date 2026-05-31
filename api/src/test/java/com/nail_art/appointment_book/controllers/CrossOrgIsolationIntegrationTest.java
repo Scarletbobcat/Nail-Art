@@ -61,8 +61,8 @@ class CrossOrgIsolationIntegrationTest extends PostgresIntegrationTest {
         jdbcTemplate.update("delete from services");
         jdbcTemplate.update("delete from employees");
         identitySupport.resetIdentityTables();
-        ownerA = identitySupport.seedIdentity("owner-a", "owner");
-        ownerB = identitySupport.seedIdentity("owner-b", "owner");
+        ownerA = identitySupport.seedIdentity("owner-a", "owner", "Org A");
+        ownerB = identitySupport.seedIdentity("owner-b", "owner", "Org B");
         employeeA = insertEmployee(ownerA.organizationId(), "Anna", "#111111");
         employeeB = insertEmployee(ownerB.organizationId(), "Bea", "#222222");
         serviceA = insertService(ownerA.organizationId(), "Gel Manicure");

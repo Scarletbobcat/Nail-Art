@@ -41,7 +41,7 @@ export default function Search() {
     showedUp: false,
   });
   const { data: me, isLoading: meLoading } = useMe();
-  const orgTz = me?.organization.timezone;
+  const orgTz = me?.organization?.timezone;
 
   const {
     data: employees,

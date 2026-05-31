@@ -39,9 +39,11 @@ function Navbar() {
   const location = useLocation();
   const { data: me } = useMe();
 
-  // Settings is owner-only; staff never see the entry.
-  const items =
-    me?.user.role === "owner"
+  // Platform admins are org-less: they see only the operator console, never the
+  // salon nav. Otherwise Settings is owner-only; staff never see the entry.
+  const items = me?.user.isPlatformAdmin
+    ? [{ title: "Salons", url: "/Admin" }]
+    : me?.user.role === "owner"
       ? [...navItems, { title: "Settings", url: "/Settings" }]
       : navItems;
 

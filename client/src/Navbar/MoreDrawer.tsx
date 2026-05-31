@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import BadgeIcon from "@mui/icons-material/Badge";
 import ContentCutIcon from "@mui/icons-material/ContentCut";
 import SettingsIcon from "@mui/icons-material/Settings";
+import StorefrontIcon from "@mui/icons-material/Storefront";
 import LoginIcon from "@mui/icons-material/Login";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { logout } from "../api/auth/auth";
@@ -31,9 +32,11 @@ export default function MoreDrawer({
 }) {
   const isLoggedIn = Boolean(localStorage.getItem("token"));
   const { data: me } = useMe();
-  // Settings is owner-only; staff never see the entry.
-  const moreItems =
-    me?.user.role === "owner"
+  // Platform admins are org-less: only the operator console. Otherwise Settings
+  // is owner-only; staff never see the entry.
+  const moreItems = me?.user.isPlatformAdmin
+    ? [{ title: "Salons", url: "/Admin", icon: <StorefrontIcon /> }]
+    : me?.user.role === "owner"
       ? [...baseItems, { title: "Settings", url: "/Settings", icon: <SettingsIcon /> }]
       : baseItems;
 

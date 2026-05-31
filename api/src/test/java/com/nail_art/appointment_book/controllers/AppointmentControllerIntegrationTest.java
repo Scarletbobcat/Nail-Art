@@ -57,8 +57,8 @@ class AppointmentControllerIntegrationTest extends PostgresIntegrationTest {
         jdbcTemplate.update("delete from services");
         jdbcTemplate.update("delete from employees");
         identitySupport.resetIdentityTables();
-        ownerA = identitySupport.seedIdentity("owner-a", "owner");
-        ownerB = identitySupport.seedIdentity("owner-b", "owner");
+        ownerA = identitySupport.seedIdentity("owner-a", "owner", "Org A");
+        ownerB = identitySupport.seedIdentity("owner-b", "owner", "Org B");
         employeeA = insertEmployee(ownerA.organizationId(), "Anna");
         employeeB = insertEmployee(ownerB.organizationId(), "Bea");
         serviceA = insertService(ownerA.organizationId(), "Gel Manicure");

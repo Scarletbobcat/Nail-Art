@@ -36,9 +36,14 @@ export default function Login() {
       const previousUrl = localStorage.getItem("previousUrl");
       setIsLoading(true);
       await login(username, password);
-      await queryClient.prefetchQuery({ queryKey: meQueryKey, queryFn: fetchMe });
+      const me = await queryClient.fetchQuery({ queryKey: meQueryKey, queryFn: fetchMe });
       setIsLoading(false);
-      if (previousUrl) {
+      // Platform admins are org-less and belong in the operator console, never on
+      // a salon page (or a stale previousUrl pointing at one).
+      if (me.user.isPlatformAdmin) {
+        localStorage.removeItem("previousUrl");
+        navigate("/Admin");
+      } else if (previousUrl) {
         navigate(previousUrl);
         localStorage.removeItem("previousUrl");
       } else {

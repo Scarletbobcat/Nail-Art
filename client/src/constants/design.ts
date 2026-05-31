@@ -18,3 +18,14 @@ export const SPACING = {
 } as const;
 
 export const MAX_CONTENT_WIDTH = 1200;
+
+// Supported salon timezones, offered wherever an org timezone is edited.
+export const TIMEZONES: string[] = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Phoenix",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+];

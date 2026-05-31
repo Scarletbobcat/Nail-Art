@@ -4,11 +4,14 @@ import com.nail_art.appointment_book.entities.OrganizationUser;
 import com.nail_art.appointment_book.entities.OrganizationUserId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface OrganizationUserRepository extends JpaRepository<OrganizationUser, OrganizationUserId> {
     boolean existsByIdUserIdAndIdOrganizationId(UUID userId, UUID organizationId);
+
+    List<OrganizationUser> findByIdOrganizationId(UUID organizationId);
 
     Optional<OrganizationUser> findFirstByIdUserIdOrderByCreatedAtAsc(UUID userId);
 
@@ -24,5 +27,9 @@ public interface OrganizationUserRepository extends JpaRepository<OrganizationUs
 
     default Optional<OrganizationUser> findByUserIdAndOrganizationId(UUID userId, UUID organizationId) {
         return findByIdUserIdAndIdOrganizationId(userId, organizationId);
+    }
+
+    default List<OrganizationUser> findByOrganizationId(UUID organizationId) {
+        return findByIdOrganizationId(organizationId);
     }
 }

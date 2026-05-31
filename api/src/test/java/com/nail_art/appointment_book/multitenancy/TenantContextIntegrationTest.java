@@ -83,8 +83,8 @@ class TenantContextIntegrationTest extends PostgresIntegrationTest {
         // org A's real user, but a JWT minted with org B's org claim. The membership cross-check
         // (existsByUserIdAndOrganizationId) must reject it before any tenant-scoped query runs —
         // a forged org claim never opens another tenant's scope.
-        SeededIdentity orgA = identitySupport.seedIdentity("owner-a", "owner");
-        SeededIdentity orgB = identitySupport.seedIdentity("owner-b", "owner");
+        SeededIdentity orgA = identitySupport.seedIdentity("owner-a", "owner", "Org A");
+        SeededIdentity orgB = identitySupport.seedIdentity("owner-b", "owner", "Org B");
 
         String forgedToken = "Bearer " + identitySupport.signedToken(
                 orgA.userId(), orgB.organizationId(), orgA.role());
