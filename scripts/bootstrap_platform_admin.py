@@ -5,7 +5,10 @@ import sys
 import bcrypt
 import psycopg
 from psycopg import errors
+from dotenv import load_dotenv
 
+
+load_dotenv()
 
 class BootstrapError(Exception):
     pass
