@@ -91,3 +91,32 @@ export const createSalon = async (request: CreateSalonRequest): Promise<CreateSa
   const response = await api.post<CreateSalonResponse>("/admin/organizations", request);
   return response.data;
 };
+
+export type AdminSalonUser = {
+  id: string;
+  username: string;
+  role: string;
+};
+
+// Both optional: omit/blank to leave unchanged. Password is write-only.
+export type AdminUserUpdate = {
+  username?: string;
+  password?: string;
+};
+
+export const listSalonUsers = async (organizationId: string): Promise<AdminSalonUser[]> => {
+  const response = await api.get<AdminSalonUser[]>(`/admin/organizations/${organizationId}/users`);
+  return response.data;
+};
+
+export const updateSalonUser = async (
+  organizationId: string,
+  userId: string,
+  update: AdminUserUpdate
+): Promise<AdminSalonUser> => {
+  const response = await api.put<AdminSalonUser>(
+    `/admin/organizations/${organizationId}/users/${userId}`,
+    update
+  );
+  return response.data;
+};

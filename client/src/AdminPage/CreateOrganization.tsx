@@ -80,8 +80,9 @@ export default function CreateOrganization() {
                 </Typography>
               </Stack>
               <Typography variant="body2" color="text.secondary">
-                Share these owner credentials with the salon. The password is not stored in plain
-                text and can't be shown again.
+                The owner can sign in with the username below and the password you set. The password
+                is hashed and never shown again — if it's lost, reset it from the salon's Users
+                section.
               </Typography>
               <Box
                 sx={{
@@ -94,7 +95,6 @@ export default function CreateOrganization() {
                 }}
               >
                 <div>Owner username: {created.ownerUsername}</div>
-                <div>Owner password: {form.ownerPassword}</div>
               </Box>
               <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
                 <Button variant="contained" onClick={() => navigate(`/Admin/${created.organizationId}`)}>

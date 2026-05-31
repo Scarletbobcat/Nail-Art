@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -7,8 +7,8 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
   FormControlLabel,
-  FormHelperText,
   MenuItem,
   Paper,
   Snackbar,
@@ -18,6 +18,7 @@ import {
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import EditIcon from "@mui/icons-material/Edit";
 
 import AnimatedPage from "../components/AnimatedPage";
 import PageHeader from "../components/PageHeader";
@@ -28,12 +29,27 @@ import { formatPhoneInput } from "../utils/phone";
 import {
   getSalon,
   getSalonTwilio,
+  listSalonUsers,
   updateSalon,
   updateSalonTwilio,
+  updateSalonUser,
 } from "../api/admin";
 import { adminSalonsQueryKey } from "./Organizations";
 
 type Snack = { msg: string; severity: "success" | "error" };
+
+function ReadRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, py: 0.75 }}>
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography variant="body2" sx={{ fontWeight: 500, textAlign: "right", wordBreak: "break-word" }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
 
 export default function OrganizationDetail() {
   const { organizationId = "" } = useParams();
@@ -52,42 +68,41 @@ export default function OrganizationDetail() {
     refetchOnWindowFocus: false,
     enabled: Boolean(organizationId),
   });
+  const usersQuery = useQuery({
+    queryKey: ["admin-salon-users", organizationId],
+    queryFn: () => listSalonUsers(organizationId),
+    refetchOnWindowFocus: false,
+    enabled: Boolean(organizationId),
+  });
 
-  const [profile, setProfile] = useState({
+  // Read-first: each section is a display until its Edit button opens a form.
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingTwilio, setEditingTwilio] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+
+  const [profileForm, setProfileForm] = useState({
     name: "",
     businessPhone: "",
     timezone: "America/New_York",
     smsRemindersEnabled: false,
   });
-  const [twilio, setTwilio] = useState({ accountSid: "", phoneNumber: "", authToken: "" });
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [savingTwilio, setSavingTwilio] = useState(false);
+  const [twilioForm, setTwilioForm] = useState({ accountSid: "", phoneNumber: "", authToken: "" });
+  const [userForm, setUserForm] = useState({ username: "", password: "" });
+  const [saving, setSaving] = useState(false);
   const [snack, setSnack] = useState<Snack | null>(null);
 
-  useEffect(() => {
-    if (!salonQuery.data) return;
-    setProfile({
-      name: salonQuery.data.name ?? "",
-      businessPhone: salonQuery.data.businessPhone ?? "",
-      timezone: salonQuery.data.timezone ?? "America/New_York",
-      smsRemindersEnabled: salonQuery.data.smsRemindersEnabled,
-    });
-  }, [salonQuery.data]);
-
-  useEffect(() => {
-    if (!twilioQuery.data) return;
-    setTwilio({
-      accountSid: twilioQuery.data.accountSid ?? "",
-      phoneNumber: twilioQuery.data.phoneNumber ?? "",
-      authToken: "",
-    });
-  }, [twilioQuery.data]);
-
-  if (salonQuery.isLoading || twilioQuery.isLoading) {
+  if (salonQuery.isLoading || twilioQuery.isLoading || usersQuery.isLoading) {
     return <PageSkeleton />;
   }
 
-  if (salonQuery.isError || twilioQuery.isError || !salonQuery.data || !twilioQuery.data) {
+  if (
+    salonQuery.isError ||
+    twilioQuery.isError ||
+    usersQuery.isError ||
+    !salonQuery.data ||
+    !twilioQuery.data ||
+    !usersQuery.data
+  ) {
     return (
       <AnimatedPage>
         <Box sx={{ p: SPACING.page, maxWidth: MAX_CONTENT_WIDTH, mx: "auto" }}>
@@ -97,29 +112,54 @@ export default function OrganizationDetail() {
     );
   }
 
-  const twilioConfigured = salonQuery.data.twilioConfigured;
+  const salon = salonQuery.data;
+  const twilio = twilioQuery.data;
+  const users = usersQuery.data;
+  const twilioConfigured = salon.twilioConfigured;
 
-  const invalidate = async () => {
-    await Promise.all([
+  const invalidate = () =>
+    Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin-salon", organizationId] }),
       queryClient.invalidateQueries({ queryKey: ["admin-salon-twilio", organizationId] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-salon-users", organizationId] }),
       queryClient.invalidateQueries({ queryKey: adminSalonsQueryKey }),
     ]);
+
+  const startEditProfile = () => {
+    setProfileForm({
+      name: salon.name ?? "",
+      businessPhone: salon.businessPhone ?? "",
+      timezone: salon.timezone ?? "America/New_York",
+      smsRemindersEnabled: salon.smsRemindersEnabled,
+    });
+    setEditingProfile(true);
+  };
+
+  const startEditTwilio = () => {
+    setTwilioForm({
+      accountSid: twilio.accountSid ?? "",
+      phoneNumber: twilio.phoneNumber ?? "",
+      authToken: "",
+    });
+    setEditingTwilio(true);
+  };
+
+  const startEditUser = (userId: string, username: string) => {
+    setUserForm({ username, password: "" });
+    setEditingUserId(userId);
   };
 
   const handleSaveProfile = async () => {
-    setSavingProfile(true);
+    setSaving(true);
     try {
-      // Only send the SMS toggle when it's actually controllable (Twilio configured);
-      // otherwise a profile-only edit would re-send a stored `true` and trip the
-      // backend's enable-without-Twilio 400. Mirrors the owner Settings page.
       await updateSalon(organizationId, {
-        name: profile.name,
-        businessPhone: profile.businessPhone,
-        timezone: profile.timezone,
-        ...(twilioConfigured ? { smsRemindersEnabled: profile.smsRemindersEnabled } : {}),
+        name: profileForm.name,
+        businessPhone: profileForm.businessPhone,
+        timezone: profileForm.timezone,
+        ...(twilioConfigured ? { smsRemindersEnabled: profileForm.smsRemindersEnabled } : {}),
       });
       await invalidate();
+      setEditingProfile(false);
       setSnack({ msg: "Profile saved.", severity: "success" });
     } catch (error) {
       setSnack({
@@ -130,32 +170,54 @@ export default function OrganizationDetail() {
         severity: "error",
       });
     } finally {
-      setSavingProfile(false);
+      setSaving(false);
     }
   };
 
   const handleSaveTwilio = async () => {
-    setSavingTwilio(true);
+    setSaving(true);
     try {
       await updateSalonTwilio(organizationId, {
-        accountSid: twilio.accountSid,
-        phoneNumber: twilio.phoneNumber,
-        // Blank token is intentionally sent as empty and treated as "leave unchanged".
-        authToken: twilio.authToken,
+        accountSid: twilioForm.accountSid,
+        phoneNumber: twilioForm.phoneNumber,
+        authToken: twilioForm.authToken, // blank = leave unchanged
       });
-      setTwilio((current) => ({ ...current, authToken: "" }));
       await invalidate();
+      setEditingTwilio(false);
       setSnack({ msg: "Twilio configuration saved.", severity: "success" });
     } catch {
       setSnack({ msg: "Could not save Twilio configuration. Please try again.", severity: "error" });
     } finally {
-      setSavingTwilio(false);
+      setSaving(false);
     }
   };
 
-  const timezoneOptions = TIMEZONES.includes(profile.timezone)
+  const handleSaveUser = async (userId: string) => {
+    setSaving(true);
+    try {
+      await updateSalonUser(organizationId, userId, {
+        username: userForm.username,
+        password: userForm.password, // blank = leave unchanged
+      });
+      await invalidate();
+      setEditingUserId(null);
+      setSnack({ msg: "User updated.", severity: "success" });
+    } catch (error) {
+      setSnack({
+        msg:
+          getHttpStatus(error) === 409
+            ? "That username is already taken."
+            : "Could not update the user. Please try again.",
+        severity: "error",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const timezoneOptions = TIMEZONES.includes(profileForm.timezone)
     ? TIMEZONES
-    : [profile.timezone, ...TIMEZONES];
+    : [profileForm.timezone, ...TIMEZONES];
 
   return (
     <AnimatedPage>
@@ -164,126 +226,206 @@ export default function OrganizationDetail() {
           All salons
         </Button>
 
+        {/* Profile */}
         <Paper variant="outlined" sx={{ p: SPACING.section, mb: 2 }}>
-          <PageHeader title={salonQuery.data.name} subtitle="Salon profile and SMS reminders" />
+          <PageHeader
+            title={salon.name}
+            subtitle="Salon profile and SMS reminders"
+            action={
+              !editingProfile ? (
+                <Button startIcon={<EditIcon />} onClick={startEditProfile}>
+                  Edit
+                </Button>
+              ) : undefined
+            }
+          />
 
-          <Stack spacing={2} sx={{ mb: 1 }}>
-            <TextField
-              label="Salon name"
-              fullWidth
-              size="small"
-              value={profile.name}
-              onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-            />
-            <TextField
-              label="Business phone"
-              fullWidth
-              size="small"
-              value={profile.businessPhone}
-              onChange={(e) => {
-                const next = formatPhoneInput(e.target.value, profile.businessPhone);
-                if (next !== null) setProfile((p) => ({ ...p, businessPhone: next }));
-              }}
-            />
-            <TextField
-              select
-              label="Timezone"
-              fullWidth
-              size="small"
-              value={profile.timezone}
-              onChange={(e) => setProfile((p) => ({ ...p, timezone: e.target.value }))}
-            >
-              {timezoneOptions.map((tz) => (
-                <MenuItem key={tz} value={tz}>
-                  {tz}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Stack>
-
-          <Box sx={{ mt: 1 }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={twilioConfigured && profile.smsRemindersEnabled}
-                  disabled={!twilioConfigured}
-                  onChange={(e) => setProfile((p) => ({ ...p, smsRemindersEnabled: e.target.checked }))}
+          {!editingProfile ? (
+            <Stack divider={<Divider flexItem />}>
+              <ReadRow label="Salon name" value={salon.name} />
+              <ReadRow label="Business phone" value={salon.businessPhone || "—"} />
+              <ReadRow label="Timezone" value={salon.timezone} />
+              <ReadRow
+                label="SMS reminders"
+                value={
+                  !twilioConfigured
+                    ? "Unavailable (Twilio not configured)"
+                    : salon.smsRemindersEnabled
+                      ? "On"
+                      : "Off"
+                }
+              />
+            </Stack>
+          ) : (
+            <>
+              <Stack spacing={2} sx={{ mb: 1 }}>
+                <TextField
+                  label="Salon name"
+                  fullWidth
+                  size="small"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, name: e.target.value }))}
                 />
-              }
-              label="Send SMS appointment reminders"
-            />
-            {!twilioConfigured && (
-              <FormHelperText>Configure Twilio below before enabling SMS reminders.</FormHelperText>
-            )}
-          </Box>
-
-          <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="contained"
-              onClick={handleSaveProfile}
-              disabled={savingProfile}
-              startIcon={savingProfile ? <CircularProgress size={16} color="inherit" /> : undefined}
-              sx={{ minWidth: 120 }}
-            >
-              {savingProfile ? "Saving…" : "Save profile"}
-            </Button>
-          </Box>
+                <TextField
+                  label="Business phone"
+                  fullWidth
+                  size="small"
+                  value={profileForm.businessPhone}
+                  onChange={(e) => {
+                    const next = formatPhoneInput(e.target.value, profileForm.businessPhone);
+                    if (next !== null) setProfileForm((p) => ({ ...p, businessPhone: next }));
+                  }}
+                />
+                <TextField
+                  select
+                  label="Timezone"
+                  fullWidth
+                  size="small"
+                  value={profileForm.timezone}
+                  onChange={(e) => setProfileForm((p) => ({ ...p, timezone: e.target.value }))}
+                >
+                  {timezoneOptions.map((tz) => (
+                    <MenuItem key={tz} value={tz}>
+                      {tz}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={twilioConfigured && profileForm.smsRemindersEnabled}
+                      disabled={!twilioConfigured}
+                      onChange={(e) => setProfileForm((p) => ({ ...p, smsRemindersEnabled: e.target.checked }))}
+                    />
+                  }
+                  label={twilioConfigured ? "Send SMS appointment reminders" : "SMS reminders (configure Twilio first)"}
+                />
+              </Stack>
+              <EditActions
+                saving={saving}
+                onCancel={() => setEditingProfile(false)}
+                onSave={handleSaveProfile}
+              />
+            </>
+          )}
         </Paper>
 
+        {/* Twilio */}
+        <Paper variant="outlined" sx={{ p: SPACING.section, mb: 2 }}>
+          <SectionHeader
+            title="Twilio configuration"
+            chip={
+              <Chip
+                size="small"
+                label={twilioConfigured ? "Configured" : "Not configured"}
+                color={twilioConfigured ? "success" : "default"}
+                variant={twilioConfigured ? "filled" : "outlined"}
+              />
+            }
+            onEdit={!editingTwilio ? startEditTwilio : undefined}
+          />
+
+          {!editingTwilio ? (
+            <Stack divider={<Divider flexItem />}>
+              <ReadRow label="Account SID" value={twilio.accountSid || "—"} />
+              <ReadRow label="Sending phone number" value={twilio.phoneNumber || "—"} />
+              <ReadRow label="Auth token" value={twilioConfigured ? "•••••••• (set)" : "Not set"} />
+            </Stack>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                The auth token is write-only — it's never shown. Leave it blank to keep the current one.
+              </Typography>
+              <Stack spacing={2}>
+                <TextField
+                  label="Account SID"
+                  fullWidth
+                  size="small"
+                  value={twilioForm.accountSid}
+                  onChange={(e) => setTwilioForm((t) => ({ ...t, accountSid: e.target.value }))}
+                />
+                <TextField
+                  label="Sending phone number"
+                  fullWidth
+                  size="small"
+                  value={twilioForm.phoneNumber}
+                  onChange={(e) => setTwilioForm((t) => ({ ...t, phoneNumber: e.target.value }))}
+                />
+                <TextField
+                  label="Auth token"
+                  type="password"
+                  fullWidth
+                  size="small"
+                  value={twilioForm.authToken}
+                  placeholder={twilioConfigured ? "Leave blank to keep current" : "Enter the Twilio auth token"}
+                  onChange={(e) => setTwilioForm((t) => ({ ...t, authToken: e.target.value }))}
+                />
+              </Stack>
+              <EditActions saving={saving} onCancel={() => setEditingTwilio(false)} onSave={handleSaveTwilio} />
+            </>
+          )}
+        </Paper>
+
+        {/* Users */}
         <Paper variant="outlined" sx={{ p: SPACING.section }}>
-          <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Twilio configuration
-            </Typography>
-            <Chip
-              size="small"
-              label={twilioConfigured ? "Configured" : "Not configured"}
-              color={twilioConfigured ? "success" : "default"}
-              variant={twilioConfigured ? "filled" : "outlined"}
-            />
-          </Stack>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            This salon sends reminders from its own Twilio account. The auth token is write-only — it
-            is never shown; leave it blank to keep the current one.
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+            Users
           </Typography>
-
-          <Stack spacing={2}>
-            <TextField
-              label="Account SID"
-              fullWidth
-              size="small"
-              value={twilio.accountSid}
-              onChange={(e) => setTwilio((t) => ({ ...t, accountSid: e.target.value }))}
-            />
-            <TextField
-              label="Sending phone number"
-              fullWidth
-              size="small"
-              value={twilio.phoneNumber}
-              onChange={(e) => setTwilio((t) => ({ ...t, phoneNumber: e.target.value }))}
-            />
-            <TextField
-              label="Auth token"
-              type="password"
-              fullWidth
-              size="small"
-              value={twilio.authToken}
-              placeholder={twilioConfigured ? "•••••••• (leave blank to keep current)" : "Enter the Twilio auth token"}
-              onChange={(e) => setTwilio((t) => ({ ...t, authToken: e.target.value }))}
-            />
+          <Stack divider={<Divider flexItem />}>
+            {users.map((user) => (
+              <Box key={user.id} sx={{ py: 1 }}>
+                {editingUserId !== user.id ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                      <Typography fontWeight={500} noWrap>
+                        {user.username}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {user.role}
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      startIcon={<EditIcon />}
+                      disabled={editingUserId !== null}
+                      onClick={() => startEditUser(user.id, user.username)}
+                    >
+                      Edit
+                    </Button>
+                  </Box>
+                ) : (
+                  <Stack spacing={2} sx={{ py: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Editing {user.role} login
+                    </Typography>
+                    <TextField
+                      label="Username"
+                      fullWidth
+                      size="small"
+                      autoComplete="off"
+                      value={userForm.username}
+                      onChange={(e) => setUserForm((u) => ({ ...u, username: e.target.value }))}
+                    />
+                    <TextField
+                      label="New password"
+                      type="password"
+                      fullWidth
+                      size="small"
+                      autoComplete="new-password"
+                      placeholder="Leave blank to keep current"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm((u) => ({ ...u, password: e.target.value }))}
+                    />
+                    <EditActions
+                      saving={saving}
+                      onCancel={() => setEditingUserId(null)}
+                      onSave={() => handleSaveUser(user.id)}
+                    />
+                  </Stack>
+                )}
+              </Box>
+            ))}
           </Stack>
-
-          <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="contained"
-              onClick={handleSaveTwilio}
-              disabled={savingTwilio}
-              startIcon={savingTwilio ? <CircularProgress size={16} color="inherit" /> : undefined}
-              sx={{ minWidth: 120 }}
-            >
-              {savingTwilio ? "Saving…" : "Save Twilio"}
-            </Button>
-          </Box>
         </Paper>
       </Box>
       <Snackbar
@@ -299,5 +441,57 @@ export default function OrganizationDetail() {
         ) : undefined}
       </Snackbar>
     </AnimatedPage>
+  );
+}
+
+function SectionHeader({
+  title,
+  chip,
+  onEdit,
+}: {
+  title: string;
+  chip?: ReactNode;
+  onEdit?: () => void;
+}) {
+  return (
+    <Stack direction="row" alignItems="center" sx={{ mb: 1.5 }}>
+      <Typography variant="subtitle1" fontWeight={700}>
+        {title}
+      </Typography>
+      {chip && <Box sx={{ ml: 1.5 }}>{chip}</Box>}
+      <Box sx={{ flexGrow: 1 }} />
+      {onEdit && (
+        <Button startIcon={<EditIcon />} onClick={onEdit}>
+          Edit
+        </Button>
+      )}
+    </Stack>
+  );
+}
+
+function EditActions({
+  saving,
+  onCancel,
+  onSave,
+}: {
+  saving: boolean;
+  onCancel: () => void;
+  onSave: () => void;
+}) {
+  return (
+    <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end", gap: 1 }}>
+      <Button onClick={onCancel} disabled={saving}>
+        Cancel
+      </Button>
+      <Button
+        variant="contained"
+        onClick={onSave}
+        disabled={saving}
+        startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+        sx={{ minWidth: 100 }}
+      >
+        {saving ? "Saving…" : "Save"}
+      </Button>
+    </Box>
   );
 }
