@@ -16,14 +16,23 @@ import java.util.UUID;
 @Table(name = "refresh_tokens")
 public class RefreshToken {
     @Id
+    @Column(name = "id", nullable = false)
+    private UUID id;
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "token", nullable = false, unique = true)
-    private String token;
+    @Column(name = "organization_id")
+    private UUID organizationId;
+
+    @Column(name = "token_hash", nullable = false, unique = true)
+    private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
+
+    @Column(name = "last_used_at")
+    private OffsetDateTime lastUsedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -31,6 +40,14 @@ public class RefreshToken {
 
     @Transient
     private String username;
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
     public UUID getUserId() {
         return userId;
@@ -40,12 +57,20 @@ public class RefreshToken {
         this.userId = userId;
     }
 
-    public String getToken() {
-        return token;
+    public UUID getOrganizationId() {
+        return organizationId;
     }
 
-    public void setToken(String token) {
-        this.token = token;
+    public void setOrganizationId(UUID organizationId) {
+        this.organizationId = organizationId;
+    }
+
+    public String getTokenHash() {
+        return tokenHash;
+    }
+
+    public void setTokenHash(String tokenHash) {
+        this.tokenHash = tokenHash;
     }
 
     public OffsetDateTime getExpiresAt() {
@@ -62,6 +87,14 @@ public class RefreshToken {
 
     public void setExpiryDate(Instant expiryDate) {
         this.expiresAt = expiryDate == null ? null : expiryDate.atOffset(ZoneOffset.UTC);
+    }
+
+    public OffsetDateTime getLastUsedAt() {
+        return lastUsedAt;
+    }
+
+    public void setLastUsedAt(OffsetDateTime lastUsedAt) {
+        this.lastUsedAt = lastUsedAt;
     }
 
     public OffsetDateTime getCreatedAt() {

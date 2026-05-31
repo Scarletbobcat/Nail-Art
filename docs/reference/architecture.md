@@ -45,9 +45,9 @@ There is no PostgreSQL RLS layer in this branch. Tenant isolation is enforced in
 
 - `POST /auth/login`, `POST /auth/refresh`, and `POST /auth/logout` are the only unauthenticated routes.
 - `POST /auth/register` is removed. First-owner bootstrap for a new organization is handled by scripts; routine staff creation uses owner-gated `POST /users`.
-- Access token lives in `localStorage` under `token`. Refresh token is an HttpOnly, `SameSite=None`, `Secure` cookie with a 30-day TTL. Both are issued by `JwtService`.
+- Access token lives in `localStorage` under `token`. Refresh token is an opaque HttpOnly, `SameSite=None`, `Secure` cookie with a 30-day TTL.
 - JWTs carry `sub` (user UUID), `org` (organization UUID), and `role`.
-- Refresh tokens are tracked server-side by user id in `refresh_tokens` so logout can revoke them.
+- Refresh tokens are stored server-side as SHA-256 hashes in `refresh_tokens`. Each login creates an independent row so multiple devices can stay signed in; logout revokes only the current cookie's row.
 
 ## Persistence
 

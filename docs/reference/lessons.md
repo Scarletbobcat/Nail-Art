@@ -48,6 +48,10 @@ Hard-won context distilled from prior commits and incidents. Each entry names th
 - **Symptom**: Users were logged out as soon as the browser closed because the refresh cookie defaulted to a session cookie (`8befafd`).
 - **Constraint**: Keep the 30-day `maxAge` on the `refreshToken` cookie and the matching `SameSite=None; Secure` flags. Both ends of `/auth/login`, `/auth/refresh`, and `/auth/logout` must agree.
 
+### Refresh tokens are per-device sessions
+- **Symptom**: Logging in on a second device deleted the first device's refresh token, so the first device was forced back to login when its access token expired.
+- **Constraint**: Login must insert a new hashed refresh-token row instead of deleting by `user_id`. `/auth/logout` revokes only the current cookie's row; add a separate logout-all path if the product needs it.
+
 ### Username matching is case-insensitive
 - **Symptom**: Users couldn't log in because they capitalized differently than at signup (`8b0a128`).
 - **Constraint**: PostgreSQL `citext` now enforces case-insensitive username lookup. Keep repository/service code using the username column directly; do not add case-sensitive alternate paths.

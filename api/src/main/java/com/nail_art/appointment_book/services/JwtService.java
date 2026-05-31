@@ -9,10 +9,17 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.security.Key;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.Base64;
 import java.util.Date;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -23,6 +30,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class JwtService {
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final int REFRESH_TOKEN_BYTES = 32;
+
     @Value("${security.jwt.secret-key}")
     private String secretKey;
 
@@ -91,70 +101,64 @@ public class JwtService {
     }
 
     @Transactional
-    public String generateRefreshToken(UserDetails userDetails) {
-        RefreshToken refreshToken = new RefreshToken();
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("jti", UUID.randomUUID().toString()); // Add a unique identifier to the claims
-
-        if (userDetails instanceof User user && user.getId() != null) {
-            refreshTokenRepository.deleteByUserId(user.getId());
-            refreshToken.setUserId(user.getId());
-        } else {
-            refreshTokenRepository.deleteRefreshTokensByUsername(userDetails.getUsername());
-        }
-
-        refreshToken.setToken(buildToken(claims, userDetails, refreshExpiration));
-        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
-        refreshToken.setUsername(userDetails.getUsername());
-        refreshTokenRepository.save(refreshToken);
-        return refreshToken.getToken();
+    public String generateRefreshToken(User user, UUID organizationId) {
+        return generateStoredRefreshToken(user.getId(), organizationId);
     }
 
-    @Transactional
-    public String generateRefreshToken(User user, UUID organizationId, String role) {
-        refreshTokenRepository.deleteByUserId(user.getId());
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("org", organizationId.toString());
-        claims.put("role", role);
-        claims.put("jti", UUID.randomUUID().toString());
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUserId(user.getId());
-        refreshToken.setToken(buildToken(claims, user.getId().toString(), refreshExpiration));
-        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
-        refreshTokenRepository.save(refreshToken);
-        return refreshToken.getToken();
-    }
-
-    /** Refresh token for an org-less platform admin: sub=userId, admin=true, jti, no org/role. */
+    /** Refresh token for an org-less platform admin. */
     @Transactional
     public String generateAdminRefreshToken(User user) {
-        refreshTokenRepository.deleteByUserId(user.getId());
-
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("admin", true);
-        claims.put("jti", UUID.randomUUID().toString());
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUserId(user.getId());
-        refreshToken.setToken(buildToken(claims, user.getId().toString(), refreshExpiration));
-        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
-        refreshTokenRepository.save(refreshToken);
-        return refreshToken.getToken();
+        return generateStoredRefreshToken(user.getId(), null);
     }
 
     public boolean validateRefreshToken(String token) {
-        return refreshTokenRepository.findByToken(token)
-                .map(refreshToken -> refreshToken.getExpiryDate().isAfter(Instant.now()))
-                .orElse(false);
+        return findValidRefreshToken(token)
+                .isPresent();
+    }
+
+    public Optional<RefreshToken> findValidRefreshToken(String token) {
+        return refreshTokenRepository.findByTokenHash(hashRefreshToken(token))
+                .filter(refreshToken -> refreshToken.getExpiryDate().isAfter(Instant.now()));
+    }
+
+    @Transactional
+    public void markRefreshTokenUsed(RefreshToken refreshToken) {
+        refreshToken.setLastUsedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        refreshTokenRepository.save(refreshToken);
     }
 
     @Transactional
     public void deleteRefreshToken(String token) {
-        refreshTokenRepository.findByToken(token).ifPresent(refreshTokenRepository::delete);
+        refreshTokenRepository.findByTokenHash(hashRefreshToken(token)).ifPresent(refreshTokenRepository::delete);
     }
 
+    private String generateStoredRefreshToken(UUID userId, UUID organizationId) {
+        String token = generateOpaqueRefreshToken();
+        RefreshToken refreshToken = new RefreshToken();
+        refreshToken.setId(UUID.randomUUID());
+        refreshToken.setUserId(userId);
+        refreshToken.setOrganizationId(organizationId);
+        refreshToken.setTokenHash(hashRefreshToken(token));
+        refreshToken.setExpiryDate(Instant.now().plusMillis(refreshExpiration));
+        refreshTokenRepository.save(refreshToken);
+        return token;
+    }
+
+    private String generateOpaqueRefreshToken() {
+        byte[] bytes = new byte[REFRESH_TOKEN_BYTES];
+        SECURE_RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    public String hashRefreshToken(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is unavailable", e);
+        }
+    }
 
     private String buildToken(
             Map<String, Object> extraClaims,

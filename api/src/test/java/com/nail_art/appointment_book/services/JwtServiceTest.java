@@ -14,6 +14,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,7 @@ class JwtServiceTest {
 
     private User makeUser(String username) {
         User user = new User();
+        user.setId(UUID.randomUUID());
         user.setUsername(username);
         user.setPassword("encoded");
         return user;
@@ -112,50 +114,60 @@ class JwtServiceTest {
             User user = makeUser("admin");
             when(refreshTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-            String token = jwtService.generateRefreshToken(user);
+            UUID organizationId = UUID.randomUUID();
+            String token = jwtService.generateRefreshToken(user, organizationId);
 
             assertNotNull(token);
-            verify(refreshTokenRepository).deleteRefreshTokensByUsername("admin");
-            verify(refreshTokenRepository).save(any(RefreshToken.class));
+            verify(refreshTokenRepository).save(argThat(refreshToken ->
+                    refreshToken.getId() != null
+                            && refreshToken.getUserId().equals(user.getId())
+                            && refreshToken.getOrganizationId().equals(organizationId)
+                            && refreshToken.getTokenHash().equals(jwtService.hashRefreshToken(token))
+                            && !refreshToken.getTokenHash().equals(token)
+            ));
         }
 
         @Test
         void validatesNonExpiredRefreshToken() {
+            String token = "valid_token";
             RefreshToken rt = new RefreshToken();
-            rt.setToken("valid_token");
+            rt.setTokenHash(jwtService.hashRefreshToken(token));
             rt.setExpiryDate(Instant.now().plusSeconds(3600));
 
-            when(refreshTokenRepository.findByToken("valid_token")).thenReturn(Optional.of(rt));
+            when(refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(token))).thenReturn(Optional.of(rt));
 
-            assertTrue(jwtService.validateRefreshToken("valid_token"));
+            assertTrue(jwtService.validateRefreshToken(token));
         }
 
         @Test
         void rejectsExpiredRefreshToken() {
+            String token = "expired_token";
             RefreshToken rt = new RefreshToken();
-            rt.setToken("expired_token");
+            rt.setTokenHash(jwtService.hashRefreshToken(token));
             rt.setExpiryDate(Instant.now().minusSeconds(3600));
 
-            when(refreshTokenRepository.findByToken("expired_token")).thenReturn(Optional.of(rt));
+            when(refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(token))).thenReturn(Optional.of(rt));
 
-            assertFalse(jwtService.validateRefreshToken("expired_token"));
+            assertFalse(jwtService.validateRefreshToken(token));
         }
 
         @Test
         void rejectsNonExistentRefreshToken() {
-            when(refreshTokenRepository.findByToken("fake_token")).thenReturn(Optional.empty());
+            String token = "fake_token";
+            when(refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(token))).thenReturn(Optional.empty());
 
-            assertFalse(jwtService.validateRefreshToken("fake_token"));
+            assertFalse(jwtService.validateRefreshToken(token));
         }
 
         @Test
         void deletesRefreshToken() {
+            String token = "to_delete";
             RefreshToken rt = new RefreshToken();
-            rt.setToken("to_delete");
+            rt.setTokenHash(jwtService.hashRefreshToken(token));
 
-            when(refreshTokenRepository.findByToken("to_delete")).thenReturn(Optional.of(rt));
+            when(refreshTokenRepository.findByTokenHash(jwtService.hashRefreshToken(token))).thenReturn(Optional.of(rt));
 
-            jwtService.deleteRefreshToken("to_delete");
+            jwtService.deleteRefreshToken(token);
 
             verify(refreshTokenRepository).delete(rt);
         }
