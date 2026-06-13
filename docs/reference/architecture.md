@@ -2,7 +2,7 @@
 
 ## System shape
 
-Three independently deployable pieces sit behind a single business workflow.
+Two independently deployable pieces sit behind a single business workflow.
 
 ```
 +----------------+        HTTPS / JWT         +----------------------+        +-------------------+
@@ -17,18 +17,12 @@ Three independently deployable pieces sit behind a single business workflow.
                                               |  Twilio              |
                                               |  SMS reminders       |
                                               +----------------------+
-
-+------------------+        +-------------------+
-|  cron/           |  --->  |  PostgreSQL       |
-|  Python scripts  |        |  maintenance      |
-+------------------+        +-------------------+
 ```
 
 ## Components
 
 - **`client/`** — Vite + React 18 + TypeScript single-page app. Uses Material UI (`@mui/material`, `@mui/x-data-grid`, `@mui/x-date-pickers`), TanStack Query for server state, and `react-router-dom` v6 for routing. Bundles to `client/dist/` and is served via `serve` in production.
-- **`api/`** — Spring Boot 3.3 (Java 21) REST API. Spring Security with JWT access tokens (`Authorization: Bearer ...`) and an HttpOnly `refreshToken` cookie. Persists to PostgreSQL through Spring Data JPA and Flyway. Sends Twilio SMS reminders on a scheduled cron.
-- **`cron/`** — Python 3.14 maintenance scripts that talk directly to PostgreSQL for operational chores outside the request path.
+- **`api/`** — Spring Boot 3.3 (Java 21) REST API. Spring Security with JWT access tokens (`Authorization: Bearer ...`) and an HttpOnly `refreshToken` cookie. Persists to PostgreSQL through Spring Data JPA and Flyway. Sends Twilio SMS reminders and archives old appointments on scheduled jobs.
 
 ## Request flow
 
@@ -60,7 +54,7 @@ There is no PostgreSQL RLS layer in this branch. Tenant isolation is enforced in
 ## Scheduled work
 
 - `SmsService#sendReminders` runs at `0 0 15 * * *` America/New_York. It loops organizations, wraps each org in `TenantContext.runAs`, sends Twilio messages with retry/backoff (`MAX_ATTEMPTS=3`, 5s backoff), respects Twilio code `21610` (unsubscribed), and marks `reminderSent` through the dedicated non-conflict path.
-- `cron/ArchiveAppointments.py` is intended to run weekly. It sets `archived_at` on appointments older than 30 days by looping organizations directly in PostgreSQL.
+- `AppointmentArchiveService#archiveOldAppointments` runs at `0 30 2 * * SUN` America/New_York. It loops organizations, wraps each org in `TenantContext.runAs`, and bulk sets `archived_at` on appointments whose `ends_at` is older than 30 days and still unarchived.
 
 ## Configuration & secrets
 

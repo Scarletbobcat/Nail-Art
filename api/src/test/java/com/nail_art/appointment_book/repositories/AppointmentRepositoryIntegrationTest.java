@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -175,6 +176,29 @@ class AppointmentRepositoryIntegrationTest extends PostgresIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    void archiveEndedBefore_archivesOnlyOldUnarchivedAppointmentsForOrg() {
+        OffsetDateTime cutoff = OffsetDateTime.parse("2026-04-15T00:00:00Z");
+        UUID old = insertAppointment(orgA, orgAEmployee, "Old", "2026-03-10T10:00:00-04:00", "2026-03-10T11:00:00-04:00", null);
+        UUID recent = insertAppointment(orgA, orgAEmployee, "Recent", "2026-04-16T10:00:00-04:00", "2026-04-16T11:00:00-04:00", null);
+        UUID alreadyArchived = insertAppointment(orgA, orgAEmployee, "Already", "2026-03-11T10:00:00-04:00", "2026-03-11T11:00:00-04:00", "2026-04-01T12:00:00Z");
+        UUID orgBAppointment = insertAppointment(orgB, insertEmployee(orgB, "Bea"), "Org B", "2026-03-12T10:00:00-04:00", "2026-03-12T11:00:00-04:00", null);
+
+        int archived = TenantContext.runAs(orgA, () -> appointmentRepository.archiveEndedBefore(orgA, cutoff));
+
+        assertThat(archived)
+                .as("only old unarchived rows in orgA should be touched cutoff=%s", cutoff)
+                .isEqualTo(1);
+        assertThat(archivedAt(old)).isNotNull();
+        assertThat(archivedAt(recent)).isNull();
+        assertThat(archivedAt(alreadyArchived).toInstant())
+                .as("already archived appointmentId=%s should keep its original archived_at", alreadyArchived)
+                .isEqualTo(Instant.parse("2026-04-01T12:00:00Z"));
+        assertThat(archivedAt(orgBAppointment))
+                .as("explicit organization_id scope should leave orgB appointmentId=%s untouched", orgBAppointment)
+                .isNull();
+    }
+
     private UUID insertOrganization(String name) {
         return jdbcTemplate.queryForObject(
                 "insert into organizations (name, business_phone, timezone) values (?, '+15555550101', 'America/New_York') returning id",
@@ -224,6 +248,14 @@ class AppointmentRepositoryIntegrationTest extends PostgresIntegrationTest {
                 organizationId,
                 appointmentId,
                 serviceId
+        );
+    }
+
+    private OffsetDateTime archivedAt(UUID appointmentId) {
+        return jdbcTemplate.queryForObject(
+                "select archived_at from appointments where id = ?",
+                OffsetDateTime.class,
+                appointmentId
         );
     }
 

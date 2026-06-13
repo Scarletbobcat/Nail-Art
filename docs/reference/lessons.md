@@ -26,7 +26,7 @@ Hard-won context distilled from prior commits and incidents. Each entry names th
 
 ### Mongo to PostgreSQL cutover is historical context
 - **Symptom**: The old stack mixed Mongo documents, numeric IDs, single-tenant assumptions, and timezone-naive appointment fields.
-- **Constraint**: The cutover is intentionally atomic: JPA/Flyway/PostgreSQL, UUID IDs, Hibernate `@TenantId`, `{startsAt, endsAt}` appointment timestamps, `useMe()` org timezone, and psycopg cron all land together.
+- **Constraint**: The cutover is intentionally atomic: JPA/Flyway/PostgreSQL, UUID IDs, Hibernate `@TenantId`, `{startsAt, endsAt}` appointment timestamps, `useMe()` org timezone, and scheduled maintenance all land together.
 
 ## Appointments
 
@@ -90,6 +90,10 @@ Hard-won context distilled from prior commits and incidents. Each entry names th
 ### Scheduled jobs must set tenant context explicitly
 - **Symptom**: Scheduled code runs outside HTTP request filters, so Hibernate cannot infer an organization from web authentication.
 - **Constraint**: Scheduled jobs loop organizations and wrap tenant-owned repository work with `TenantContext.runAs`.
+
+### Appointment archive lives in Spring scheduled work
+- **History**: The old `cron/ArchiveAppointments.py` external runner was retired when the archive pass moved into `AppointmentArchiveService`.
+- **Constraint**: Keep old-appointment archival idempotent: only appointments older than 30 days with `archived_at IS NULL` should be updated, and each org should be processed independently.
 
 ### Respect Twilio unsubscribe (code 21610) and retry transient failures
 - `SmsService` short-circuits on Twilio error `21610` and retries on `5xx` / `429` with `MAX_ATTEMPTS=3` and a 5s backoff (`SmsService.java`).

@@ -50,9 +50,8 @@ Searchable client directory. Clients are linked to their appointments by phone n
 ## Tech stack
 
 - **Frontend** (`client/`): [Vite](https://vite.dev) + React 18 + TypeScript, [Material UI](https://mui.com/material-ui/) v7 (`@mui/material`, `@mui/x-data-grid`, `@mui/x-date-pickers`), [TanStack Query](https://tanstack.com/query), `react-router-dom` v6.
-- **Backend** (`api/`): [Spring Boot 3](https://spring.io) on Java 21, Spring Security with JWT + refresh-cookie auth, Spring Data JPA, and Flyway. SMS reminders via [Twilio](https://www.twilio.com).
+- **Backend** (`api/`): [Spring Boot 3](https://spring.io) on Java 21, Spring Security with JWT + refresh-cookie auth, Spring Data JPA, and Flyway. SMS reminders via [Twilio](https://www.twilio.com), plus scheduled appointment archive maintenance.
 - **Database**: PostgreSQL 16.
-- **Cron** (`cron/`): Python 3.14 scripts (managed with [`uv`](https://github.com/astral-sh/uv)) for PostgreSQL maintenance.
 
 A high-level architecture sketch lives in [`docs/reference/architecture.md`](./docs/reference/architecture.md).
 
@@ -82,7 +81,7 @@ For the published Docker stack:
 ```
 client/   Vite + React + MUI single-page app
 api/      Spring Boot 3 REST API + JWT auth + Twilio SMS
-cron/     Python maintenance scripts
+scripts/  Python admin/bootstrap scripts
 docs/     Canonical documentation (start at docs/INDEX.md)
 images/   README screenshots
 ```
@@ -94,7 +93,7 @@ images/   README screenshots
 - [`docs/reference/architecture.md`](./docs/reference/architecture.md) — system shape, request flow, deployment.
 - [`docs/reference/conventions.md`](./docs/reference/conventions.md) — naming and patterns to follow.
 - [`docs/reference/lessons.md`](./docs/reference/lessons.md) — gotchas distilled from prior incidents (auth, tenancy, reminders, pagination).
-- [`docs/modules/`](./docs/modules) — per-module deep dives: [client](./docs/modules/client.md), [api](./docs/modules/api.md), [cron](./docs/modules/cron.md).
+- [`docs/modules/`](./docs/modules) — per-module deep dives: [client](./docs/modules/client.md), [api](./docs/modules/api.md).
 
 ## CI
 
