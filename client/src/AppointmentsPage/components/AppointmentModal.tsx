@@ -35,6 +35,11 @@ import {
   nowInSalon,
   toIsoFromSalonInput,
 } from "../../utils/datetime";
+import {
+  appointmentWithEndChange,
+  appointmentWithStartChange,
+  startForEndChangeValidation,
+} from "./appointmentDateSync";
 
 export default function AppointmentModal({
   orgTz,
@@ -94,32 +99,40 @@ export default function AppointmentModal({
 
   const updateStart = (date: dayjs.Dayjs | null) => {
     if (!date) return;
-    setForm({
-      ...form,
-      startsAt: toIsoFromSalonInput(
-        date.format("YYYY-MM-DD"),
-        date.format("HH:mm:ss"),
-        orgTz
-      ),
-    });
+    setForm(
+      appointmentWithStartChange({
+        form,
+        nextStart: date,
+        currentStart: startValue,
+        currentEnd: endValue,
+        orgTz,
+      })
+    );
   };
 
   const updateEnd = (date: dayjs.Dayjs | null) => {
     if (!date) return;
     const nextEnd = date;
-    if (nextEnd.isSame(startValue) || nextEnd.isBefore(startValue)) {
+    const nextStart = startForEndChangeValidation({
+      nextEnd,
+      currentStart: startValue,
+      currentEnd: endValue,
+    });
+
+    if (nextEnd.isSame(nextStart) || nextEnd.isBefore(nextStart)) {
       setEndTimeCustomError("End time must be after start time");
     } else {
       setEndTimeCustomError("");
     }
-    setForm({
-      ...form,
-      endsAt: toIsoFromSalonInput(
-        nextEnd.format("YYYY-MM-DD"),
-        nextEnd.format("HH:mm:ss"),
-        orgTz
-      ),
-    });
+    setForm(
+      appointmentWithEndChange({
+        form,
+        nextEnd,
+        currentStart: startValue,
+        currentEnd: endValue,
+        orgTz,
+      })
+    );
   };
 
   const errorMessage = useCallback((error: DateTimeValidationError | null) => {
