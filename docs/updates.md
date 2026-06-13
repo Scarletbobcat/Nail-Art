@@ -2,6 +2,10 @@
 
 Accretive log of significant documentation changes. Append to the top.
 
+## 2026-06-12 — Appointment archive moved into Spring
+
+- Retired the external Python archive cron; `AppointmentArchiveService` now archives old appointments weekly inside the API, and docs no longer list `cron/` as a runtime component.
+
 ## 2026-05-30 — Per-device refresh sessions
 
 - Updated auth docs to describe hashed opaque refresh tokens, independent multi-device sessions, and current-session logout behavior.

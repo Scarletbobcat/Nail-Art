@@ -12,7 +12,6 @@ This directory is the canonical map of the Nail Art & Spa appointment book. Root
 
 - [Client (Vite + React + MUI)](modules/client.md)
 - [API (Spring Boot + PostgreSQL)](modules/api.md)
-- [Cron (Python maintenance scripts)](modules/cron.md)
 
 ## Operations
 

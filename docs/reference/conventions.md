@@ -6,7 +6,7 @@ These are conventions observed in the existing code. Match them when extending t
 
 - `client/` — frontend SPA. Source under `client/src`, theme in `client/theme.ts`, design tokens in `client/src/constants/design.ts`.
 - `api/` — Spring Boot service. Java sources under `api/src/main/java/com/nail_art/appointment_book`.
-- `cron/` — Python maintenance scripts. Managed with `uv` / `pyproject.toml`.
+- `scripts/` — Python admin/bootstrap scripts. Managed with `uv` / `pyproject.toml`.
 - `docs/` — canonical documentation suite. Brainstorm/working notes live in `docs/brainstorms/` and are not committed with feature work.
 - `images/` — README screenshots, kebab-case PNGs.
 
@@ -46,16 +46,9 @@ These are conventions observed in the existing code. Match them when extending t
   - JWTs carry user UUID (`sub`), organization UUID (`org`), and role.
   - `JwtAuthenticationFilter` cross-checks token membership against `organization_users`.
   - CORS is locked to the configured `frontend.url` and exposes `Set-Cookie`.
-- **Twilio / scheduled**: `SmsService` is the only place that talks to Twilio. It encapsulates retries, unsubscribed handling (code `21610`), masked phone logging, `@Scheduled` cron timing, and per-org `TenantContext.runAs`.
+- **Scheduled work**: `SmsService` is the only place that talks to Twilio. `AppointmentArchiveService` owns weekly soft-archive maintenance. Scheduled jobs loop organizations and wrap tenant-owned work with `TenantContext.runAs`.
 - **Configuration**: Profile-specific properties live in `application-dev.properties` / `application-prod.properties`. Secrets and connection strings are read from environment variables; never hard-code them.
 - **Tests**: Service tests under `com.nail_art.appointment_book.services.**` are run in CI. PostgreSQL integration tests extend `PostgresIntegrationTest`.
-
-## Cron (`cron/`)
-
-- Python 3.14, managed with `uv` (`uv.lock` is committed). Dependencies are declared in `pyproject.toml`.
-- Scripts read `POSTGRES_URL` from a `.env` via `python-dotenv` and talk to PostgreSQL with `psycopg`.
-- One responsibility per script. Keep scripts idempotent and safe to rerun.
-- Multi-tenant scripts loop organizations explicitly; do not introduce a single-org environment variable for tenant selection.
 
 ## Documentation
 

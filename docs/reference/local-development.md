@@ -4,7 +4,7 @@
 
 - **Node.js 20+** for the client (CI pins Node 20).
 - **JDK 21** for the API (CI uses Temurin 21).
-- **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the cron or bootstrap scripts.
+- **Python 3.14** with [`uv`](https://github.com/astral-sh/uv) if you need the admin/bootstrap scripts.
 - **Docker** for the local PostgreSQL container.
 - **Twilio credentials** if you want reminders to actually send. These now live per-organization in the database (encrypted), not in env vars — set them via the owner Settings page or `scripts/set_org_twilio.py`. Without any configured org, the scheduled job simply skips every org.
 
@@ -46,7 +46,7 @@ Create `client/.env`:
 VITE_API_URL=http://localhost:8080
 ```
 
-For cron and bootstrap scripts, create `scripts/.env` or export:
+For Python admin/bootstrap scripts, create `scripts/.env` or export:
 
 ```
 POSTGRES_URL=postgresql://nail_art:nail_art_password@localhost:5432/nail_art

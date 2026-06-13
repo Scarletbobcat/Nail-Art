@@ -2,8 +2,11 @@ package com.nail_art.appointment_book.repositories;
 
 import com.nail_art.appointment_book.entities.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -59,5 +62,20 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             UUID employeeId,
             OffsetDateTime endsAt,
             OffsetDateTime startsAt
+    );
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query(value = """
+            update appointments
+            set archived_at = now(),
+                updated_at = now()
+            where organization_id = :organizationId
+              and archived_at is null
+              and ends_at < :cutoff
+            """, nativeQuery = true)
+    int archiveEndedBefore(
+            @Param("organizationId") UUID organizationId,
+            @Param("cutoff") OffsetDateTime cutoff
     );
 }

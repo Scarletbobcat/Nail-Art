@@ -5,8 +5,8 @@ Router for AI agents and contributors working on the Nail Art & Spa appointment 
 ## What this repo is
 
 - `client/` — Vite + React + TypeScript + MUI SPA. Served on `5173` in dev, `5173` in the published Docker image.
-- `api/` — Spring Boot 3 (Java 21) + PostgreSQL. JWT + refresh-cookie auth. Twilio SMS reminders on a daily schedule.
-- `cron/` — Python 3.14 maintenance scripts that operate directly on PostgreSQL.
+- `api/` — Spring Boot 3 (Java 21) + PostgreSQL. JWT + refresh-cookie auth. Twilio SMS reminders and appointment archive maintenance run on schedules inside the app.
+- `scripts/` — Python admin/bootstrap scripts that operate directly on PostgreSQL.
 
 Read [`docs/INDEX.md`](docs/INDEX.md) for the full map. Architecture lives in [`docs/reference/architecture.md`](docs/reference/architecture.md).
 
@@ -56,7 +56,6 @@ cd api && ./mvnw spring-boot:run
 
 - Frontend: [`docs/modules/client.md`](docs/modules/client.md)
 - Backend: [`docs/modules/api.md`](docs/modules/api.md)
-- Cron jobs: [`docs/modules/cron.md`](docs/modules/cron.md)
 - Local setup: [`docs/reference/local-development.md`](docs/reference/local-development.md)
 - Deployment: [`docs/reference/deployment.md`](docs/reference/deployment.md)
 
