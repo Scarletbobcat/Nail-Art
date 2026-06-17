@@ -13,6 +13,7 @@ import { logout } from "../api/auth/auth";
 import { useMe } from "../hooks/useMe";
 import { MAX_CONTENT_WIDTH } from "../constants/design";
 import { ROUTES } from "../constants/routes";
+import { usePostHog } from "@posthog/react";
 
 const navItems = [
   {
@@ -39,6 +40,13 @@ function Navbar() {
   const open = Boolean(anchorEl);
   const location = useLocation();
   const { data: me } = useMe();
+  const posthog = usePostHog();
+
+  const handleLogout = () => {
+    posthog?.capture("user_logged_out", { username: me?.user.username });
+    posthog?.reset();
+    void logout();
+  };
 
   // Platform admins are org-less: they see only the operator console, never the
   // salon nav. Otherwise Settings is owner-only; staff never see the entry.
@@ -183,7 +191,7 @@ function Navbar() {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={logout}
+                onClick={handleLogout}
                 sx={{
                   color: "white",
                   borderColor: "rgba(255, 255, 255, 0.4)",

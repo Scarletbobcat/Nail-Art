@@ -20,10 +20,12 @@ import { AxiosError } from "axios";
 import { useState, FormEvent } from "react";
 import AnimatedPage from "../components/AnimatedPage";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePostHog } from "@posthog/react";
 
 export default function Login() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const posthog = usePostHog();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -39,6 +41,11 @@ export default function Login() {
       await login(username, password);
       const me = await queryClient.fetchQuery({ queryKey: meQueryKey, queryFn: fetchMe });
       setIsLoading(false);
+      posthog?.identify(me.user.id, {
+        username: me.user.username,
+        role: me.user.role,
+        organization: me.organization?.name,
+      });
       // Platform admins are org-less and belong in the operator console, never on
       // a salon page (or a stale previousUrl pointing at one).
       if (me.user.isPlatformAdmin) {

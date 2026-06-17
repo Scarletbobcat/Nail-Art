@@ -41,6 +41,10 @@ public class ServiceService {
         });
     }
 
+    public Optional<Service> getServiceById(UUID id) {
+        return serviceRepository.findScopedById(id);
+    }
+
     public boolean deleteService(UUID id) {
         return serviceRepository.findScopedById(id)
                 .map(service -> {

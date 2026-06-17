@@ -1,7 +1,10 @@
 package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Appointment;
+import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.services.AppointmentService;
+import com.nail_art.appointment_book.services.EmployeeService;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import jakarta.validation.Valid;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -25,9 +28,14 @@ import java.util.UUID;
 @RestController
 public class AppointmentController {
     private final AppointmentService appointmentService;
+    private final EmployeeService employeeService;
+    private final ProductAnalytics productAnalytics;
 
-    public AppointmentController(AppointmentService appointmentService) {
+    public AppointmentController(AppointmentService appointmentService, EmployeeService employeeService,
+                                 ProductAnalytics productAnalytics) {
         this.appointmentService = appointmentService;
+        this.employeeService = employeeService;
+        this.productAnalytics = productAnalytics;
     }
 
     @GetMapping("/")
@@ -53,7 +61,14 @@ public class AppointmentController {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
         try {
-            return new ResponseEntity<>(appointmentService.createAppointment(appointment), HttpStatus.CREATED);
+            Appointment created = appointmentService.createAppointment(appointment);
+            String employeeName = employeeService.getEmployeeById(created.getEmployeeId())
+                    .map(Employee::getName).orElse(null);
+            productAnalytics.capture("appointment_created", Map.of(
+                    "employee_id", String.valueOf(created.getEmployeeId()),
+                    "employee_name", String.valueOf(employeeName),
+                    "service_count", created.getServices().size()));
+            return new ResponseEntity<>(created, HttpStatus.CREATED);
         } catch (IllegalArgumentException exception) {
             return conflict(exception);
         } catch (DataIntegrityViolationException exception) {
@@ -72,7 +87,15 @@ public class AppointmentController {
         }
         try {
             return appointmentService.editAppointment(id, appointment)
-                    .<ResponseEntity<?>>map(ResponseEntity::ok)
+                    .<ResponseEntity<?>>map(updated -> {
+                        String employeeName = employeeService.getEmployeeById(updated.getEmployeeId())
+                                .map(Employee::getName).orElse(null);
+                        productAnalytics.capture("appointment_edited", Map.of(
+                                "employee_id", String.valueOf(updated.getEmployeeId()),
+                                "employee_name", String.valueOf(employeeName),
+                                "service_count", updated.getServices().size()));
+                        return ResponseEntity.ok(updated);
+                    })
                     .orElseGet(() -> ResponseEntity.notFound().build());
         } catch (IllegalArgumentException exception) {
             return conflict(exception);
@@ -89,6 +112,7 @@ public class AppointmentController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteAppointment(@PathVariable UUID id) {
         if (appointmentService.deleteAppointment(id)) {
+            productAnalytics.capture("appointment_deleted", Map.of("appointment_id", id.toString()));
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
@@ -101,7 +125,9 @@ public class AppointmentController {
 
     @GetMapping("/search/{phoneNumber}")
     public ResponseEntity<List<Appointment>> getAppointments(@PathVariable String phoneNumber) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByPhoneNumber(phoneNumber));
+        List<Appointment> appointments = appointmentService.getAppointmentsByPhoneNumber(phoneNumber);
+        productAnalytics.capture("appointment_searched", Map.of("result_count", appointments.size()));
+        return ResponseEntity.ok(appointments);
     }
 
     private ResponseEntity<Map<String, String>> conflict(Exception exception) {
