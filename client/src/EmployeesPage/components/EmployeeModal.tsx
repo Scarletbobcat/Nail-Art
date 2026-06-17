@@ -10,6 +10,7 @@ import { useState, FormEvent } from "react";
 import { Employee, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ResponsiveModal from "../../components/ResponsiveModal";
+import { usePostHog } from "@posthog/react";
 
 export default function EmployeeModal({
   employee,
@@ -26,6 +27,7 @@ export default function EmployeeModal({
   type: "create" | "edit" | "delete";
   onSubmit: (e: Employee) => void;
 }) {
+  const posthog = usePostHog();
   const [isLoading, setIsLoading] = useState(false);
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alert, setAlert] = useState<Alert>({ message: "", severity: "error" });
@@ -41,6 +43,7 @@ export default function EmployeeModal({
       renderEmps();
     } catch (error) {
       const err = error as { response?: { data?: { description?: string } } };
+      posthog?.captureException(error, { event_type: type });
       setIsAlertOpen(true);
       setAlert({ message: err.response?.data?.description || `Failed to ${type} employee`, severity: "error" });
       setIsLoading(false);

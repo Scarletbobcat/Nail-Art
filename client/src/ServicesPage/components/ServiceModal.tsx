@@ -9,6 +9,7 @@ import { useState, FormEvent } from "react";
 import { Service, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ResponsiveModal from "../../components/ResponsiveModal";
+import { usePostHog } from "@posthog/react";
 
 export default function ServiceModal({
   service,
@@ -25,6 +26,7 @@ export default function ServiceModal({
   onClose: () => void;
   renderServices: () => void;
 }) {
+  const posthog = usePostHog();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Service>({ ...service });
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -40,6 +42,7 @@ export default function ServiceModal({
       renderServices();
     } catch (error) {
       const err = error as { response?: { data?: { description?: string } } };
+      posthog?.captureException(error, { event_type: type });
       setIsAlertOpen(true);
       setAlert({ message: err.response?.data?.description || `Failed to ${type} service`, severity: "error" });
     }

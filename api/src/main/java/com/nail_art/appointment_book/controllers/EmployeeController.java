@@ -3,6 +3,7 @@ package com.nail_art.appointment_book.controllers;
 import com.nail_art.appointment_book.dtos.EmployeeReorderRequest;
 import com.nail_art.appointment_book.entities.Employee;
 import com.nail_art.appointment_book.services.EmployeeService;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,9 +30,11 @@ public class EmployeeController {
     );
 
     private final EmployeeService employeeService;
+    private final ProductAnalytics productAnalytics;
 
-    public EmployeeController(EmployeeService employeeService) {
+    public EmployeeController(EmployeeService employeeService, ProductAnalytics productAnalytics) {
         this.employeeService = employeeService;
+        this.productAnalytics = productAnalytics;
     }
 
     @GetMapping("/")
@@ -53,7 +56,11 @@ public class EmployeeController {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
-        return new ResponseEntity<>(employeeService.createEmployee(employee), HttpStatus.CREATED);
+        Employee created = employeeService.createEmployee(employee);
+        productAnalytics.capture("employee_created", Map.of(
+                "employee_id", created.getId().toString(),
+                "employee_name", String.valueOf(created.getName())));
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PutMapping("/edit/{id}")
@@ -63,15 +70,23 @@ public class EmployeeController {
         if (editedEmployee.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("employee_edited", Map.of(
+                "employee_id", editedEmployee.get().getId().toString(),
+                "employee_name", String.valueOf(editedEmployee.get().getName())));
         return ResponseEntity.ok(editedEmployee.get());
     }
 
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Void> deleteEmployee(@PathVariable UUID id) {
+        // Resolve the name before the row is gone so the event stays readable.
+        String employeeName = employeeService.getEmployeeById(id).map(Employee::getName).orElse(null);
         if (!employeeService.deleteEmployee(id)) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("employee_deleted", Map.of(
+                "employee_id", id.toString(),
+                "employee_name", String.valueOf(employeeName)));
         return ResponseEntity.ok().build();
     }
 

@@ -5,6 +5,7 @@ import com.nail_art.appointment_book.dtos.LoginUserDto;
 import com.nail_art.appointment_book.responses.LoginResponse;
 import com.nail_art.appointment_book.services.AuthenticationService;
 import com.nail_art.appointment_book.services.JwtService;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -14,6 +15,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
 
 @RequestMapping("/auth")
 @RestController
@@ -25,9 +28,16 @@ public class AuthenticationController {
 
     private final AuthenticationService authenticationService;
 
-    public AuthenticationController(JwtService jwtService, AuthenticationService authenticationService) {
+    private final ProductAnalytics productAnalytics;
+
+    public AuthenticationController(
+            JwtService jwtService,
+            AuthenticationService authenticationService,
+            ProductAnalytics productAnalytics
+    ) {
         this.jwtService = jwtService;
         this.authenticationService = authenticationService;
+        this.productAnalytics = productAnalytics;
     }
 
     @PostMapping("/login")
@@ -36,6 +46,16 @@ public class AuthenticationController {
 
         String refreshToken = authenticationService.generateRefreshToken(authenticatedUser);
         String jwtToken = authenticationService.generateAccessToken(authenticatedUser);
+
+        // Authoritative login signal: fires only on a genuinely successful auth.
+        // Keyed on the user id so it merges with the browser's identify(me.user.id).
+        // username makes the person readable in dashboards; is_platform_admin lets you
+        // exclude your own admin activity from salon metrics. No email: the app
+        // identifies users by username and never collects an email through the UI.
+        productAnalytics.captureFor(authenticatedUser.getId(), null, "user_logged_in", Map.of(),
+                Map.of(
+                        "username", authenticatedUser.getUsername(),
+                        "is_platform_admin", authenticatedUser.isPlatformAdmin()));
 
         LoginResponse loginResponse = new LoginResponse();
         loginResponse.setToken(jwtToken);

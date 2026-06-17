@@ -9,6 +9,7 @@ import { useState, FormEvent } from "react";
 import { Client, Alert } from "../../types";
 import CustomAlert from "../../components/Alert";
 import ResponsiveModal from "../../components/ResponsiveModal";
+import { usePostHog } from "@posthog/react";
 
 export default function ClientModal({
   client,
@@ -25,6 +26,7 @@ export default function ClientModal({
   onClose: () => void;
   renderEntities: () => void;
 }) {
+  const posthog = usePostHog();
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Client>({ ...client });
   const [isAlertOpen, setIsAlertOpen] = useState(false);
@@ -54,6 +56,7 @@ export default function ClientModal({
       renderEntities();
     } catch (error) {
       const err = error as { response?: { data?: { description?: string } } };
+      posthog?.captureException(error, { event_type: type });
       setIsAlertOpen(true);
       setAlert({ message: err.response?.data?.description || `Failed to ${type} client`, severity: "error" });
     }

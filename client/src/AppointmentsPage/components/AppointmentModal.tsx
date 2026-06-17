@@ -22,6 +22,7 @@ import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import { useState, FormEvent, useCallback } from "react";
 import { Appointment, Employee, Service, Alert, Client } from "../../types";
+import { usePostHog } from "@posthog/react";
 import CustomAlert from "../../components/Alert";
 import ClientSelect from "./ClientSelect";
 import { DateTimeValidationError } from "@mui/x-date-pickers/models";
@@ -73,6 +74,7 @@ export default function AppointmentModal({
     message: "",
     severity: "error",
   });
+  const posthog = usePostHog();
   const [startError, setStartError] = useState<DateTimeValidationError | null>(
     null
   );
@@ -181,6 +183,7 @@ export default function AppointmentModal({
       renderEvents(form);
     } catch (error) {
       const err = error as { response?: { data?: { description?: string } } };
+      posthog?.captureException(error, { event_type: type });
       setIsAlertOpen(true);
       setAlert({
         message: err.response?.data?.description || `Failed to ${type} appointment`,

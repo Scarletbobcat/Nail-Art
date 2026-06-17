@@ -50,6 +50,10 @@ public class EmployeeService {
         });
     }
 
+    public Optional<Employee> getEmployeeById(UUID id) {
+        return employeeRepository.findScopedById(id);
+    }
+
     public boolean deleteEmployee(UUID id) {
         return employeeRepository.findScopedById(id)
                 .map(employee -> {

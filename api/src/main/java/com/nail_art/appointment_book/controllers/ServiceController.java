@@ -1,6 +1,7 @@
 package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Service;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import com.nail_art.appointment_book.services.ServiceService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -14,6 +15,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,9 +23,11 @@ import java.util.UUID;
 @RestController
 public class ServiceController {
     private final ServiceService serviceService;
+    private final ProductAnalytics productAnalytics;
 
-    public ServiceController(ServiceService serviceService) {
+    public ServiceController(ServiceService serviceService, ProductAnalytics productAnalytics) {
         this.serviceService = serviceService;
+        this.productAnalytics = productAnalytics;
     }
 
     @GetMapping("/")
@@ -45,7 +49,11 @@ public class ServiceController {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
-        return new ResponseEntity<>(serviceService.createService(service), HttpStatus.CREATED);
+        Service created = serviceService.createService(service);
+        productAnalytics.capture("service_created", Map.of(
+                "service_id", created.getId().toString(),
+                "service_name", String.valueOf(created.getName())));
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @GetMapping("/name/{name}")
@@ -60,15 +68,23 @@ public class ServiceController {
         if (editedService.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("service_edited", Map.of(
+                "service_id", editedService.get().getId().toString(),
+                "service_name", String.valueOf(editedService.get().getName())));
         return ResponseEntity.ok(editedService.get());
     }
 
     @DeleteMapping("/delete/{id}")
     @PreAuthorize("hasAuthority('owner')")
     public ResponseEntity<Void> deleteService(@PathVariable UUID id) {
+        // Resolve the name before the row is gone so the event stays readable.
+        String serviceName = serviceService.getServiceById(id).map(Service::getName).orElse(null);
         if (!serviceService.deleteService(id)) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("service_deleted", Map.of(
+                "service_id", id.toString(),
+                "service_name", String.valueOf(serviceName)));
         return ResponseEntity.ok().build();
     }
 }

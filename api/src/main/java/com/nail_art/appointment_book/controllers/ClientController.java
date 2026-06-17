@@ -2,6 +2,7 @@ package com.nail_art.appointment_book.controllers;
 
 import com.nail_art.appointment_book.entities.Client;
 import com.nail_art.appointment_book.services.ClientService;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,9 +20,11 @@ import java.util.UUID;
 @RequestMapping("/clients")
 public class ClientController {
     private final ClientService clientService;
+    private final ProductAnalytics productAnalytics;
 
-    public ClientController(ClientService clientService) {
+    public ClientController(ClientService clientService, ProductAnalytics productAnalytics) {
         this.clientService = clientService;
+        this.productAnalytics = productAnalytics;
     }
 
     @GetMapping("/{id}")
@@ -38,7 +41,9 @@ public class ClientController {
         if (result.hasErrors()) {
             return ResponseEntity.badRequest().body(ControllerValidation.fieldErrors(result));
         }
-        return new ResponseEntity<>(clientService.createClient(client), HttpStatus.CREATED);
+        Client created = clientService.createClient(client);
+        productAnalytics.capture("client_created");
+        return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
     @PutMapping("/edit/{id}")
@@ -47,6 +52,7 @@ public class ClientController {
         if (editedClient.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("client_edited");
         return ResponseEntity.ok(editedClient.get());
     }
 
@@ -55,6 +61,7 @@ public class ClientController {
         if (!clientService.deleteClient(id)) {
             return ResponseEntity.notFound().build();
         }
+        productAnalytics.capture("client_deleted");
         return ResponseEntity.ok().build();
     }
 

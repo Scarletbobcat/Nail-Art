@@ -11,6 +11,7 @@ import com.nail_art.appointment_book.responses.CreateOrganizationResponse;
 import com.nail_art.appointment_book.responses.OrganizationSettingsResponse;
 import com.nail_art.appointment_book.services.AdminProvisioningService;
 import com.nail_art.appointment_book.services.OrganizationService;
+import com.nail_art.appointment_book.services.ProductAnalytics;
 import com.nail_art.appointment_book.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -39,15 +41,18 @@ public class AdminOrganizationController {
     private final OrganizationService organizationService;
     private final AdminProvisioningService adminProvisioningService;
     private final UserService userService;
+    private final ProductAnalytics productAnalytics;
 
     public AdminOrganizationController(
             OrganizationService organizationService,
             AdminProvisioningService adminProvisioningService,
-            UserService userService
+            UserService userService,
+            ProductAnalytics productAnalytics
     ) {
         this.organizationService = organizationService;
         this.adminProvisioningService = adminProvisioningService;
         this.userService = userService;
+        this.productAnalytics = productAnalytics;
     }
 
     @GetMapping
@@ -57,8 +62,12 @@ public class AdminOrganizationController {
 
     @PostMapping
     public ResponseEntity<CreateOrganizationResponse> createSalon(@RequestBody CreateOrganizationRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(adminProvisioningService.createOrganization(request));
+        CreateOrganizationResponse created = adminProvisioningService.createOrganization(request);
+        productAnalytics.capture("salon_created", Map.of(
+                "salon_name", String.valueOf(created.name()),
+                "timezone", String.valueOf(request.timezone()),
+                "organization_id", created.organizationId().toString()));
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping("/{organizationId}")

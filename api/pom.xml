@@ -93,6 +93,11 @@
             <artifactId>twilio</artifactId>
             <version>9.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.posthog</groupId>
+            <artifactId>posthog-server</artifactId>
+            <version>2.7.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
