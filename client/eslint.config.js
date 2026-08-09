@@ -23,6 +23,11 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+      // New in eslint-plugin-react-hooks v7. Search and Settings both sync
+      // external state (a URL param, a react-query result) into local state
+      // this way on purpose. Untangling them changes user-facing behavior, so
+      // keep the signal visible as a warning until they are refactored.
+      'react-hooks/set-state-in-effect': 'warn',
     },
   },
 )
